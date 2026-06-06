@@ -1,0 +1,37 @@
+# Packed build output
+@FIXICS/
+*.pbo
+*.bisign
+
+# Keep private signing keys out of source control
+*.biprivatekey
+.hemttprivatekey
+
+# Local logs and generated files
+*.rpt
+*.log
+*.tmp
+.hemttout/
+.hemtt/local
+releases/
+
+# Local tool downloads
+.tools/
+hemtt.exe
+*.zip
+
+# AI RULES
+CODEX.md
+AGENTS.md
+workflow.md
+config-agent.md
+qa-agent.md
+sqf-agent.md
+policies.yaml
+project-map.md
+router.yaml
+state.md
+code-review.md
+sqf-function.md
+validation-report.md
+registry.yaml

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project name="FIXICS">
+    <Package name="Main">
+        <Key ID="STR_BASE_ARMA_LOADED">
+            <Original>FIXICS mod loaded.</Original>
+        </Key>
+        <Key ID="STR_BASE_ARMA_NAME">
+            <Original>FIXICS</Original>
+        </Key>
+        <Key ID="STR_BASE_ARMA_VR_CHAT">
+            <Original>[FIXICS] Hello world from VR.</Original>
+        </Key>
+        <Key ID="STR_BASE_ARMA_VR_HINT">
+            <Original>Hello world from FIXICS in Virtual Reality.</Original>
+        </Key>
+        <Key ID="STR_BASE_ARMA_VR_TITLE">
+            <Original>Hello world in Virtual Reality</Original>
+        </Key>
+        <Key ID="STR_FIXICS_HAND_BRAKE_RELEASE">
+            <Original>Release Handbrake</Original>
+        </Key>
+        <Key ID="STR_FIXICS_HAND_BRAKE_SET">
+            <Original>Set Handbrake</Original>
+        </Key>
+        <Key ID="STR_FIXICS_HAND_BRAKE_STATUS_RELEASED">
+            <Original>[FIXICS] Handbrake released.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_HAND_BRAKE_STATUS_SET">
+            <Original>[FIXICS] Handbrake set.</Original>
+        </Key>
+    </Package>
+</Project>

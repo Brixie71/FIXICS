@@ -1,0 +1,16 @@
+[default]
+parameters = [
+    "-noSplash",
+    "-skipIntro",
+    "-showScriptErrors",
+]
+
+[vr]
+extends = "default"
+parameters = [
+    "-init=playMission['','\\x\\base_arma\\addons\\main\\missions\\HelloWorld.VR']",
+]
+
+[eden]
+extends = "default"
+mission = "addons/main/missions/HelloWorld.VR"

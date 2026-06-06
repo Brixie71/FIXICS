@@ -1,0 +1,11 @@
+name = "FIXICS"
+prefix = "base_arma"
+mainprefix = "x"
+author = "Brixie71"
+
+[version]
+path = "addons/main/script_version.hpp"
+git_hash = 0
+
+[hemtt.release]
+sign = false

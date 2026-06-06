@@ -1,0 +1,11 @@
+name = "FIXICS";
+picture = "";
+logo = "";
+logoOver = "";
+tooltip = "FIXICS";
+tooltipOwned = "FIXICS";
+overview = "FIXICS starter Arma 3 mod.";
+author = "Brixie71";
+overviewPicture = "";
+overviewText = "FIXICS starter Arma 3 mod.";
+overviewFootnote = "";

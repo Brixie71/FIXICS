@@ -32,6 +32,9 @@ _vehicle setVariable ["FIXICS_handbrakeEnabled", _enabled, false];
 
 if (local _vehicle) then {
     _vehicle disableBrakes (!_enabled);
+    if (_enabled) then {
+        [_vehicle] call FIXICS_fnc_applyHandbrakeLock;
+    };
 };
 
 if (hasInterface) then {

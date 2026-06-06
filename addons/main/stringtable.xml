@@ -28,5 +28,17 @@
         <Key ID="STR_FIXICS_HAND_BRAKE_STATUS_SET">
             <Original>[FIXICS] Handbrake set.</Original>
         </Key>
+        <Key ID="STR_FIXICS_SETTING_DISABLE_IDLE_AUTOBRAKE">
+            <Original>Disable automatic idle handbrake</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DISABLE_IDLE_AUTOBRAKE_TOOLTIP">
+            <Original>Keeps Arma's idle vehicle autobrake disabled while stationary unless the FIXICS ACE handbrake is set.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_NATIVE_SLOPE_CONTROL">
+            <Original>Enable native slope control</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_NATIVE_SLOPE_CONTROL_TOOLTIP">
+            <Original>Uses the optional FIXICSPhysics native extension for slope rollback recommendations. Leave disabled unless the extension binary is installed.</Original>
+        </Key>
     </Package>
 </Project>

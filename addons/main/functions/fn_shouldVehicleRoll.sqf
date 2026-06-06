@@ -35,10 +35,21 @@ if (_vehicle getVariable ["FIXICS_handbrakeEnabled", false]) exitWith {
 
 private _driver = driver _vehicle;
 if (hasInterface && {!isNull _driver} && {_driver == player}) then {
-    private _isBraking = ((inputAction "CarBack") > 0) || { (inputAction "CarHandBrake") > 0 };
-    if (_isBraking) exitWith {
+    private _stationaryBrakeBypassSpeedKmh = missionNamespace getVariable ["FIXICS_stationaryBrakeBypassSpeedKmh", 1];
+    private _isStationary = (abs (speed _vehicle)) <= _stationaryBrakeBypassSpeedKmh;
+    private _isHandbraking = (inputAction "CarHandBrake") > 0;
+    if (_isHandbraking) exitWith {
         false
     };
+
+    private _isBraking = (inputAction "CarBack") > 0;
+    if (_isBraking && {!_isStationary}) exitWith {
+        false
+    };
+};
+
+if (missionNamespace getVariable ["FIXICS_disableIdleAutobrake", true]) exitWith {
+    true
 };
 
 true

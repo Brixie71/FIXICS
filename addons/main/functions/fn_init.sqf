@@ -4,6 +4,7 @@
 */
 
 [] call FIXICS_fnc_hello;
+[] call FIXICS_fnc_registerSettings;
 
 if (hasInterface) then {
     [] call FIXICS_fnc_registerAceInteractions;

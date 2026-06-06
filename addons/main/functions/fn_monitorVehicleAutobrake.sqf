@@ -23,16 +23,17 @@ while { missionNamespace getVariable ["FIXICS_vehicleAutobrakeMonitorRunning", f
     {
         if ((_x isKindOf "LandVehicle") && { local _x }) then {
             if (_x getVariable ["FIXICS_handbrakeEnabled", false]) then {
-                _x disableBrakes false;
+                [_x] call FIXICS_fnc_applyHandbrakeLock;
             } else {
                 if ([_x] call FIXICS_fnc_shouldVehicleRoll) then {
                     _x disableBrakes true;
+                    [_x] call FIXICS_fnc_applySlopeRollback;
                 };
             };
         };
     } forEach vehicles;
 
-    sleep 1;
+    sleep 0.25;
 };
 
 true

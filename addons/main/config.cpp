@@ -6,7 +6,7 @@ class CfgPatches
         author = "Brixie71";
         url = "";
         requiredVersion = 2.14;
-        requiredAddons[] = {"A3_Functions_F", "ace_interact_menu"};
+        requiredAddons[] = {"A3_Functions_F", "ace_interact_menu", "cba_settings"};
         units[] = {};
         weapons[] = {};
     };
@@ -29,10 +29,15 @@ class CfgFunctions
 
             class hello {};
             class vrHello {};
+            class registerSettings {};
             class registerAceInteractions {};
             class setVehicleHandbrake {};
             class shouldVehicleRoll {};
             class monitorVehicleAutobrake {};
+            class applySlopeRollback {};
+            class applyHandbrakeLock {};
+            class logVehicleHandlingConfig {};
+            class getNativeSlopeControl {};
         };
     };
 };

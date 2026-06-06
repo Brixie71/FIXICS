@@ -172,7 +172,7 @@ SQA result:
 
 ## Native Gameplay-Control Experiment 1
 
-Status: source scaffold and optional SQF bridge implemented; no binary committed.
+Status: source scaffold, optional SQF bridge, local Windows x64 build wrapper, and approved root DLL implemented.
 
 Files:
 
@@ -182,6 +182,9 @@ Files:
 - `addons/main/functions/fn_applySlopeRollback.sqf`
 - `addons/main/functions/fn_registerSettings.sqf`
 - `addons/main/config.cpp`
+- `native/fixics_physics/CMakeLists.txt`
+- `tools/build-native.ps1`
+- `FIXICSPhysics_x64.dll`
 
 Architecture:
 
@@ -191,12 +194,14 @@ Architecture:
 - `FIXICS_fnc_applySlopeRollback` consults the native bridge after calculating slope state.
 - SQF still owns vehicle mutation through `setVelocity`; the native extension returns only a delta recommendation.
 - `FIXICS_nativeSlopeControlEnabled` defaults to `false`, so missing or unbuilt extension binaries cannot change gameplay by default.
+- `FIXICSPhysics_x64.dll` is built to the repository root so Arma can load it from the loaded mod root.
 
 Boundary:
 
 - This is native-assisted gameplay control, not direct native ownership of Arma objects or PhysX internals.
-- No `.dll`, `.so`, `.dylib`, build-system integration, or native dependency was added.
-- A separate build and deployment plan is required before compiling or shipping binaries.
+- The only approved native binary is root `FIXICSPhysics_x64.dll`.
+- No `.dll`, `.so`, `.dylib`, or build outputs may be stored under `native/`.
+- A separate release deployment plan is required before shipping binaries outside local SQA testing.
 
 ## Evidence Required Before Implementation
 

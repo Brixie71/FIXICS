@@ -14,6 +14,8 @@
 .hemttout/
 .hemtt/local
 releases/
+native/fixics_physics/build/
+FIXICSPhysics_x64.pdb
 
 # Local tool downloads
 .tools/

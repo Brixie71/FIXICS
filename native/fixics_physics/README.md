@@ -2,7 +2,7 @@
 
 This folder contains source for the optional `FIXICSPhysics` native extension.
 
-No binaries are committed. Build outputs such as `.dll`, `_x64.dll`, `.so`, and `_x64.so` must stay out of source control until the user approves a binary distribution plan.
+The approved local Windows x64 binary is `FIXICSPhysics_x64.dll` in the repository root. Build outputs such as `.dll`, `_x64.dll`, `.so`, and `_x64.so` must stay out of `native/`.
 
 ## Boundary
 
@@ -43,10 +43,20 @@ The SQF bridge is `FIXICS_fnc_getNativeSlopeControl`. It is gated by the CBA set
 
 ## Build Notes
 
-This source is intentionally not wired into HEMTT. A later native build plan must decide:
+This source is intentionally not wired into HEMTT. Build the local Windows x64 DLL with:
 
-- compiler and generator;
-- 32-bit and 64-bit support;
+```powershell
+.\tools\build-native.ps1
+```
+
+The script uses Visual Studio Build Tools 2022, CMake, and outputs:
+
+```text
+FIXICSPhysics_x64.dll
+```
+
+A later release build plan must decide:
+
 - Windows DLL and Linux SO naming;
 - signed release packaging;
 - BattlEye behavior;

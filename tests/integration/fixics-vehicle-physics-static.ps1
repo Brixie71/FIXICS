@@ -73,7 +73,10 @@ if ($Config -match '"A3_Soft_F"|\"A3_Armor_F\"') {
 
 @(
     'native\fixics_physics\src\FIXICSPhysics.cpp',
-    'native\fixics_physics\README.md'
+    'native\fixics_physics\README.md',
+    'native\fixics_physics\CMakeLists.txt',
+    'tools\build-native.ps1',
+    'FIXICSPhysics_x64.dll'
 ) | ForEach-Object {
     Assert-FileExists $_
 }
@@ -205,13 +208,31 @@ if (Test-Path -LiteralPath $NativeSourceFile) {
     Assert-Contains $NativeSource 'RVExtensionArgs' 'Native source must export RVExtensionArgs.'
     Assert-Contains $NativeSource 'slopeControl' 'Native source must implement slopeControl dispatch.'
     Assert-Contains $NativeSource 'FIXICSPhysics' 'Native source must use the FIXICSPhysics extension identity.'
+    if ($NativeSource -match 'strncpy') {
+        Add-Failure 'Native source must avoid strncpy to keep MSVC warning output clean.'
+    }
 }
 
 $NativeReadmeFile = Join-Path $RepoRoot 'native\fixics_physics\README.md'
 if (Test-Path -LiteralPath $NativeReadmeFile) {
     $NativeReadme = Get-Content -Raw -LiteralPath $NativeReadmeFile
     Assert-Contains $NativeReadme 'native-assisted gameplay control' 'Native README must describe the native-assisted gameplay-control boundary.'
-    Assert-Contains $NativeReadme 'No binaries are committed' 'Native README must state that binaries are not committed.'
+    Assert-Contains $NativeReadme 'FIXICSPhysics_x64\.dll' 'Native README must document the approved Windows x64 binary.'
+}
+
+$NativeCmakeFile = Join-Path $RepoRoot 'native\fixics_physics\CMakeLists.txt'
+if (Test-Path -LiteralPath $NativeCmakeFile) {
+    $NativeCmake = Get-Content -Raw -LiteralPath $NativeCmakeFile
+    Assert-Contains $NativeCmake 'add_library\(FIXICSPhysics SHARED' 'Native CMake file must build FIXICSPhysics as a shared library.'
+    Assert-Contains $NativeCmake 'FIXICSPhysics_x64' 'Native CMake file must name the Windows x64 output FIXICSPhysics_x64.'
+}
+
+$NativeBuildScriptFile = Join-Path $RepoRoot 'tools\build-native.ps1'
+if (Test-Path -LiteralPath $NativeBuildScriptFile) {
+    $NativeBuildScript = Get-Content -Raw -LiteralPath $NativeBuildScriptFile
+    Assert-Contains $NativeBuildScript 'VsDevCmd\.bat' 'Native build script must load the Visual Studio developer environment.'
+    Assert-Contains $NativeBuildScript 'cmake' 'Native build script must invoke CMake.'
+    Assert-Contains $NativeBuildScript 'FIXICSPhysics_x64\.dll' 'Native build script must verify the approved Windows x64 DLL output.'
 }
 
 $NativeBinaries = @()
@@ -222,7 +243,15 @@ if (Test-Path -LiteralPath (Join-Path $RepoRoot 'native')) {
 }
 if ($NativeBinaries.Count -gt 0) {
     $Paths = ($NativeBinaries | ForEach-Object { $_.FullName }) -join ', '
-    Add-Failure "Native binaries must not be committed during scaffold escalation: $Paths"
+    Add-Failure "Native binaries must not be stored under native source folders: $Paths"
+}
+
+$ApprovedNativeDll = Join-Path $RepoRoot 'FIXICSPhysics_x64.dll'
+if (Test-Path -LiteralPath $ApprovedNativeDll) {
+    $DllInfo = Get-Item -LiteralPath $ApprovedNativeDll
+    if ($DllInfo.Length -le 0) {
+        Add-Failure 'Approved native DLL exists but is empty: FIXICSPhysics_x64.dll'
+    }
 }
 
 if ($Failures.Count -gt 0) {

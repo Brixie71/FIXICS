@@ -32,7 +32,7 @@ Phase 1 Ground Vehicle Physics may evaluate work beyond normal SQF-only runtime 
 - The change is documented in a design or evaluation spec before implementation.
 - The user explicitly approves the chosen path before any non-SQF source, dependency, binary, or broad config patch is added.
 
-This exception authorizes the current native source scaffold and optional SQF bridge after SQA reported that the config-class experiment made handling worse. It does not authorize native binaries, new dependencies, multiplayer authority changes, broad `CfgVehicles` patching, build-tool changes, or edits to generated output.
+This exception authorizes the current native source scaffold, optional SQF bridge, local Windows x64 build wrapper, and approved root `FIXICSPhysics_x64.dll` after SQA reported that the config-class experiment made handling worse. It does not authorize additional native binaries, new dependencies, multiplayer authority changes, broad `CfgVehicles` patching, release packaging, or edits to generated HEMTT output.
 
 Preferred escalation order:
 

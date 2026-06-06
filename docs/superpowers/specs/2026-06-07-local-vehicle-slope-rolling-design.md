@@ -88,4 +88,4 @@ Current escalation status:
 
 - The broad `Car_F` / `Tank_F` handling config patch was tested by SQA, made behavior worse, and was removed.
 - `FIXICS_fnc_logVehicleHandlingConfig` remains available so SQA can record effective vehicle-class handling values during manual slope tests.
-- Native work has escalated to a source-only `FIXICSPhysics` scaffold plus optional SQF bridge. No native binaries or build-tool integration are approved yet.
+- Native work has escalated to a local Windows x64 `FIXICSPhysics_x64.dll`, built from source with `tools/build-native.ps1`, plus an optional SQF bridge. Release packaging is not approved yet.

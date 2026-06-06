@@ -189,3 +189,23 @@ Record validation runs that matter for implementation, review, or release decisi
 - Automated coverage: HEMTT loaded FIXICS 0.1.0.0, rapified 2 addon configs, compiled 12 SQF files, checked 1 stringtable.
 - Manual coverage: not run.
 - Notes: HEMTT does not compile native C++ source. A separate native build plan is required before binary work.
+
+### 2026-06-07 - Local Windows x64 native binary
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: failed, exit code 1
+- Automated coverage: regression failed for the expected missing `native/fixics_physics/CMakeLists.txt`, `tools/build-native.ps1`, root `FIXICSPhysics_x64.dll`, and binary documentation.
+- Manual coverage: not run.
+- Notes: red phase before adding native build files and binary output.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\build-native.ps1`
+- Result: passed, exit code 0
+- Automated coverage: Visual Studio Build Tools 2022 loaded through `VsDevCmd.bat`, CMake configured the x64 project, MSBuild compiled `FIXICSPhysics.cpp`, and `FIXICSPhysics_x64.dll` was written to the repository root.
+- Manual coverage: not run.
+- Notes: first build emitted an MSVC `strncpy` warning; source was updated to use bounded `memcpy`, then rebuilt cleanly.
+
+- Command: `dumpbin /exports FIXICSPhysics_x64.dll | findstr RVExtension`
+- Result: passed, exit code 0
+- Automated coverage: verified exports `RVExtension`, `RVExtensionArgs`, and `RVExtensionVersion`.
+- Manual coverage: not run.
+- Notes: run from the Visual Studio developer environment.

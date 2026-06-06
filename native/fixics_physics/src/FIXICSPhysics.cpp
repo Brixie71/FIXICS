@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdlib>
 #include <cstring>
 #include <sstream>
@@ -22,8 +23,9 @@ void copyOutput(char* output, unsigned int outputSize, const std::string& value)
         return;
     }
 
-    std::strncpy(output, value.c_str(), outputSize - 1);
-    output[outputSize - 1] = '\0';
+    const auto copyLength = std::min<std::size_t>(value.size(), outputSize - 1);
+    std::memcpy(output, value.c_str(), copyLength);
+    output[copyLength] = '\0';
 }
 
 double parseNumber(const char* value, double fallback = 0.0)

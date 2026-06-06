@@ -118,17 +118,17 @@ The spike is useful only to prove build, load, BattlEye, deployment, RPT logging
 
 ## Current Recommendation
 
-Native work has moved from research status to source scaffold status.
+Native work has moved from research status to local Windows x64 binary status.
 
 Current implemented state:
 
 - Native source exists under `native/fixics_physics/`.
-- No native binaries are committed.
-- No native build tooling is integrated.
+- `FIXICSPhysics_x64.dll` exists at the repository root as the approved local Windows x64 binary.
+- `tools/build-native.ps1` builds the DLL with Visual Studio Build Tools and CMake.
 - `FIXICS_fnc_getNativeSlopeControl` provides an optional SQF bridge.
 - `FIXICS_nativeSlopeControlEnabled` defaults to `false`.
 
 Next decision:
 
-- If the user approves binary work, write a separate build/deployment plan before compiling.
+- Write a separate release deployment plan before distributing binaries outside local SQA testing.
 - If gameplay control remains the goal, keep Arma object mutation in SQF and let native code return control recommendations only.

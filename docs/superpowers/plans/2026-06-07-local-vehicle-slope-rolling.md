@@ -298,3 +298,65 @@ powershell -ExecutionPolicy Bypass -File tools\check.ps1
 ```
 
 Expected: both commands exit code 0. Native source is not compiled by HEMTT.
+
+### Task 9: Local Windows x64 Native Binary
+
+**Files:**
+- Modify: `tests/integration/fixics-vehicle-physics-static.ps1`
+- Create: `native/fixics_physics/CMakeLists.txt`
+- Create: `tools/build-native.ps1`
+- Create: `FIXICSPhysics_x64.dll`
+- Modify: `native/fixics_physics/README.md`
+- Modify: `governance/guardrails/generated-files.md`
+- Modify: `governance/policies/scope-control.md`
+- Modify: `docs/superpowers/specs/2026-06-07-native-extension-pre-research.md`
+- Modify: `docs/superpowers/specs/2026-06-07-vehicle-physics-beyond-sqf-evaluation.md`
+- Modify: `governance/audit/validation-log.md`
+
+- [x] **Step 1: Write the failing regression**
+
+Require:
+
+- `native/fixics_physics/CMakeLists.txt`;
+- `tools/build-native.ps1`;
+- root `FIXICSPhysics_x64.dll`;
+- CMake output name `FIXICSPhysics_x64`;
+- build script loading `VsDevCmd.bat`;
+- non-empty approved DLL;
+- no DLLs stored under `native/`.
+
+- [x] **Step 2: Run regression to verify red**
+
+Run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1
+```
+
+Expected: non-zero exit before build files and DLL exist.
+
+- [x] **Step 3: Add native build files**
+
+Create `native/fixics_physics/CMakeLists.txt` and `tools/build-native.ps1`. The build script must discover Visual Studio Build Tools with `vswhere`, load `VsDevCmd.bat -arch=x64`, configure CMake for x64, build Release, and verify `FIXICSPhysics_x64.dll`.
+
+- [x] **Step 4: Build the DLL**
+
+Run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\build-native.ps1
+```
+
+Expected: `FIXICSPhysics_x64.dll` appears in the repository root.
+
+- [x] **Step 5: Run validation**
+
+Run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1
+powershell -ExecutionPolicy Bypass -File tools\check.ps1
+powershell -ExecutionPolicy Bypass -File tools\build-native.ps1
+```
+
+Expected: all commands exit code 0.

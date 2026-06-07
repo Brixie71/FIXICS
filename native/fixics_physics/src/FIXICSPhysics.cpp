@@ -56,6 +56,7 @@ std::string slopeControl(const char** args, unsigned int argsCount)
     const double slope = parseNumber(args[4]);
     const double maxRollbackSpeed = parseNumber(args[5]);
     const double rollbackAcceleration = parseNumber(args[6]);
+    const double minimumDelta = argsCount >= 8 ? std::max(0.0, parseNumber(args[7])) : 0.0;
 
     const double downhillLength = std::sqrt((downhillX * downhillX) + (downhillY * downhillY));
     if (downhillLength <= 0.0 || slope <= 0.0 || maxRollbackSpeed <= 0.0 || rollbackAcceleration <= 0.0) {
@@ -70,7 +71,12 @@ std::string slopeControl(const char** args, unsigned int argsCount)
         return "[false,0,0,0]";
     }
 
-    const double delta = std::min(rollbackAcceleration * std::max(slope, 0.15), maxRollbackSpeed - downhillSpeed);
+    const double remainingSpeed = maxRollbackSpeed - downhillSpeed;
+    double delta = std::min(rollbackAcceleration * std::max(slope, 0.15), remainingSpeed);
+    if (minimumDelta > 0.0 && std::abs(downhillSpeed) <= minimumDelta) {
+        delta = std::min(std::max(delta, minimumDelta), remainingSpeed);
+    }
+
     if (delta <= 0.0) {
         return "[false,0,0,0]";
     }
@@ -123,7 +129,7 @@ FIXICS_EXPORT int FIXICS_CALL RVExtensionArgs(
     }
 
     if (command == "schema") {
-        copyOutput(output, outputSize, "[\"slopeControl\",[\"downhillX\",\"downhillY\",\"velocityX\",\"velocityY\",\"slope\",\"maxRollbackSpeed\",\"rollbackAcceleration\"]]");
+        copyOutput(output, outputSize, "[\"slopeControl\",[\"downhillX\",\"downhillY\",\"velocityX\",\"velocityY\",\"slope\",\"maxRollbackSpeed\",\"rollbackAcceleration\",\"minimumDelta\"]]");
         return 0;
     }
 

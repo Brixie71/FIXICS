@@ -118,7 +118,7 @@ The folder `docs/additional-sqf-files` contains local reference material added b
 - To promote a file into the addon:
   1. Move or rewrite it into `addons/main/functions/fn_name.sqf`
   2. Register it in `addons/main/config.cpp` under `CfgFunctions`
-  3. Rename all references to the `BASEARMA_fnc_name` convention
+  3. Rename all references to the `FIXICS_fnc_name` convention
   4. Run HEMTT validation: `hemtt check`
 - Sound files under this folder are **reference assets only** unless a future task explicitly moves them into an addon asset path and registers their usage.
 
@@ -157,16 +157,16 @@ Understanding these terms precisely prevents misdiagnosis when bugs arise.
 
 | Term | Formal Meaning | Practical Use in This Repository |
 |---|---|---|
-| **Argument** | A value passed to a command, script, or function at the call site. | In `[_unit, 50] call BASEARMA_fnc_name`, the array `[_unit, 50]` is the argument. |
+| **Argument** | A value passed to a command, script, or function at the call site. | In `[_unit, 50] call FIXICS_fnc_name`, the array `[_unit, 50]` is the argument. |
 | **Parameter** | The local name that receives an argument inside a script or function body. | Use `params ["_unit", "_radius"];` at the top of every function. |
-| **Identifier** | The name of a variable, function, class, or config entry. | Use descriptive names. Prefix all global/public names with `BASEARMA_`. |
+| **Identifier** | The name of a variable, function, class, or config entry. | Use descriptive names. Prefix all global/public names with `FIXICS_`. |
 | **Expression** | Any fragment of code that evaluates to a single value. | The final expression in a `call`ed code block is its return value. |
 | **Operand** | A value consumed by an operator. | In `_a + _b`, both `_a` and `_b` are operands. |
 | **Operator** | A command or symbol that performs work on one or more operands. | `+`, `#`, `select`, `setDir`, `&&`, `remoteExec` — each has precedence and locality implications. |
 | **Statement** | A complete instruction or expression terminated by `;`. | Write one clear statement per line. Avoid stacking multiple statements on one line. |
 | **Variable** | A named value stored in a namespace or local scope. | Prefer local `_variables`. Use globals only deliberately and with full prefix. |
 | **Magic Variable** | An engine-provided, scope-specific variable such as `_this`, `_x`, or `thisList`. | Know when the engine provides one; avoid accidentally shadowing it. |
-| **Function** | A code block or registered file invoked with `call`, `spawn`, or engine systems. | Addon functions live in `addons/main/functions/fn_name.sqf` and are exposed as `BASEARMA_fnc_name`. |
+| **Function** | A code block or registered file invoked with `call`, `spawn`, or engine systems. | Addon functions live in `addons/main/functions/fn_name.sqf` and are exposed as `FIXICS_fnc_name`. |
 | **Locality** | Whether an object, variable, or effect is owned/visible on the current machine. | The most common source of silent multiplayer bugs. Always check command docs for locality requirements. |
 | **Scheduling** | Whether a code block runs in the unscheduled (frame-blocking) or scheduled (yielding) context. | Mismatching scheduling context and `sleep` calls is a common source of hard-to-trace errors. |
 
@@ -239,7 +239,7 @@ Use block comments for function headers:
 
 ```sqf
 /*
- * BASEARMA_fnc_resetUnit
+ * FIXICS_fnc_resetUnit
  *
  * Resets a unit's damage and re-enables its AI pathfinding.
  *
@@ -253,7 +253,7 @@ Use block comments for function headers:
  * Locality: Must be called on the machine where the unit is local.
  *
  * Example:
- *   [player, 2] call BASEARMA_fnc_resetUnit;
+ *   [player, 2] call FIXICS_fnc_resetUnit;
  */
 ```
 
@@ -640,14 +640,14 @@ private _count = count _nearUnits;
 
 ### Global Variables
 
-Global variables do **not** start with `_` and persist for the duration of the mission on the machine where they were set. In this repository, all global names **must** be prefixed with `BASEARMA_`:
+Global variables do **not** start with `_` and persist for the duration of the mission on the machine where they were set. In this repository, all global names **must** be prefixed with `FIXICS_`:
 
 ```sqf
 // Setting a global
-BASEARMA_debugEnabled = true;
+FIXICS_debugEnabled = true;
 
 // Broadcasting to all machines
-publicVariable "BASEARMA_debugEnabled";
+publicVariable "FIXICS_debugEnabled";
 ```
 
 > Never use unprefixed global names like `debugEnabled` — they risk collisions with engine variables, other mods, or mission scripts.
@@ -658,14 +658,14 @@ Use namespace variables to share data scoped to a namespace rather than pollutin
 
 ```sqf
 // Per-object data
-player setVariable ["BASEARMA_lastInteraction", time, true];
-private _last = player getVariable ["BASEARMA_lastInteraction", 0];
+player setVariable ["FIXICS_lastInteraction", time, true];
+private _last = player getVariable ["FIXICS_lastInteraction", 0];
 
 // Mission-wide data on missionNamespace
-missionNamespace setVariable ["BASEARMA_objectiveState", "active"];
+missionNamespace setVariable ["FIXICS_objectiveState", "active"];
 
 // UI-scoped data (survives between dialogs)
-uiNamespace setVariable ["BASEARMA_selectedUnit", player];
+uiNamespace setVariable ["FIXICS_selectedUnit", player];
 ```
 
 The third argument to `setVariable` controls whether the variable is broadcast to all machines (`true`) or remains local (`false`/omitted). **Do not broadcast per-frame or private data.**
@@ -686,8 +686,8 @@ with uiNamespace do {
 | Variable Type | Prefix | Scope | Use Case |
 |---|---|---|---|
 | Local | `_name` | Current code block only | Parameters, intermediate values, loop counters |
-| Global | `BASEARMA_name` | Mission-wide on declaring machine | Shared state flags, module-level configuration |
-| Public | `BASEARMA_name` + `publicVariable` | All machines | Synchronized mission state (use sparingly) |
+| Global | `FIXICS_name` | Mission-wide on declaring machine | Shared state flags, module-level configuration |
+| Public | `FIXICS_name` + `publicVariable` | All machines | Synchronized mission state (use sparingly) |
 | Namespace | `setVariable` with prefix | Attached to an object/namespace | Per-unit data, UI state, mission namespace state |
 
 ---
@@ -700,7 +700,7 @@ All addon functions must follow this exact structure:
 
 ```
 addons/main/functions/fn_name.sqf   → file
-BASEARMA_fnc_name                   → exposed identifier
+FIXICS_fnc_name                   → exposed identifier
 ```
 
 Register every function in `addons/main/config.cpp` under `CfgFunctions`. Failing to register a function means it will not be compiled or available at mission start.
@@ -711,7 +711,7 @@ Every function file must follow this template:
 
 ```sqf
 /*
- * BASEARMA_fnc_exampleFunction
+ * FIXICS_fnc_exampleFunction
  *
  * Brief description of what this function does.
  *
@@ -728,11 +728,11 @@ Every function file must follow this template:
  *   Effect is local unless the function internally calls publicVariable or remoteExec.
  *
  * Examples:
- *   [player] call BASEARMA_fnc_exampleFunction;
- *   [_vehicle, 50, true] call BASEARMA_fnc_exampleFunction;
+ *   [player] call FIXICS_fnc_exampleFunction;
+ *   [_vehicle, 50, true] call FIXICS_fnc_exampleFunction;
  *
  * Dependencies:
- *   BASEARMA_fnc_otherFunction
+ *   FIXICS_fnc_otherFunction
  */
 
 params [
@@ -744,7 +744,7 @@ params [
 // Guard: reject null input early
 if (isNull _object) exitWith {
     if (_debug) then {
-        diag_log "[BASEARMA_fnc_exampleFunction] ERROR: null object passed.";
+        diag_log "[FIXICS_fnc_exampleFunction] ERROR: null object passed.";
     };
     false
 };
@@ -754,7 +754,7 @@ if (isNull _object) exitWith {
 private _nearUnits = _object nearEntities ["Man", _radius];
 
 if (_debug) then {
-    diag_log format ["[BASEARMA_fnc_exampleFunction] Found %1 units within %2m.", count _nearUnits, _radius];
+    diag_log format ["[FIXICS_fnc_exampleFunction] Found %1 units within %2m.", count _nearUnits, _radius];
 };
 
 // Return value — last evaluated expression
@@ -805,7 +805,7 @@ true  // This is the return value — no semicolon needed on the last line, but 
 
 ```sqf
 // call — synchronous, immediate
-private _result = [player, 50] call BASEARMA_fnc_exampleFunction;
+private _result = [player, 50] call FIXICS_fnc_exampleFunction;
 
 // spawn — asynchronous, returns handle
 private _handle = [player] spawn {
@@ -828,11 +828,11 @@ SQF supports recursion but has no tail-call optimization. Keep recursion shallow
 
 ```sqf
 // Example: recursive group-tree traversal (keep depth bounded)
-BASEARMA_fnc_countSubordinates = {
+FIXICS_fnc_countSubordinates = {
     params ["_group"];
     private _count = count units _group;
     {
-        _count = _count + ([_x] call BASEARMA_fnc_countSubordinates);
+        _count = _count + ([_x] call FIXICS_fnc_countSubordinates);
     } forEach subordinates _group;
     _count
 };
@@ -1147,12 +1147,12 @@ Use a shared namespace variable to pass results from a scheduled thread back to 
 // Spawn a calculation in scheduled context
 [] spawn {
     sleep 1;  // simulate async work
-    BASEARMA_calculationResult = 42;
+    FIXICS_calculationResult = 42;
 };
 
 // Later (in a polling loop or another event), read the result
-if (!isNil "BASEARMA_calculationResult") then {
-    systemChat str BASEARMA_calculationResult;
+if (!isNil "FIXICS_calculationResult") then {
+    systemChat str FIXICS_calculationResult;
 };
 ```
 
@@ -1182,7 +1182,7 @@ if (local _vehicle) then {
     _vehicle setVelocity [0, 0, 0];  // safe — we own this vehicle
 } else {
     // We don't own it — ask the owner to do it
-    [_vehicle] remoteExecCall ["BASEARMA_fnc_stopVehicle", owner _vehicle];
+    [_vehicle] remoteExecCall ["FIXICS_fnc_stopVehicle", owner _vehicle];
 };
 ```
 
@@ -1190,22 +1190,22 @@ if (local _vehicle) then {
 
 ```sqf
 // Execute on the server
-["BASEARMA_fnc_doServerWork", 2] call bis_fnc_mp;
+["FIXICS_fnc_doServerWork", 2] call bis_fnc_mp;
 
 // Better modern form — remoteExec
-[_args, "BASEARMA_fnc_doServerWork", 2] remoteExec ["call", 2];  // 2 = server
+[_args, "FIXICS_fnc_doServerWork", 2] remoteExec ["call", 2];  // 2 = server
 
 // remoteExecCall (no return value needed)
-[_args] remoteExecCall ["BASEARMA_fnc_doServerWork", 2];
+[_args] remoteExecCall ["FIXICS_fnc_doServerWork", 2];
 
 // Execute on all clients (excluding server)
-[_args] remoteExecCall ["BASEARMA_fnc_updateUI", -2];
+[_args] remoteExecCall ["FIXICS_fnc_updateUI", -2];
 
 // Execute on all machines including server
-[_args] remoteExecCall ["BASEARMA_fnc_broadcastState", 0];
+[_args] remoteExecCall ["FIXICS_fnc_broadcastState", 0];
 
 // Execute on a specific machine by owner ID
-[_args] remoteExecCall ["BASEARMA_fnc_doWork", owner _unit];
+[_args] remoteExecCall ["FIXICS_fnc_doWork", owner _unit];
 ```
 
 ### Machine Target Reference
@@ -1222,11 +1222,11 @@ if (local _vehicle) then {
 
 ```sqf
 // Broadcast a variable to all machines
-BASEARMA_objectiveState = "complete";
-publicVariable "BASEARMA_objectiveState";
+FIXICS_objectiveState = "complete";
+publicVariable "FIXICS_objectiveState";
 
 // Broadcast to a specific machine
-publicVariableTo [clientOwner, "BASEARMA_someVar"];
+publicVariableTo [clientOwner, "FIXICS_someVar"];
 ```
 
 > Only broadcast variables that are genuinely needed everywhere. Broadcasting large arrays or per-frame values causes network load. For per-unit data, use `setVariable` with broadcast flag instead.
@@ -1238,7 +1238,7 @@ Players who join a running mission miss all initialization that already ran. Han
 ```sqf
 // On server: maintain a JIP queue
 if (isServer) then {
-    [{ BASEARMA_objectiveState = "active"; }, [], "BASEARMA_jip_objectives"] call BIS_fnc_MP;
+    [{ FIXICS_objectiveState = "active"; }, [], "FIXICS_jip_objectives"] call BIS_fnc_MP;
 };
 ```
 
@@ -1254,7 +1254,7 @@ if (isServer) then {
             params ["_veh", "_other", "_collPoint", "_collVel"];
             // Server decides what happens
             if (speed _veh > 80) then {
-                [_veh, _collVel] remoteExecCall ["BASEARMA_fnc_applyCollisionDamage", 2];
+                [_veh, _collVel] remoteExecCall ["FIXICS_fnc_applyCollisionDamage", 2];
             };
         }];
     } forEach vehicles;
@@ -1281,7 +1281,7 @@ if (hasInterface) then {
 try {
     private _result = _someArray select 999;  // intentionally out of bounds
 } catch {
-    diag_log format ["[BASEARMA] Exception in fnc_example: %1", _exception];
+    diag_log format ["[FIXICS] Exception in fnc_example: %1", _exception];
 };
 ```
 
@@ -1306,13 +1306,13 @@ _exception select 1   // Error message (String)
 ```sqf
 // Guard against null objects
 if (isNull _vehicle) exitWith {
-    diag_log "[BASEARMA_fnc_example] ERROR: null vehicle.";
+    diag_log "[FIXICS_fnc_example] ERROR: null vehicle.";
     false
 };
 
 // Guard against wrong array length
 if (count _args < 2) exitWith {
-    diag_log format ["[BASEARMA_fnc_example] ERROR: expected 2 args, got %1.", count _args];
+    diag_log format ["[FIXICS_fnc_example] ERROR: expected 2 args, got %1.", count _args];
     false
 };
 
@@ -1324,12 +1324,12 @@ private _val = _arr param [0, "default"];  // returns "default" if index 0 absen
 
 ```sqf
 // isNil takes a STRING name of the variable
-if (isNil "BASEARMA_someFlag") then {
+if (isNil "FIXICS_someFlag") then {
     diag_log "Variable not yet initialized.";
 };
 
 // isNil also accepts a code block
-if (isNil { missionNamespace getVariable "BASEARMA_someFlag" }) then { ... };
+if (isNil { missionNamespace getVariable "FIXICS_someFlag" }) then { ... };
 ```
 
 ### Common Runtime Error Messages
@@ -1396,12 +1396,12 @@ Each `remoteExec` generates network traffic. Batch multiple updates into one cal
 
 ```sqf
 // ❌ Three separate network messages
-[_veh] remoteExecCall ["BASEARMA_fnc_updateSpeed", 2];
-[_veh] remoteExecCall ["BASEARMA_fnc_updateFuel", 2];
-[_veh] remoteExecCall ["BASEARMA_fnc_updateDamage", 2];
+[_veh] remoteExecCall ["FIXICS_fnc_updateSpeed", 2];
+[_veh] remoteExecCall ["FIXICS_fnc_updateFuel", 2];
+[_veh] remoteExecCall ["FIXICS_fnc_updateDamage", 2];
 
 // ✅ One message with all state
-[_veh, speed _veh, fuel _veh, damage _veh] remoteExecCall ["BASEARMA_fnc_updateVehicleState", 2];
+[_veh, speed _veh, fuel _veh, damage _veh] remoteExecCall ["FIXICS_fnc_updateVehicleState", 2];
 ```
 
 ### Avoid `execVM` in Addon Code
@@ -1451,7 +1451,7 @@ Before asking CODEX to modify or create SQF, verify:
 
 - [ ] Are all locals declared `private` or via `params`?
 - [ ] Are all local variable names prefixed with `_`?
-- [ ] Are all globals and namespace keys prefixed with `BASEARMA_`?
+- [ ] Are all globals and namespace keys prefixed with `FIXICS_`?
 - [ ] Are there any unprotected `find` results used directly as array indices?
 
 ### Precedence and Correctness

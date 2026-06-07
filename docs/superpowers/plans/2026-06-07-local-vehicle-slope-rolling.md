@@ -12,6 +12,8 @@
 
 **Follow-up rollback tuning:** `FIXICS_fnc_applySlopeRollback` uses the same near-stationary threshold as the decision helper. W/S input only blocks rollback while the vehicle is above that threshold; the built-in handbrake key and ACE handbrake still hold immediately.
 
+**Follow-up slope acceleration:** `FIXICS_fnc_applySlopeRollback` now owns both idle downhill breakaway and slope-relative drive acceleration. Coasting vehicles receive direct downhill velocity; driver acceleration receives a vehicle-orientation-aware drive-axis delta; active brake use remains unassisted.
+
 ---
 
 ### Task 1: Static Regression Test
@@ -25,7 +27,7 @@ Create a PowerShell test that reads addon source and asserts:
 
 - `CfgFunctions` tag is `FIXICS`.
 - `requiredAddons[]` includes `ace_interact_menu`.
-- No addon source contains `BASEARMA_fnc_`.
+- No addon source contains `FIXICS_fnc_`.
 - New vehicle physics function files exist.
 - Stringtable contains FIXICS handbrake labels.
 
@@ -50,7 +52,7 @@ Expected: non-zero exit because the feature does not exist yet.
 
 - [x] **Step 1: Change `CfgFunctions` tag**
 
-Set the tag from `BASEARMA` to `FIXICS`.
+Set the tag from `FIXICS` to `FIXICS`.
 
 - [x] **Step 2: Update existing calls and comments**
 
@@ -360,3 +362,112 @@ powershell -ExecutionPolicy Bypass -File tools\build-native.ps1
 ```
 
 Expected: all commands exit code 0.
+
+### Task 10: Slope-Gated Brake Disable Regression Fix
+
+**Files:**
+- Modify: `tests/integration/fixics-vehicle-physics-static.ps1`
+- Modify: `addons/main/functions/fn_shouldVehicleRoll.sqf`
+- Modify: `addons/main/functions/fn_applySlopeRollback.sqf`
+- Modify: `docs/superpowers/specs/2026-06-07-local-vehicle-slope-rolling-design.md`
+- Modify: `governance/audit/validation-log.md`
+
+- [x] **Step 1: Write the failing regression**
+
+Add static assertions that:
+
+- `FIXICS_fnc_shouldVehicleRoll` reads `surfaceNormal`;
+- `FIXICS_fnc_shouldVehicleRoll` uses `FIXICS_slopeRollbackMinimumSlope`;
+- flat/near-flat ground exits false before `disableBrakes true`;
+- `FIXICS_disableIdleAutobrake` is not followed by an unconditional `true`;
+- `FIXICS_fnc_applySlopeRollback` exits whenever `CarForward` or `CarBack` is pressed.
+
+- [x] **Step 2: Run regression to verify red**
+
+Run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1
+```
+
+Expected: non-zero exit for missing slope gating and W/S rollback suppression.
+
+- [x] **Step 3: Implement the SQF fix**
+
+Update `fn_shouldVehicleRoll.sqf` to reject flat/near-flat ground before returning the idle autobrake setting value. Update `fn_applySlopeRollback.sqf` to return false immediately while W/S input is active.
+
+- [x] **Step 4: Run validation**
+
+Run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1
+powershell -ExecutionPolicy Bypass -File tools\check.ps1
+```
+
+Expected: both commands exit code 0.
+
+### Task 11: Slope-Relative Drive And Coasting Acceleration
+
+**Files:**
+- Modify: `tests/integration/fixics-vehicle-physics-static.ps1`
+- Modify: `addons/main/functions/fn_monitorVehicleAutobrake.sqf`
+- Modify: `addons/main/functions/fn_applySlopeRollback.sqf`
+- Modify: `addons/main/functions/fn_getNativeSlopeControl.sqf`
+- Modify: `native/fixics_physics/src/FIXICSPhysics.cpp`
+- Modify: `native/fixics_physics/README.md`
+- Modify: `addons/main/functions/fn_registerSettings.sqf`
+- Modify: `docs/superpowers/specs/2026-06-07-local-vehicle-slope-rolling-design.md`
+- Modify: `governance/audit/validation-log.md`
+
+- [x] **Step 1: Write the failing regression**
+
+Add static assertions that:
+
+- `FIXICS_fnc_monitorVehicleAutobrake` calls `FIXICS_fnc_applySlopeRollback` even when `FIXICS_fnc_shouldVehicleRoll` does not enter the idle-brake disable branch.
+- `FIXICS_fnc_applySlopeRollback` no longer exits on any W/S input before slope processing.
+- `FIXICS_fnc_applySlopeRollback` detects active braking with `private _isForwardBraking`, `private _isReverseBraking`, and `private _isBraking`.
+- `FIXICS_fnc_applySlopeRollback` uses `vectorDir _vehicle`, `_forwardDownhillAlignment`, `acos`, and `_slopeAngleDegrees` for vehicle-orientation-aware slope acceleration.
+- `FIXICS_fnc_applySlopeRollback` defines `FIXICS_slopeCoastBreakawayVelocity`, `FIXICS_slopeDriveAcceleration`, and `FIXICS_slopeDriveMaxSpeedKmh`.
+- `FIXICS_fnc_getNativeSlopeControl` and native `slopeControl` accept the coasting breakaway delta.
+
+- [x] **Step 2: Run regression to verify red**
+
+Run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1
+```
+
+Expected: non-zero exit because the current monitor gates slope application behind idle-roll eligibility and the current rollback helper exits on any W/S input.
+
+- [x] **Step 3: Implement monitor sequencing**
+
+Update `fn_monitorVehicleAutobrake.sqf` so it still applies `disableBrakes true` only when `FIXICS_fnc_shouldVehicleRoll` returns true, but calls `FIXICS_fnc_applySlopeRollback` separately for every local, unlocked `LandVehicle`.
+
+- [x] **Step 4: Implement slope helper behavior**
+
+Update `fn_applySlopeRollback.sqf` so it:
+
+- exits for null, non-local, airborne, ACE-handbraked, or temporary built-in handbrake vehicles;
+- classifies W/S as acceleration or active braking using local forward speed from `vectorDir _vehicle`;
+- exits during active braking;
+- computes slope angle in degrees from `surfaceNormal`;
+- applies direct downhill breakaway while coasting/stationary;
+- applies drive-axis velocity when W/S is acceleration, scaled by slope and vehicle orientation.
+
+- [x] **Step 5: Update native bridge breakaway support**
+
+Update `fn_getNativeSlopeControl.sqf`, `FIXICSPhysics.cpp`, and `native/fixics_physics/README.md` so the optional native coasting path can receive and apply a near-zero breakaway delta.
+
+- [x] **Step 6: Run validation**
+
+Run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1
+powershell -ExecutionPolicy Bypass -File tools\check.ps1
+powershell -ExecutionPolicy Bypass -File tools\build-native.ps1
+```
+
+Expected: all commands exit code 0. Manual Eden/VR testing is still required for vehicle feel.

@@ -1,6 +1,6 @@
 # Superpowers Workflow — README
 
-This folder stores Superpowers design and planning artifacts for BASE-ARMA.
+This folder stores Superpowers design and planning artifacts for FIXICS.
 
 ---
 

@@ -29,6 +29,10 @@ if (!(local _vehicle)) exitWith {
     false
 };
 
+if (!isTouchingGround _vehicle) exitWith {
+    false
+};
+
 if (!(_vehicle getVariable ["FIXICS_handbrakeEnabled", false])) exitWith {
     false
 };

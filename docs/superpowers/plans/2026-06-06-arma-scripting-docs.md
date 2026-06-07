@@ -6,7 +6,7 @@
 
 ## Goal
 
-Improve the repository's SQF knowledge base and coding policy so CODEX can edit BASE-ARMA scripts with accurate, unambiguous Arma 3 context.
+Improve the repository's SQF knowledge base and coding policy so CODEX can edit FIXICS scripts with accurate, unambiguous Arma 3 context.
 
 ## Architecture Constraints
 
@@ -171,8 +171,8 @@ The following facts must appear explicitly:
 | Fact | Where |
 |---|---|
 | Addon functions live in `addons/main/functions/fn_name.sqf` | `## Naming` and `## Function Structure` |
-| Public functions are registered as `BASEARMA_fnc_name` via `CfgFunctions` | `## Naming` and `## Function Structure` |
-| All globals, namespace keys, and public vars use `BASEARMA_` prefix | `## Variables and Scope` |
+| Public functions are registered as `FIXICS_fnc_name` via `CfgFunctions` | `## Naming` and `## Function Structure` |
+| All globals, namespace keys, and public vars use `FIXICS_` prefix | `## Variables and Scope` |
 | Indentation is 4 spaces everywhere | `## Formatting` |
 | Repeated user-facing text goes in `addons/main/stringtable.xml` | `## Naming` |
 | `execVM` is never used in addon code | `## Function Structure` |

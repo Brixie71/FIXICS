@@ -8,7 +8,7 @@ parameters = [
 [vr]
 extends = "default"
 parameters = [
-    "-init=playMission['','\\x\\base_arma\\addons\\main\\missions\\HelloWorld.VR']",
+    "-init=playMission['','\\x\\fixics\\addons\\main\\missions\\HelloWorld.VR']",
 ]
 
 [eden]

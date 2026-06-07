@@ -14,8 +14,8 @@ Use this before writing any line of code.
 | Question | Rule |
 |---|---|
 | Where does a new function file go? | `addons/main/functions/fn_name.sqf` |
-| How is it called? | `BASEARMA_fnc_name` via registered `CfgFunctions` |
-| What prefix do all globals, namespace keys, public vars use? | `BASEARMA_` |
+| How is it called? | `FIXICS_fnc_name` via registered `CfgFunctions` |
+| What prefix do all globals, namespace keys, public vars use? | `FIXICS_` |
 | When do I use `call` vs `spawn`? | `call` = needs return value or must be synchronous. `spawn` = needs `sleep` or runs long. |
 | When do I use `execVM`? | Never in addon code. Mission scripts only. |
 | What validation must pass before commit? | `.\tools\check.ps1` (or `hemtt check`) |
@@ -53,11 +53,11 @@ private _result = a + b * c; // ambiguous intent
 | Thing | Convention | Example |
 |---|---|---|
 | Addon function file | `fn_name.sqf` | `fn_resetVehicle.sqf` |
-| Public function identifier | `BASEARMA_fnc_name` | `BASEARMA_fnc_resetVehicle` |
+| Public function identifier | `FIXICS_fnc_name` | `FIXICS_fnc_resetVehicle` |
 | Local variable | `_lowerCamelCase` | `_targetUnit` |
 | Loop counter | short `_i`, `_j` acceptable | `_i` |
-| Global / public variable | `BASEARMA_name` | `BASEARMA_debugEnabled` |
-| Namespace key (`setVariable`) | `"BASEARMA_keyName"` | `"BASEARMA_lastInteraction"` |
+| Global / public variable | `FIXICS_name` | `FIXICS_debugEnabled` |
+| Namespace key (`setVariable`) | `"FIXICS_keyName"` | `"FIXICS_lastInteraction"` |
 | Macro / constant | `UPPER_SNAKE_CASE` | `MAX_VEHICLE_SPEED` |
 | User-facing string | entry in `addons/main/stringtable.xml` | never hardcoded in multiple scripts |
 
@@ -72,7 +72,7 @@ private _result = a + b * c; // ambiguous intent
 3. Never use a variable before declaring it.
 4. Never assign an unprefixed name at global scope — it pollutes all mods.
 5. Never shadow engine magic variables: `_this`, `_x`, `_y`, `_forEachIndex`, `this`, `thisList`, `thisTrigger`.
-6. Prefix every `setVariable` key with `BASEARMA_`.
+6. Prefix every `setVariable` key with `FIXICS_`.
 7. Treat broadcast flags (`publicVariable`, `setVariable` third arg) as explicit network decisions — not defaults or copy-paste.
 
 ```sqf
@@ -98,7 +98,7 @@ Every new addon function must follow this shape exactly:
 
 ```sqf
 /*
- * BASEARMA_fnc_name
+ * FIXICS_fnc_name
  *
  * One-line description.
  *
@@ -110,7 +110,7 @@ Every new addon function must follow this shape exactly:
  * Locality: server | local machine | any
  *
  * Example:
- *   [player, 50] call BASEARMA_fnc_name;
+ *   [player, 50] call FIXICS_fnc_name;
  */
 
 params [
@@ -120,7 +120,7 @@ params [
 
 // Guard: reject invalid input immediately
 if (isNull _unit) exitWith {
-    diag_log "[BASEARMA_fnc_name] ERROR: null unit.";
+    diag_log "[FIXICS_fnc_name] ERROR: null unit.";
     false
 };
 
@@ -180,7 +180,7 @@ _alias set [0, "changed"];  // modifies _originalArray too
 {
     _x params ["_name", "_pos", "_priority"];
     if (_priority == 1) then {
-        [_name, _pos] call BASEARMA_fnc_markObjective;
+        [_name, _pos] call FIXICS_fnc_markObjective;
     };
 } forEach _objectives;
 
@@ -301,7 +301,7 @@ didJIP          // client joined late — needs catch-up state
 if (local _vehicle) then {
     _vehicle setVelocity [0,0,0];
 } else {
-    [_vehicle] remoteExecCall ["BASEARMA_fnc_stopVehicle", owner _vehicle];
+    [_vehicle] remoteExecCall ["FIXICS_fnc_stopVehicle", owner _vehicle];
 };
 ```
 
@@ -323,7 +323,7 @@ if (local _vehicle) then {
 ```sqf
 // Server — queue state for any client that joins late
 if (isServer) then {
-    [{ BASEARMA_objectiveState = "active"; }, [], "BASEARMA_jip_init"] call BIS_fnc_MP;
+    [{ FIXICS_objectiveState = "active"; }, [], "FIXICS_jip_init"] call BIS_fnc_MP;
 };
 ```
 
@@ -336,7 +336,7 @@ Before any script in that folder becomes addon source, complete **all** steps:
 - [ ] Identify: is this mission-only or addon-safe?
 - [ ] Strip: mission file paths, editor object references, hardcoded sounds, trigger names, unprefixed globals
 - [ ] Rewrite into `addons/main/functions/fn_name.sqf`
-- [ ] Rename all public behavior to `BASEARMA_fnc_name`
+- [ ] Rename all public behavior to `FIXICS_fnc_name`
 - [ ] Register in `addons/main/config.cpp` under `CfgFunctions`
 - [ ] Move required assets to an intentional addon asset path
 - [ ] Add stringtable entries for all repeated user-facing strings
@@ -370,7 +370,7 @@ Run through every item before claiming a fix is complete.
 
 ### Code Quality
 - [ ] All inputs declared with `params`; all locals declared with `private`
-- [ ] All globals, public vars, and namespace keys prefixed with `BASEARMA_`
+- [ ] All globals, public vars, and namespace keys prefixed with `FIXICS_`
 - [ ] No magic variables shadowed (`_this`, `_x`, `_y`, `_forEachIndex`, `this`, `thisList`, `thisTrigger`)
 - [ ] Precedence-sensitive expressions are parenthesized
 - [ ] `find` results checked `>= 0` before use as an index
@@ -389,4 +389,4 @@ Run through every item before claiming a fix is complete.
 
 ### Validation
 - [ ] `.\tools\check.ps1` passed, or final report explains why it could not run
-- [ ] Debug `hint` / `systemChat` calls removed or gated behind a `BASEARMA_debugEnabled` flag
+- [ ] Debug `hint` / `systemChat` calls removed or gated behind a `FIXICS_debugEnabled` flag

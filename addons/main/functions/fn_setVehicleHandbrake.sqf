@@ -31,9 +31,22 @@ if (!(_vehicle isKindOf "LandVehicle")) exitWith {
 _vehicle setVariable ["FIXICS_handbrakeEnabled", _enabled, false];
 
 if (local _vehicle) then {
-    _vehicle disableBrakes (!_enabled);
+    private _brakeControlOwner = _vehicle getVariable ["FIXICS_brakeControlOwner", ""];
     if (_enabled) then {
+        if (_brakeControlOwner == "") then {
+            _vehicle setVariable ["FIXICS_priorBrakesDisabled", brakesDisabled _vehicle, false];
+        };
+        if (_brakeControlOwner in ["", "monitor", "driver", "handbrake"]) then {
+            _vehicle setVariable ["FIXICS_brakeControlOwner", "handbrake", false];
+        };
         [_vehicle] call FIXICS_fnc_applyHandbrakeLock;
+    } else {
+        if (_brakeControlOwner == "handbrake") then {
+            private _priorBrakesDisabled = _vehicle getVariable ["FIXICS_priorBrakesDisabled", false];
+            _vehicle disableBrakes _priorBrakesDisabled;
+            _vehicle setVariable ["FIXICS_brakeControlOwner", "", false];
+            _vehicle setVariable ["FIXICS_priorBrakesDisabled", nil, false];
+        };
     };
 };
 

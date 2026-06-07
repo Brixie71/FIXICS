@@ -1,12 +1,12 @@
 class CfgPatches
 {
-    class BASE_ARMA_main
+    class FIXICS_main
     {
         name = "FIXICS - Main";
         author = "Brixie71";
         url = "";
         requiredVersion = 2.14;
-        requiredAddons[] = {"A3_Functions_F", "ace_interact_menu", "cba_settings"};
+        requiredAddons[] = {"A3_Functions_F", "ace_interact_menu", "cba_common", "cba_settings"};
         units[] = {};
         weapons[] = {};
     };
@@ -20,7 +20,7 @@ class CfgFunctions
 
         class Main
         {
-            file = "x\base_arma\addons\main\functions";
+            file = "x\fixics\addons\main\functions";
 
             class init
             {
@@ -36,6 +36,9 @@ class CfgFunctions
             class monitorVehicleAutobrake {};
             class applySlopeRollback {};
             class applyHandbrakeLock {};
+            class applyABSBraking {};
+            class registerVehicleControls {};
+            class updateDriverController {};
             class logVehicleHandlingConfig {};
             class getNativeSlopeControl {};
         };

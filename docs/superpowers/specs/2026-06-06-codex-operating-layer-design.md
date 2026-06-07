@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Add a repo-level CODEX operating layer that helps CODEX work on BASE-ARMA consistently across sessions — without moving, renaming, or modifying any addon source files.
+Add a repo-level CODEX operating layer that helps CODEX work on FIXICS consistently across sessions — without moving, renaming, or modifying any addon source files.
 
 The existing addon structure remains the single source of truth for game code. The new layer exists only to support CODEX's reasoning, routing, validation, and documentation workflows.
 
@@ -91,7 +91,7 @@ Must enumerate as machine-readable YAML:
 - `forbidden_paths`: files and directories CODEX must never modify
 - `require_sqa_approval`: task types that need explicit approval before implementation
 - `required_validation`: commands that must pass before any task is closed
-- `naming_rules`: the `BASEARMA_` prefix requirements
+- `naming_rules`: the `FIXICS_` prefix requirements
 
 #### `agents/specialist/sqf-agent.md`
 
@@ -191,7 +191,7 @@ Index of all templates in `prompts/library/`. Each entry: name, file path, purpo
 
 #### `prompts/library/sqf-function.md`
 
-Template for implementing a new `BASEARMA_fnc_*` function. Must include placeholders for: function name, description, arguments, return type, locality, and logic body.
+Template for implementing a new `FIXICS_fnc_*` function. Must include placeholders for: function name, description, arguments, return type, locality, and logic body.
 
 #### `prompts/library/code-review.md`
 

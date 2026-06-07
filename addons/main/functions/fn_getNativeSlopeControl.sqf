@@ -9,12 +9,13 @@
  *   2: Terrain slope magnitude <NUMBER>
  *   3: Maximum assisted rollback speed in m/s <NUMBER>
  *   4: Rollback acceleration coefficient <NUMBER>
+ *   5: Minimum near-zero velocity delta <NUMBER>
  *
  * Return: <ARRAY> [applied <BOOL>, deltaX <NUMBER>, deltaY <NUMBER>, deltaZ <NUMBER>] or []
  * Locality: local machine
  *
  * Example:
- *   [_downhill, velocity _vehicle, 0.2, 2.2, 0.55] call FIXICS_fnc_getNativeSlopeControl;
+ *   [_downhill, velocity _vehicle, 0.2, 2.2, 0.55, 0.18] call FIXICS_fnc_getNativeSlopeControl;
  */
 
 params [
@@ -22,7 +23,8 @@ params [
     ["_velocity", [0, 0, 0], [[]], [3]],
     ["_slope", 0, [0]],
     ["_maxRollbackSpeed", 0, [0]],
-    ["_rollbackAcceleration", 0, [0]]
+    ["_rollbackAcceleration", 0, [0]],
+    ["_minimumDelta", 0, [0]]
 ];
 
 if !(missionNamespace getVariable ["FIXICS_nativeSlopeControlEnabled", false]) exitWith {
@@ -38,7 +40,8 @@ private _result = "FIXICSPhysics" callExtension [
         str (_velocity # 1),
         str _slope,
         str _maxRollbackSpeed,
-        str _rollbackAcceleration
+        str _rollbackAcceleration,
+        str _minimumDelta
     ]
 ];
 

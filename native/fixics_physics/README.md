@@ -30,7 +30,7 @@ Supported calls:
 "FIXICSPhysics" callExtension "version";
 "FIXICSPhysics" callExtension "ping";
 "FIXICSPhysics" callExtension ["schema", []];
-"FIXICSPhysics" callExtension ["slopeControl", [_downhillX, _downhillY, _velocityX, _velocityY, _slope, _maxRollbackSpeed, _rollbackAcceleration]];
+"FIXICSPhysics" callExtension ["slopeControl", [_downhillX, _downhillY, _velocityX, _velocityY, _slope, _maxRollbackSpeed, _rollbackAcceleration, _minimumDelta]];
 ```
 
 `slopeControl` returns:
@@ -40,6 +40,8 @@ Supported calls:
 ```
 
 The SQF bridge is `FIXICS_fnc_getNativeSlopeControl`. It is gated by the CBA setting `FIXICS_nativeSlopeControlEnabled`, which defaults to `false`.
+
+`_minimumDelta` is optional for backward compatibility. FIXICS passes it during coasting so the native recommendation can provide a small near-zero downhill breakaway after reverse-release on a hill.
 
 ## Build Notes
 

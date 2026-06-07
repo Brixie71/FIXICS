@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Improve the BASE-ARMA repository's Arma 3 scripting knowledge base so CODEX can edit scripts accurately without needing to re-derive language rules from first principles each session.
+Improve the FIXICS repository's Arma 3 scripting knowledge base so CODEX can edit scripts accurately without needing to re-derive language rules from first principles each session.
 
 The update targets exactly two files:
 
@@ -199,7 +199,7 @@ After this design is implemented, the intended CODEX workflow is:
 |---|---|
 | Wiki guidance vs. repository HEMTT layout | Repository layout wins |
 | Broad or mission-oriented source material | Adapt to addon work — do not copy blindly |
-| Topic is important but not actionable for BASE-ARMA | Put in `SQF-Syntax.md`, not in coding standards |
+| Topic is important but not actionable for FIXICS | Put in `SQF-Syntax.md`, not in coding standards |
 | Source page is unclear or outdated | Note the uncertainty; do not invent engine behavior |
 
 ---

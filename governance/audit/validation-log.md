@@ -209,3 +209,116 @@ Record validation runs that matter for implementation, review, or release decisi
 - Automated coverage: verified exports `RVExtension`, `RVExtensionArgs`, and `RVExtensionVersion`.
 - Manual coverage: not run.
 - Notes: run from the Visual Studio developer environment.
+
+### 2026-06-07 - Slope-gated brake disable regression fix
+
+- Command: SQA report
+- Result: regression reproduced manually by SQA
+- Automated coverage: not applicable.
+- Manual coverage: SQA reported W/S release continued moving vehicles on flat ground, and opposite input did not reliably engage Drive/Reverse.
+- Notes: root cause was `disableBrakes true` being applied without first checking terrain slope.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: failed, exit code 1
+- Automated coverage: regression failed for the expected missing slope gate in `FIXICS_fnc_shouldVehicleRoll` and W/S rollback suppression in `FIXICS_fnc_applySlopeRollback`.
+- Manual coverage: not run.
+- Notes: red phase before implementation.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: verified slope-gated brake disabling, no unconditional `FIXICS_disableIdleAutobrake` true return, and rollback suppression while W/S input is active.
+- Manual coverage: not run.
+- Notes: manual Arma retest must verify flat-ground stopping and Drive/Reverse switching.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\check.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT loaded FIXICS 0.1.0.0, rapified 2 addon configs, compiled 12 SQF files, checked 1 stringtable.
+- Manual coverage: not run.
+- Notes: no native C++ source changed for this fix.
+
+### 2026-06-07 - Slope-relative drive and coasting acceleration
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: failed, exit code 1
+- Automated coverage: regression failed for the expected missing monitor sequencing, W/S drive-vs-brake classification, vehicle-orientation slope acceleration, coasting breakaway defaults, and native breakaway support.
+- Manual coverage: not run.
+- Notes: red phase after SQA reported reversing uphill and releasing `S` still left the vehicle stationary.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: verified separate slope-helper monitor call, active braking guard, vehicle `vectorDir` orientation handling, slope angle calculation, coasting breakaway, drive acceleration defaults, and native minimum-delta support.
+- Manual coverage: not run.
+- Notes: manual Eden/VR retest must confirm reverse-release downhill coasting and compare downhill versus uphill acceleration feel.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\check.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT loaded FIXICS 0.1.0.0, rapified 2 addon configs, compiled 12 SQF files, checked 1 stringtable.
+- Manual coverage: not run.
+- Notes: SQF syntax and config compilation passed after the slope helper update.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\build-native.ps1`
+- Result: passed, exit code 0
+- Automated coverage: Visual Studio Build Tools 2022 loaded through `VsDevCmd.bat`, CMake configured the x64 project, MSBuild compiled `FIXICSPhysics.cpp`, and `FIXICSPhysics_x64.dll` was written to the repository root.
+- Manual coverage: not run.
+- Notes: rebuilt the approved local Windows x64 DLL after adding native `minimumDelta` support.
+
+### 2026-06-07 - Local player driver state controller
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: failed, exit code 1
+- Automated coverage: regression failed for the expected missing CBA PFH dependency, controller functions, settings, localization, monitor ownership, low-speed ABS override, and downhill-only powered slope behavior.
+- Manual coverage: not run.
+- Notes: red phase before implementing the approved Drive, Service Brake, Reverse, Coast, and Handbrake controller.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: verified controller registration, Hold/Toggle handbrake settings, model-space direction transitions, ABS ownership, elapsed-time normalization, grounded operation, ownership cleanup, slow-monitor exclusion, brake restoration, SQF input guard scope, and downhill-only powered slope assist.
+- Manual coverage: not run.
+- Notes: static checks cannot prove how each Arma vehicle PhysX class competes with native W/S drivetrain processing. Multiplayer locality-transfer cleanup remains deferred to the multiplayer phase.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\check.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT loaded FIXICS 0.1.0.0, rapified 2 addon configs, compiled 15 SQF files, and checked 1 stringtable.
+- Manual coverage: not run.
+- Notes: no native C++ source changed; rebuilding `FIXICSPhysics_x64.dll` was not required.
+
+- Command: focused subagent code review
+- Result: completed; no remaining high-severity findings
+- Automated coverage: reviewed W/S reversal, brake ownership, elapsed-time scaling, grounded handbrake behavior, ABS fallback, ACE/X handbrake state, and monitor/controller handoff.
+- Manual coverage: not run.
+- Notes: the remaining locality-transfer cleanup finding is explicitly deferred to the multiplayer phase.
+
+### 2026-06-07 - Neutral pulse for Reverse-to-Drive and Drive-to-Reverse
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: failed, exit code 1
+- Automated coverage: regression failed for the expected missing neutral-pulse setting and localization, `NEUTRAL` state, direction latch/deadline, input cancellation, exact-zero clamp, delayed launch, and removal of the same-update threshold launch.
+- Manual coverage: SQA reproduced Reverse-to-Drive failure before implementation.
+- Notes: root cause was immediate forward launch at the speed threshold before Arma's reverse gearbox observed a neutral stop.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: verified sign-based opposite-motion detection, latched transition target, configurable neutral deadline, exact-zero longitudinal hold, delayed launch, symmetric direction handling, and transition cancellation.
+- Manual coverage: not run after implementation.
+- Notes: normal ABS braking remains unchanged; the neutral pulse only runs during an opposite-direction handoff.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\check.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT loaded FIXICS 0.1.0.0, rapified 2 addon configs, compiled 15 SQF files, and checked 1 stringtable.
+- Manual coverage: not run.
+- Notes: no native extension change or rebuild is required for this SQF/CBA gearbox workaround.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\build.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT built 1 PBO after compiling 15 SQF files and checking 1 stringtable.
+- Manual coverage: not run.
+- Notes: updated local artifact is `.hemttout/build/addons/fixics_main.pbo`.
+
+- Manual SQA matrix:
+  1. Reverse at moderate speed, hold W through braking, neutral pulse, and forward launch.
+  2. Release W during ABS braking; vehicle must not launch forward.
+  3. Release W during the neutral pulse; vehicle must not launch forward.
+  4. Drive at moderate speed, hold S through braking, neutral pulse, and reverse launch.
+  5. Repeat both transitions uphill and downhill.
+  6. Confirm ordinary S braking while driving remains smooth and does not enter a direction transition when S is released before the threshold.
+  7. Compare neutral pulse values `0.03`, `0.08`, and `0.15` seconds across several vehicle classes.

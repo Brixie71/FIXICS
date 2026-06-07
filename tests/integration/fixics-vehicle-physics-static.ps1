@@ -53,6 +53,7 @@ $Mission = Get-Content -Raw -LiteralPath $MissionPath
 Assert-Contains $Config 'tag\s*=\s*"FIXICS";' 'CfgFunctions tag must be FIXICS.'
 Assert-Contains $Config 'requiredAddons\[\]\s*=\s*\{[^}]*"ace_interact_menu"[^}]*\};' 'ACE interaction menu must be a required addon.'
 Assert-Contains $Config 'requiredAddons\[\]\s*=\s*\{[^}]*"cba_settings"[^}]*\};' 'CBA settings must be a required addon.'
+Assert-Contains $Config 'requiredAddons\[\]\s*=\s*\{[^}]*"cba_common"[^}]*\};' 'CBA common must be a required addon for the driver controller PFH.'
 if ($Config -match '"A3_Soft_F"|\"A3_Armor_F\"') {
     Add-Failure 'Failed config-class experiment must not keep A3_Soft_F/A3_Armor_F load-order dependencies.'
 }
@@ -64,7 +65,10 @@ if ($Config -match '"A3_Soft_F"|\"A3_Armor_F\"') {
     'addons\main\functions\fn_shouldVehicleRoll.sqf',
     'addons\main\functions\fn_monitorVehicleAutobrake.sqf',
     'addons\main\functions\fn_applySlopeRollback.sqf',
+    'addons\main\functions\fn_applyABSBraking.sqf',
     'addons\main\functions\fn_applyHandbrakeLock.sqf',
+    'addons\main\functions\fn_registerVehicleControls.sqf',
+    'addons\main\functions\fn_updateDriverController.sqf',
     'addons\main\functions\fn_logVehicleHandlingConfig.sqf',
     'addons\main\functions\fn_getNativeSlopeControl.sqf'
 ) | ForEach-Object {
@@ -87,7 +91,10 @@ Assert-Contains $Config 'class setVehicleHandbrake\s*\{\s*\};' 'setVehicleHandbr
 Assert-Contains $Config 'class shouldVehicleRoll\s*\{\s*\};' 'shouldVehicleRoll must be registered in CfgFunctions.'
 Assert-Contains $Config 'class monitorVehicleAutobrake\s*\{\s*\};' 'monitorVehicleAutobrake must be registered in CfgFunctions.'
 Assert-Contains $Config 'class applySlopeRollback\s*\{\s*\};' 'applySlopeRollback must be registered in CfgFunctions.'
+Assert-Contains $Config 'class applyABSBraking\s*\{\s*\};' 'applyABSBraking must be registered in CfgFunctions.'
 Assert-Contains $Config 'class applyHandbrakeLock\s*\{\s*\};' 'applyHandbrakeLock must be registered in CfgFunctions.'
+Assert-Contains $Config 'class registerVehicleControls\s*\{\s*\};' 'registerVehicleControls must be registered in CfgFunctions.'
+Assert-Contains $Config 'class updateDriverController\s*\{\s*\};' 'updateDriverController must be registered in CfgFunctions.'
 Assert-Contains $Config 'class logVehicleHandlingConfig\s*\{\s*\};' 'logVehicleHandlingConfig must be registered in CfgFunctions.'
 Assert-Contains $Config 'class getNativeSlopeControl\s*\{\s*\};' 'getNativeSlopeControl must be registered in CfgFunctions.'
 if ($Config -match 'class CfgVehicles|brakeIdleSpeed\s*=\s*0\.01|dampingRateZeroThrottleClutchEngaged\s*=\s*0\.25|dampingRateZeroThrottleClutchDisengaged\s*=\s*0\.25') {
@@ -97,6 +104,7 @@ if ($Config -match 'class CfgVehicles|brakeIdleSpeed\s*=\s*0\.01|dampingRateZero
 Assert-Contains $Init 'FIXICS_fnc_hello' 'fn_init.sqf must call FIXICS_fnc_hello.'
 Assert-Contains $Init 'FIXICS_fnc_registerSettings' 'fn_init.sqf must register CBA settings.'
 Assert-Contains $Init 'FIXICS_fnc_registerAceInteractions' 'fn_init.sqf must register ACE interactions.'
+Assert-Contains $Init 'FIXICS_fnc_registerVehicleControls' 'fn_init.sqf must register the local driver controller.'
 Assert-Contains $Init 'FIXICS_fnc_monitorVehicleAutobrake' 'fn_init.sqf must start the vehicle autobrake monitor.'
 Assert-Contains $Mission 'FIXICS_fnc_vrHello' 'VR mission must call FIXICS_fnc_vrHello.'
 
@@ -106,6 +114,28 @@ Assert-Contains $Stringtable 'STR_FIXICS_HAND_BRAKE_STATUS_SET' 'Stringtable mus
 Assert-Contains $Stringtable 'STR_FIXICS_HAND_BRAKE_STATUS_RELEASED' 'Stringtable must define handbrake released status text.'
 Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DISABLE_IDLE_AUTOBRAKE' 'Stringtable must define the idle autobrake setting title.'
 Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DISABLE_IDLE_AUTOBRAKE_TOOLTIP' 'Stringtable must define the idle autobrake setting tooltip.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_SLOPE_MINIMUM' 'Stringtable must define the slope minimum setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_SLOPE_ROLLBACK_MAX_SPEED' 'Stringtable must define the slope rollback max-speed setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_SLOPE_ROLLBACK_ACCELERATION' 'Stringtable must define the slope rollback acceleration setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_SLOPE_COAST_BREAKAWAY' 'Stringtable must define the slope coast breakaway setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_SLOPE_DRIVE_ACCELERATION' 'Stringtable must define the slope drive acceleration setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_SLOPE_DRIVE_MAX_SPEED' 'Stringtable must define the slope drive max-speed setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_STATIONARY_BRAKE_BYPASS' 'Stringtable must define the stationary brake bypass setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_ABS_ENABLED' 'Stringtable must define the ABS enabled setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_ABS_BRAKE_STRENGTH' 'Stringtable must define the ABS brake strength setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_ABS_RELEASE_BIAS' 'Stringtable must define the ABS release bias setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_ABS_LOW_SPEED_CUTOFF' 'Stringtable must define the ABS low-speed cutoff setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_ABS_SLOPE_COMPENSATION' 'Stringtable must define the ABS slope compensation setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_ABS_DEBUG_LOGGING' 'Stringtable must define the ABS debug logging setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DRIVER_CONTROLLER_ENABLED' 'Stringtable must define the driver controller setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_HANDBRAKE_INPUT_MODE' 'Stringtable must define the handbrake input mode setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_HANDBRAKE_INPUT_HOLD' 'Stringtable must define the hold handbrake input mode.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_HANDBRAKE_INPUT_TOGGLE' 'Stringtable must define the toggle handbrake input mode.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DIRECTION_CHANGE_THRESHOLD' 'Stringtable must define the direction change threshold setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DIRECTION_LAUNCH_VELOCITY' 'Stringtable must define the direction launch velocity setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DIRECTION_NEUTRAL_PULSE' 'Stringtable must define the direction neutral pulse setting title.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DIRECTION_NEUTRAL_PULSE_TOOLTIP' 'Stringtable must define the direction neutral pulse setting tooltip.'
+Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DRIVER_CONTROLLER_INTERVAL' 'Stringtable must define the driver controller interval setting title.'
 
 $AddonFiles = Get-ChildItem -LiteralPath (Join-Path $RepoRoot 'addons\main') -Recurse -File
 $BaseArmaRefs = $AddonFiles | Select-String -Pattern 'BASEARMA_fnc_' -List
@@ -120,6 +150,9 @@ if (Test-Path -LiteralPath $HandbrakeFile) {
     Assert-Contains $Handbrake '"FIXICS_handbrakeEnabled"' 'Handbrake function must use FIXICS_handbrakeEnabled.'
     Assert-Contains $Handbrake 'disableBrakes' 'Handbrake function must apply disableBrakes.'
     Assert-Contains $Handbrake 'FIXICS_fnc_applyHandbrakeLock' 'Setting the handbrake must immediately apply the hard lock.'
+    Assert-Contains $Handbrake 'FIXICS_brakeControlOwner' 'Persistent handbrake must participate in FIXICS autobrake ownership.'
+    Assert-Contains $Handbrake 'FIXICS_priorBrakesDisabled' 'Persistent handbrake must preserve and restore the prior autobrake state.'
+    Assert-Contains $Handbrake 'brakesDisabled' 'Persistent handbrake must capture the prior autobrake state when needed.'
 }
 
 $DecisionFile = Join-Path $RepoRoot 'addons\main\functions\fn_shouldVehicleRoll.sqf'
@@ -130,8 +163,18 @@ if (Test-Path -LiteralPath $DecisionFile) {
     Assert-Contains $Decision 'CarBack' 'Decision helper must check built-in car brake input.'
     Assert-Contains $Decision 'CarHandBrake' 'Decision helper must check built-in car handbrake input.'
     Assert-Contains $Decision 'FIXICS_stationaryBrakeBypassSpeedKmh' 'Decision helper must define the near-stationary brake bypass threshold.'
+    Assert-Contains $Decision 'isTouchingGround' 'Decision helper must reject airborne vehicles.'
     Assert-Contains $Decision 'private _isStationary' 'Decision helper must calculate near-stationary state.'
     Assert-Contains $Decision '_isBraking && \{!_isStationary\}' 'CarBack must only block rolling while above near-stationary speed.'
+    Assert-Contains $Decision 'private _inputBlocksRolling' 'Decision helper must carry player input rejection out of the nested interface scope.'
+    Assert-Contains $Decision 'if \(_inputBlocksRolling\) exitWith' 'Decision helper must reject handbrake/brake input from the function scope.'
+    Assert-Contains $Decision 'surfaceNormal' 'Decision helper must read terrain slope before disabling brakes.'
+    Assert-Contains $Decision 'FIXICS_slopeRollbackMinimumSlope' 'Decision helper must use the rollback slope threshold before disabling brakes.'
+    Assert-Contains $Decision '_slope < _minimumSlope' 'Decision helper must reject flat or near-flat ground.'
+
+    if ($Decision -match 'if\s*\(missionNamespace getVariable\s*\["FIXICS_disableIdleAutobrake",\s*true\]\)\s*exitWith\s*\{\s*true\s*\};\s*true') {
+        Add-Failure 'Decision helper must not return true unconditionally after checking FIXICS_disableIdleAutobrake.'
+    }
 
     $BrakeInputIndex = $Decision.IndexOf('inputAction "CarBack"')
     $SettingIndex = $Decision.IndexOf('"FIXICS_disableIdleAutobrake"')
@@ -146,6 +189,27 @@ if (Test-Path -LiteralPath $SettingsFile) {
     Assert-Contains $Settings 'CBA_fnc_addSetting' 'Settings registration must use CBA_fnc_addSetting.'
     Assert-Contains $Settings '"FIXICS_disableIdleAutobrake"' 'Settings registration must define FIXICS_disableIdleAutobrake.'
     Assert-Contains $Settings '"CHECKBOX"' 'Idle autobrake setting must be a checkbox.'
+    Assert-Contains $Settings '"SLIDER"' 'Physics tuning settings must use CBA sliders.'
+    Assert-Contains $Settings '"FIXICS_slopeRollbackMinimumSlope"' 'Settings registration must define FIXICS_slopeRollbackMinimumSlope.'
+    Assert-Contains $Settings '"FIXICS_slopeRollbackMaxSpeed"' 'Settings registration must define FIXICS_slopeRollbackMaxSpeed.'
+    Assert-Contains $Settings '"FIXICS_slopeRollbackAcceleration"' 'Settings registration must define FIXICS_slopeRollbackAcceleration.'
+    Assert-Contains $Settings '"FIXICS_slopeCoastBreakawayVelocity"' 'Settings registration must define the slope coasting breakaway default.'
+    Assert-Contains $Settings '"FIXICS_slopeDriveAcceleration"' 'Settings registration must define the slope drive acceleration default.'
+    Assert-Contains $Settings '"FIXICS_slopeDriveMaxSpeedKmh"' 'Settings registration must define the slope drive max-speed default.'
+    Assert-Contains $Settings '"FIXICS_stationaryBrakeBypassSpeedKmh"' 'Settings registration must define FIXICS_stationaryBrakeBypassSpeedKmh.'
+    Assert-Contains $Settings '"FIXICS_absEnabled"' 'Settings registration must define FIXICS_absEnabled.'
+    Assert-Contains $Settings '"FIXICS_absBrakeStrength"' 'Settings registration must define FIXICS_absBrakeStrength.'
+    Assert-Contains $Settings '"FIXICS_absReleaseBias"' 'Settings registration must define FIXICS_absReleaseBias.'
+    Assert-Contains $Settings '"FIXICS_absLowSpeedCutoffKmh"' 'Settings registration must define FIXICS_absLowSpeedCutoffKmh.'
+    Assert-Contains $Settings '"FIXICS_absSlopeCompensation"' 'Settings registration must define FIXICS_absSlopeCompensation.'
+    Assert-Contains $Settings '"FIXICS_absDebugLogging"' 'Settings registration must define FIXICS_absDebugLogging.'
+    Assert-Contains $Settings '"FIXICS_driverControllerEnabled"' 'Settings registration must define FIXICS_driverControllerEnabled.'
+    Assert-Contains $Settings '"FIXICS_handbrakeInputMode"' 'Settings registration must define FIXICS_handbrakeInputMode.'
+    Assert-Contains $Settings '"FIXICS_directionChangeThresholdKmh"' 'Settings registration must define FIXICS_directionChangeThresholdKmh.'
+    Assert-Contains $Settings '"FIXICS_directionLaunchVelocity"' 'Settings registration must define FIXICS_directionLaunchVelocity.'
+    Assert-Contains $Settings '"FIXICS_directionNeutralPulseSeconds"' 'Settings registration must define FIXICS_directionNeutralPulseSeconds.'
+    Assert-Contains $Settings '"FIXICS_driverControllerInterval"' 'Settings registration must define FIXICS_driverControllerInterval.'
+    Assert-Contains $Settings '"LIST"' 'Handbrake input mode must use a CBA list setting.'
 }
 
 $MonitorFile = Join-Path $RepoRoot 'addons\main\functions\fn_monitorVehicleAutobrake.sqf'
@@ -154,6 +218,43 @@ if (Test-Path -LiteralPath $MonitorFile) {
     Assert-Contains $Monitor 'FIXICS_fnc_applySlopeRollback' 'Vehicle monitor must apply slope rollback assist.'
     Assert-Contains $Monitor 'FIXICS_fnc_applyHandbrakeLock' 'Vehicle monitor must enforce hard handbrake lock.'
     Assert-Contains $Monitor 'sleep 0\.25' 'Vehicle monitor must run frequently enough for local slope rollback assist.'
+    Assert-Contains $Monitor 'private _shouldRoll' 'Vehicle monitor must calculate rolling ownership once per update.'
+    Assert-Contains $Monitor 'if \(_shouldRoll\) then' 'Vehicle monitor must apply slope assist only while rolling.'
+    Assert-Contains $Monitor '_x disableBrakes _priorBrakesDisabled' 'Vehicle monitor must restore the captured autobrake state when rolling ends.'
+    Assert-Contains $Monitor 'private _isPlayerDriven' 'Vehicle monitor must identify vehicles owned by the local player driver controller.'
+    Assert-Contains $Monitor 'FIXICS_vehicleControlsRegistered' 'Vehicle monitor must yield player ownership only after the fast controller is registered.'
+    Assert-Contains $Monitor '!_isPlayerDriven' 'Vehicle monitor must skip player-driven vehicles owned by the fast controller.'
+    Assert-Contains $Monitor 'FIXICS_brakeControlOwner' 'Vehicle monitor must track its autobrake ownership.'
+    Assert-Contains $Monitor 'FIXICS_priorBrakesDisabled' 'Vehicle monitor must preserve the pre-FIXICS autobrake state.'
+    Assert-Contains $Monitor 'brakesDisabled' 'Vehicle monitor must read the pre-FIXICS autobrake state.'
+    Assert-Contains $Monitor 'FIXICS_vehicleAutobrakeMonitorLastUpdate' 'Vehicle monitor must measure actual scheduled elapsed time.'
+    if ($Monitor -match 'FIXICS_fnc_applyABSBraking') {
+        Add-Failure 'The slow vehicle monitor must not own player ABS braking.'
+    }
+}
+
+$AbsFile = Join-Path $RepoRoot 'addons\main\functions\fn_applyABSBraking.sqf'
+if (Test-Path -LiteralPath $AbsFile) {
+    $Abs = Get-Content -Raw -LiteralPath $AbsFile
+    Assert-Contains $Abs 'FIXICS_absEnabled' 'ABS helper must honor FIXICS_absEnabled.'
+    Assert-Contains $Abs 'FIXICS_handbrakeEnabled' 'ABS helper must respect ACE handbrake state.'
+    Assert-Contains $Abs 'inputAction "CarHandBrake"' 'ABS helper must check built-in handbrake input.'
+    Assert-Contains $Abs 'inputAction "CarForward"' 'ABS helper must check forward input.'
+    Assert-Contains $Abs 'inputAction "CarBack"' 'ABS helper must check reverse/brake input.'
+    Assert-Contains $Abs 'vectorDir _vehicle' 'ABS helper must use vehicle orientation.'
+    Assert-Contains $Abs 'velocity _vehicle' 'ABS helper must read current vehicle velocity.'
+    Assert-Contains $Abs 'private _isForwardBraking' 'ABS helper must classify forward braking.'
+    Assert-Contains $Abs 'private _isReverseBraking' 'ABS helper must classify reverse braking.'
+    Assert-Contains $Abs 'FIXICS_absLowSpeedCutoffKmh' 'ABS helper must honor the low-speed cutoff setting.'
+    Assert-Contains $Abs 'FIXICS_absBrakeStrength' 'ABS helper must honor the brake strength setting.'
+    Assert-Contains $Abs 'FIXICS_absReleaseBias' 'ABS helper must honor the release bias setting.'
+    Assert-Contains $Abs 'FIXICS_absSlopeCompensation' 'ABS helper must honor slope compensation setting.'
+    Assert-Contains $Abs 'FIXICS_absDebugLogging' 'ABS helper must honor debug logging setting.'
+    Assert-Contains $Abs 'setVelocity' 'ABS helper must apply adjusted velocity.'
+    Assert-Contains $Abs '"_ignoreLowSpeedCutoff"' 'ABS helper must accept a direction-transition low-speed override.'
+    Assert-Contains $Abs '!_ignoreLowSpeedCutoff' 'ABS helper must bypass the normal low-speed cutoff only when requested.'
+    Assert-Contains $Abs '"_deltaTime"' 'ABS helper must accept elapsed time for controller/monitor-independent tuning.'
+    Assert-Contains $Abs 'private _timeScale = \(\(_deltaTime[\s\S]*?\) / 0\.25;' 'ABS helper must normalize braking against the original monitor interval.'
 }
 
 $SlopeRollbackFile = Join-Path $RepoRoot 'addons\main\functions\fn_applySlopeRollback.sqf'
@@ -165,12 +266,86 @@ if (Test-Path -LiteralPath $SlopeRollbackFile) {
     Assert-Contains $SlopeRollback 'inputAction "CarForward"' 'Slope rollback helper must not fight forward throttle input.'
     Assert-Contains $SlopeRollback 'inputAction "CarBack"' 'Slope rollback helper must not fight reverse throttle input.'
     Assert-Contains $SlopeRollback 'inputAction "CarHandBrake"' 'Slope rollback helper must respect built-in temporary handbrake input.'
-    Assert-Contains $SlopeRollback 'FIXICS_stationaryBrakeBypassSpeedKmh' 'Slope rollback helper must use the near-stationary threshold for W/S input.'
-    Assert-Contains $SlopeRollback 'private _isStationary' 'Slope rollback helper must calculate near-stationary state.'
-    Assert-Contains $SlopeRollback '_hasDriveInput && \{!_isStationary\}' 'W/S input must only block rollback while above near-stationary speed.'
+    Assert-Contains $SlopeRollback 'private _hasDriveInput' 'Slope rollback helper must calculate W/S drive input.'
+    if ($SlopeRollback -match 'if\s*\(\s*_hasDriveInput\s*\)\s*exitWith\s*\{\s*false\s*\}') {
+        Add-Failure 'Slope rollback helper must not exit on all W/S input; it must allow slope-relative acceleration while W/S is drive input.'
+    }
+    if ($SlopeRollback -match '_hasDriveInput && \{!_isStationary\}') {
+        Add-Failure 'Slope rollback helper must not allow W/S near-stationary input to receive rollback assist.'
+    }
     Assert-Contains $SlopeRollback 'FIXICS_slopeRollbackAcceleration", 0\.55' 'Slope rollback helper must use the stronger gear-independent acceleration default.'
     Assert-Contains $SlopeRollback 'FIXICS_fnc_getNativeSlopeControl' 'Slope rollback helper must consult the optional native gameplay-control bridge.'
     Assert-Contains $SlopeRollback 'FIXICS_handbrakeEnabled' 'Slope rollback helper must respect the ACE handbrake state.'
+    Assert-Contains $SlopeRollback 'vectorDir _vehicle' 'Slope rollback helper must use vehicle orientation for drive-axis slope acceleration.'
+    Assert-Contains $SlopeRollback 'private _forwardDownhillAlignment' 'Slope rollback helper must calculate forward/downhill orientation alignment.'
+    Assert-Contains $SlopeRollback 'private _isForwardBraking' 'Slope rollback helper must classify S as braking when moving forward.'
+    Assert-Contains $SlopeRollback 'private _isReverseBraking' 'Slope rollback helper must classify W as braking when moving backward.'
+    Assert-Contains $SlopeRollback 'private _isBraking' 'Slope rollback helper must preserve normal braking by exiting during active braking.'
+    Assert-Contains $SlopeRollback 'acos' 'Slope rollback helper must calculate slope angle in degrees.'
+    Assert-Contains $SlopeRollback 'private _slopeAngleDegrees' 'Slope rollback helper must store slope angle in degrees.'
+    Assert-Contains $SlopeRollback 'FIXICS_slopeCoastBreakawayVelocity' 'Slope rollback helper must apply a near-zero downhill coasting breakaway.'
+    Assert-Contains $SlopeRollback 'FIXICS_slopeDriveAcceleration' 'Slope rollback helper must apply slope-relative drive acceleration.'
+    Assert-Contains $SlopeRollback 'FIXICS_slopeDriveMaxSpeedKmh' 'Slope rollback helper must cap downhill drive assist speed.'
+    Assert-Contains $SlopeRollback '_effectiveDriveSlope <= 0' 'Powered slope assist must never push against active drive intent uphill.'
+    Assert-Contains $SlopeRollback 'private _inputBlocksSlopeAssist' 'Slope helper must carry input rejection out of the nested interface scope.'
+    Assert-Contains $SlopeRollback 'if \(_inputBlocksSlopeAssist\) exitWith' 'Slope helper must reject handbrake/combined input from the function scope.'
+    Assert-Contains $SlopeRollback '"_deltaTime"' 'Slope helper must accept elapsed time for controller/monitor-independent tuning.'
+    Assert-Contains $SlopeRollback 'private _timeScale = \(\(_deltaTime[\s\S]*?\) / 0\.25;' 'Slope helper must normalize acceleration against the original monitor interval.'
+}
+
+$RegisterVehicleControlsFile = Join-Path $RepoRoot 'addons\main\functions\fn_registerVehicleControls.sqf'
+if (Test-Path -LiteralPath $RegisterVehicleControlsFile) {
+    $RegisterVehicleControls = Get-Content -Raw -LiteralPath $RegisterVehicleControlsFile
+    Assert-Contains $RegisterVehicleControls 'CBA_fnc_addPerFrameHandler' 'Vehicle controls must use a CBA per-frame handler.'
+    Assert-Contains $RegisterVehicleControls 'FIXICS_fnc_updateDriverController' 'Vehicle controls PFH must invoke the driver controller.'
+    Assert-Contains $RegisterVehicleControls 'FIXICS_vehicleControlsRegistered' 'Vehicle controls registration must be idempotent.'
+}
+
+$DriverControllerFile = Join-Path $RepoRoot 'addons\main\functions\fn_updateDriverController.sqf'
+if (Test-Path -LiteralPath $DriverControllerFile) {
+    $DriverController = Get-Content -Raw -LiteralPath $DriverControllerFile
+    Assert-Contains $DriverController 'FIXICS_driverControllerEnabled' 'Driver controller must honor its enable setting.'
+    Assert-Contains $DriverController 'FIXICS_driverControllerInterval' 'Driver controller must honor its update interval.'
+    Assert-Contains $DriverController 'isTouchingGround' 'Driver controller must not rewrite land-vehicle velocity while airborne.'
+    Assert-Contains $DriverController 'velocityModelSpace' 'Driver controller must read model-space longitudinal velocity.'
+    Assert-Contains $DriverController 'setVelocityModelSpace' 'Driver controller must apply model-space direction transitions.'
+    Assert-Contains $DriverController 'inputAction "CarForward"' 'Driver controller must read forward input.'
+    Assert-Contains $DriverController 'inputAction "CarBack"' 'Driver controller must read reverse/brake input.'
+    Assert-Contains $DriverController 'inputAction "CarHandBrake"' 'Driver controller must honor the configured X handbrake input.'
+    Assert-Contains $DriverController '"COAST"' 'Driver controller must expose a COAST state.'
+    Assert-Contains $DriverController '"DRIVE"' 'Driver controller must expose a DRIVE state.'
+    Assert-Contains $DriverController '"REVERSE"' 'Driver controller must expose a REVERSE state.'
+    Assert-Contains $DriverController '"SERVICE_BRAKE"' 'Driver controller must expose a SERVICE_BRAKE state.'
+    Assert-Contains $DriverController '"NEUTRAL"' 'Driver controller must expose a NEUTRAL gearbox handoff state.'
+    Assert-Contains $DriverController '"HANDBRAKE"' 'Driver controller must expose a HANDBRAKE state.'
+    Assert-Contains $DriverController 'FIXICS_handbrakeInputWasDown' 'Toggle handbrake mode must use rising-edge input detection.'
+    Assert-Contains $DriverController 'FIXICS_fnc_setVehicleHandbrake' 'Toggle handbrake mode must use the persistent FIXICS/ACE handbrake.'
+    Assert-Contains $DriverController 'FIXICS_fnc_applyABSBraking' 'Service braking must invoke the ABS helper.'
+    Assert-Contains $DriverController 'FIXICS_fnc_applySlopeRollback' 'Driver controller must own player slope assist.'
+    Assert-Contains $DriverController 'FIXICS_directionChangeThresholdKmh' 'Driver controller must honor direction change threshold.'
+    Assert-Contains $DriverController 'FIXICS_directionLaunchVelocity' 'Driver controller must honor direction launch velocity.'
+    Assert-Contains $DriverController 'FIXICS_directionNeutralPulseSeconds' 'Driver controller must honor the neutral pulse duration.'
+    Assert-Contains $DriverController 'FIXICS_directionTransitionTarget' 'Driver controller must latch the requested direction during opposite-input braking.'
+    Assert-Contains $DriverController 'FIXICS_directionTransitionNeutralUntil' 'Driver controller must store the neutral pulse deadline.'
+    Assert-Contains $DriverController '_requestedDirection > 0 && \{_longitudinalSpeed < 0\}' 'Reverse-to-Drive detection must latch on any remaining reverse motion.'
+    Assert-Contains $DriverController '_requestedDirection < 0 && \{_longitudinalSpeed > 0\}' 'Drive-to-Reverse detection must latch on any remaining forward motion.'
+    Assert-Contains $DriverController '_requestedDirection != _transitionTarget' 'Driver controller must cancel a latched transition when input changes or is released.'
+    Assert-Contains $DriverController '_modelVelocity set \[1, 0\]' 'Driver controller must clamp longitudinal velocity to exact zero during the neutral pulse.'
+    Assert-Contains $DriverController '_now \+ _neutralPulseSeconds' 'Driver controller must start a configurable neutral deadline.'
+    Assert-Contains $DriverController '_now >= _neutralUntil' 'Driver controller must delay direction launch until the neutral pulse expires.'
+    Assert-Contains $DriverController 'FIXICS_driverControllerVehicle' 'Driver controller must track the vehicle whose brake ownership it changed.'
+    Assert-Contains $DriverController 'private _releaseVehicle' 'Driver controller must clean up brake ownership when disabled or changing vehicles.'
+    Assert-Contains $DriverController 'private _claimVehicle' 'Driver controller must claim autobrake ownership before changing it.'
+    Assert-Contains $DriverController 'FIXICS_brakeControlOwner' 'Driver controller must identify its autobrake ownership.'
+    Assert-Contains $DriverController 'FIXICS_priorBrakesDisabled' 'Driver controller must restore the pre-FIXICS autobrake state.'
+    Assert-Contains $DriverController 'brakesDisabled' 'Driver controller must read the pre-FIXICS autobrake state.'
+    Assert-Contains $DriverController 'FIXICS_driverControllerLastUpdate' 'Driver controller must calculate elapsed update time.'
+    Assert-Contains $DriverController '\[_vehicle, true, _deltaTime\]' 'Driver controller must pass elapsed time to ABS.'
+    Assert-Contains $DriverController '\[_vehicle, _deltaTime\]' 'Driver controller must pass elapsed time to slope assistance.'
+    Assert-Contains $DriverController 'FIXICS_absReleaseBias' 'Direction-transition fallback braking must honor ABS release bias.'
+    if ($DriverController -match 'if\s*\(\(abs _longitudinalSpeed\)\s*<=\s*_directionThreshold\)\s*then\s*\{\s*_modelVelocity set \[1,\s*_requestedDirection \* _launchVelocity\]') {
+        Add-Failure 'Direction transition must not launch in the same update that first reaches the speed threshold.'
+    }
 }
 
 $HandbrakeLockFile = Join-Path $RepoRoot 'addons\main\functions\fn_applyHandbrakeLock.sqf'
@@ -180,6 +355,7 @@ if (Test-Path -LiteralPath $HandbrakeLockFile) {
     Assert-Contains $HandbrakeLock 'setVelocity \[0, 0, 0\]' 'Handbrake lock helper must zero vehicle velocity.'
     Assert-Contains $HandbrakeLock 'disableBrakes false' 'Handbrake lock helper must keep engine autobrake enabled while locked.'
     Assert-Contains $HandbrakeLock 'local _vehicle' 'Handbrake lock helper must only mutate local vehicles.'
+    Assert-Contains $HandbrakeLock 'isTouchingGround' 'Handbrake lock helper must not freeze airborne vehicles.'
 }
 
 $HandlingConfigLogFile = Join-Path $RepoRoot 'addons\main\functions\fn_logVehicleHandlingConfig.sqf'
@@ -199,6 +375,7 @@ if (Test-Path -LiteralPath $NativeBridgeFile) {
     Assert-Contains $NativeBridge '"FIXICSPhysics"\s+callExtension\s+\[[\s\S]*?"slopeControl"' 'Native gameplay-control bridge must call the FIXICSPhysics slopeControl function.'
     Assert-Contains $NativeBridge 'parseSimpleArray' 'Native gameplay-control bridge must parse the extension response.'
     Assert-Contains $NativeBridge 'errorCode' 'Native gameplay-control bridge must check callExtension errorCode.'
+    Assert-Contains $NativeBridge '_minimumDelta' 'Native gameplay-control bridge must pass the coasting breakaway delta.'
 }
 
 $NativeSourceFile = Join-Path $RepoRoot 'native\fixics_physics\src\FIXICSPhysics.cpp'
@@ -208,6 +385,7 @@ if (Test-Path -LiteralPath $NativeSourceFile) {
     Assert-Contains $NativeSource 'RVExtensionArgs' 'Native source must export RVExtensionArgs.'
     Assert-Contains $NativeSource 'slopeControl' 'Native source must implement slopeControl dispatch.'
     Assert-Contains $NativeSource 'FIXICSPhysics' 'Native source must use the FIXICSPhysics extension identity.'
+    Assert-Contains $NativeSource 'minimumDelta' 'Native source must support a coasting breakaway delta.'
     if ($NativeSource -match 'strncpy') {
         Add-Failure 'Native source must avoid strncpy to keep MSVC warning output clean.'
     }

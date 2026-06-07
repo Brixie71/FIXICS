@@ -1,21 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project name="FIXICS">
     <Package name="Main">
-        <Key ID="STR_BASE_ARMA_LOADED">
-            <Original>FIXICS mod loaded.</Original>
-        </Key>
-        <Key ID="STR_BASE_ARMA_NAME">
-            <Original>FIXICS</Original>
-        </Key>
-        <Key ID="STR_BASE_ARMA_VR_CHAT">
-            <Original>[FIXICS] Hello world from VR.</Original>
-        </Key>
-        <Key ID="STR_BASE_ARMA_VR_HINT">
-            <Original>Hello world from FIXICS in Virtual Reality.</Original>
-        </Key>
-        <Key ID="STR_BASE_ARMA_VR_TITLE">
-            <Original>Hello world in Virtual Reality</Original>
-        </Key>
         <Key ID="STR_FIXICS_HAND_BRAKE_RELEASE">
             <Original>Release Handbrake</Original>
         </Key>
@@ -28,17 +13,152 @@
         <Key ID="STR_FIXICS_HAND_BRAKE_STATUS_SET">
             <Original>[FIXICS] Handbrake set.</Original>
         </Key>
+        <Key ID="STR_FIXICS_LOADED">
+            <Original>FIXICS mod loaded.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_NAME">
+            <Original>FIXICS</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ABS_BRAKE_STRENGTH">
+            <Original>ABS brake strength</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ABS_BRAKE_STRENGTH_TOOLTIP">
+            <Original>Longitudinal braking authority normalized to the original 0.25-second monitor interval.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ABS_DEBUG_LOGGING">
+            <Original>ABS debug logging</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ABS_DEBUG_LOGGING_TOOLTIP">
+            <Original>Writes ABS braking decisions to the RPT log for SQA diagnostics.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ABS_ENABLED">
+            <Original>Enable ABS braking</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ABS_ENABLED_TOOLTIP">
+            <Original>Applies FIXICS velocity-level anti-lock braking while the local driver is actively braking.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ABS_LOW_SPEED_CUTOFF">
+            <Original>ABS low speed cutoff</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ABS_LOW_SPEED_CUTOFF_TOOLTIP">
+            <Original>Speed below which FIXICS ABS stops modulating so braking cannot become an idle handbrake.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ABS_RELEASE_BIAS">
+            <Original>ABS release bias</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ABS_RELEASE_BIAS_TOOLTIP">
+            <Original>Fraction of requested braking released to reduce lock-like stopping.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ABS_SLOPE_COMPENSATION">
+            <Original>ABS slope compensation</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ABS_SLOPE_COMPENSATION_TOOLTIP">
+            <Original>Additional braking authority used when braking downhill.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DIRECTION_CHANGE_THRESHOLD">
+            <Original>Direction change threshold</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DIRECTION_CHANGE_THRESHOLD_TOOLTIP">
+            <Original>Speed in kilometers per hour where opposite drive input finishes service braking and starts the requested direction.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DIRECTION_LAUNCH_VELOCITY">
+            <Original>Direction launch velocity</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DIRECTION_LAUNCH_VELOCITY_TOOLTIP">
+            <Original>Initial model-space velocity in meters per second applied when drive or reverse takes control near zero speed.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DIRECTION_NEUTRAL_PULSE">
+            <Original>Direction neutral pulse</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DIRECTION_NEUTRAL_PULSE_TOOLTIP">
+            <Original>Time in seconds that FIXICS holds zero longitudinal velocity before launching into the requested opposite direction.</Original>
+        </Key>
         <Key ID="STR_FIXICS_SETTING_DISABLE_IDLE_AUTOBRAKE">
             <Original>Disable automatic idle handbrake</Original>
         </Key>
         <Key ID="STR_FIXICS_SETTING_DISABLE_IDLE_AUTOBRAKE_TOOLTIP">
             <Original>Keeps Arma's idle vehicle autobrake disabled while stationary unless the FIXICS ACE handbrake is set.</Original>
         </Key>
+        <Key ID="STR_FIXICS_SETTING_DRIVER_CONTROLLER_ENABLED">
+            <Original>Enable driver state controller</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DRIVER_CONTROLLER_ENABLED_TOOLTIP">
+            <Original>Uses FIXICS drive, service brake, reverse, coast, and handbrake states for the local player driver.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DRIVER_CONTROLLER_INTERVAL">
+            <Original>Driver controller interval</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DRIVER_CONTROLLER_INTERVAL_TOOLTIP">
+            <Original>Minimum time in seconds between local driver controller updates.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_HANDBRAKE_INPUT_HOLD">
+            <Original>Hold</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_HANDBRAKE_INPUT_MODE">
+            <Original>X handbrake mode</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_HANDBRAKE_INPUT_MODE_TOOLTIP">
+            <Original>Hold applies a temporary handbrake while X is held. Toggle switches the same persistent handbrake used by ACE interactions.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_HANDBRAKE_INPUT_TOGGLE">
+            <Original>Toggle</Original>
+        </Key>
         <Key ID="STR_FIXICS_SETTING_NATIVE_SLOPE_CONTROL">
             <Original>Enable native slope control</Original>
         </Key>
         <Key ID="STR_FIXICS_SETTING_NATIVE_SLOPE_CONTROL_TOOLTIP">
             <Original>Uses the optional FIXICSPhysics native extension for slope rollback recommendations. Leave disabled unless the extension binary is installed.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_SLOPE_COAST_BREAKAWAY">
+            <Original>Coast breakaway velocity</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_SLOPE_COAST_BREAKAWAY_TOOLTIP">
+            <Original>Minimum downhill velocity nudge used near zero speed on slopes.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_SLOPE_DRIVE_ACCELERATION">
+            <Original>Drive slope acceleration</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_SLOPE_DRIVE_ACCELERATION_TOOLTIP">
+            <Original>How strongly slope angle adds powered downhill acceleration. Uphill deceleration remains controlled by Arma vehicle physics.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_SLOPE_DRIVE_MAX_SPEED">
+            <Original>Drive assist max speed</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_SLOPE_DRIVE_MAX_SPEED_TOOLTIP">
+            <Original>Maximum vehicle speed in kilometers per hour where downhill drive assist may add speed.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_SLOPE_MINIMUM">
+            <Original>Minimum slope for rolling</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_SLOPE_MINIMUM_TOOLTIP">
+            <Original>Terrain slope threshold before FIXICS disables idle autobrake or applies slope assist.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_SLOPE_ROLLBACK_ACCELERATION">
+            <Original>Rollback acceleration</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_SLOPE_ROLLBACK_ACCELERATION_TOOLTIP">
+            <Original>How strongly FIXICS accelerates unpowered vehicles downhill.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_SLOPE_ROLLBACK_MAX_SPEED">
+            <Original>Rollback max speed</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_SLOPE_ROLLBACK_MAX_SPEED_TOOLTIP">
+            <Original>Maximum assisted downhill coasting speed in meters per second.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STATIONARY_BRAKE_BYPASS">
+            <Original>Stationary brake bypass speed</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STATIONARY_BRAKE_BYPASS_TOOLTIP">
+            <Original>Speed below which brake/reverse input stops being treated as a persistent idle hold.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_VR_CHAT">
+            <Original>[FIXICS] Hello world from VR.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_VR_HINT">
+            <Original>Hello world from FIXICS in Virtual Reality.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_VR_TITLE">
+            <Original>Hello world in Virtual Reality</Original>
         </Key>
     </Package>
 </Project>

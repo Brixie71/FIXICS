@@ -6,7 +6,7 @@
 
 ## Goal
 
-Add a practical CODEX operating layer around the existing BASE-ARMA HEMTT addon — without moving, renaming, or modifying any addon source files.
+Add a practical CODEX operating layer around the existing FIXICS HEMTT addon — without moving, renaming, or modifying any addon source files.
 
 ## Architecture Constraints
 
@@ -154,7 +154,7 @@ Each specialist file must state:
 - Files that must never be edited
 - Prefixes that must be used for globals and namespace keys
 
-**Expected:** both files exist and reference the `BASEARMA_` prefix rule and `hemtt check` gate.
+**Expected:** both files exist and reference the `FIXICS_` prefix rule and `hemtt check` gate.
 
 ---
 
@@ -362,7 +362,7 @@ Must list every generated or protected file/folder with a one-line explanation o
 Must show how the CODEX operating layer maps to the HEMTT addon structure:
 
 ```
-BASE-ARMA/
+FIXICS/
 ├── .hemtt/                   HEMTT project config (authoritative)
 ├── addons/main/              Addon source (authoritative)
 │   ├── functions/            fn_*.sqf files registered in CfgFunctions

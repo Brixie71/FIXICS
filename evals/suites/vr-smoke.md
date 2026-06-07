@@ -20,7 +20,7 @@ Wrapper:
 
 - Arma launches the VR mission.
 - Player unit spawns.
-- `BASEARMA_fnc_vrHello` runs.
+- `FIXICS_fnc_vrHello` runs.
 - Hint, chat message, and dynamic text appear as expected.
 - No visible script error appears.
 

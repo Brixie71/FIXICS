@@ -8,6 +8,7 @@
 
 if (hasInterface) then {
     [] call FIXICS_fnc_registerAceInteractions;
+    [] call FIXICS_fnc_registerVehicleControls;
 };
 
 [] spawn FIXICS_fnc_monitorVehicleAutobrake;

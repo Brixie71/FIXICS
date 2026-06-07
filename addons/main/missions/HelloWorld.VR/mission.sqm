@@ -23,7 +23,7 @@ class EditorData
 };
 
 binarizationWanted = 0;
-sourceName = "BASE_ARMA_HelloWorld";
+sourceName = "FIXICS_HelloWorld";
 
 class AddonsMetaData
 {
@@ -61,12 +61,12 @@ class Mission
     addOns[] = {
         "A3_Characters_F_BLUFOR",
         "A3_Map_VR",
-        "BASE_ARMA_main"
+        "FIXICS_main"
     };
     addOnsAuto[] = {
         "A3_Characters_F_BLUFOR",
         "A3_Map_VR",
-        "BASE_ARMA_main"
+        "FIXICS_main"
     };
 
     class Intel

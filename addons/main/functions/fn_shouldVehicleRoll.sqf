@@ -29,27 +29,34 @@ if (!(local _vehicle)) exitWith {
     false
 };
 
+if (!isTouchingGround _vehicle) exitWith {
+    false
+};
+
 if (_vehicle getVariable ["FIXICS_handbrakeEnabled", false]) exitWith {
     false
 };
 
 private _driver = driver _vehicle;
+private _inputBlocksRolling = false;
 if (hasInterface && {!isNull _driver} && {_driver == player}) then {
     private _stationaryBrakeBypassSpeedKmh = missionNamespace getVariable ["FIXICS_stationaryBrakeBypassSpeedKmh", 1];
     private _isStationary = (abs (speed _vehicle)) <= _stationaryBrakeBypassSpeedKmh;
     private _isHandbraking = (inputAction "CarHandBrake") > 0;
-    if (_isHandbraking) exitWith {
-        false
-    };
-
     private _isBraking = (inputAction "CarBack") > 0;
-    if (_isBraking && {!_isStationary}) exitWith {
-        false
-    };
+    _inputBlocksRolling = _isHandbraking || {_isBraking && {!_isStationary}};
 };
 
-if (missionNamespace getVariable ["FIXICS_disableIdleAutobrake", true]) exitWith {
-    true
+if (_inputBlocksRolling) exitWith {
+    false
 };
 
-true
+private _normal = surfaceNormal (getPosASL _vehicle);
+private _downhill = [_normal # 0, _normal # 1, 0];
+private _slope = sqrt (((_downhill # 0) * (_downhill # 0)) + ((_downhill # 1) * (_downhill # 1)));
+private _minimumSlope = missionNamespace getVariable ["FIXICS_slopeRollbackMinimumSlope", 0.035];
+if (_slope < _minimumSlope) exitWith {
+    false
+};
+
+missionNamespace getVariable ["FIXICS_disableIdleAutobrake", true]

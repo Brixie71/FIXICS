@@ -1,41 +1,42 @@
-# Scope Control
+﻿# Scope Control
 
 ## Default Rule
 
-Make the smallest change that satisfies the task and keeps the addon valid.
+Make the smallest targeted change that satisfies the approved task and keeps the addon valid.
 
 ## Stay In Scope
 
 - Preserve the HEMTT layout.
-- Keep addon code under `addons/main/`.
+- Keep addon source under `addons/main/`.
 - Add abstractions only when they reduce real duplication or clarify ownership.
-- Do not rename folders just to match a diagram if it breaks project tooling.
+- Keep generated output, logs, reports, and release artifacts untouched.
+- Do not rename folders to match diagrams or documentation if tooling already works.
 
 ## Escalate Before Changing
 
-Ask for approval before:
+Ask SQA before:
 
 - moving addon source;
 - changing build tooling;
-- adding new dependencies;
-- introducing broad gameplay systems;
-- changing public function names used by missions.
+- adding dependencies;
+- changing public function names;
+- adding native binaries;
+- broad `CfgVehicles` inheritance changes;
+- multiplayer authority or synchronization work;
+- release packaging or signing behavior.
 
-## Approved Exception Under Evaluation
+## Approved Exception
 
 ### FIXICS-EXC-2026-06-07-VEHICLE-PHYSICS-BEYOND-SQF
 
-Phase 1 Ground Vehicle Physics may evaluate work beyond normal SQF-only runtime changes when all of these conditions are true:
+Phase 1 may evaluate work beyond SQF when SQA reproduces a vehicle physics defect that remains after local SQF mitigation and the defect is tied to engine handling, config, PhysX, gearbox, or extension behavior.
 
-- SQA reproduces a vehicle physics defect that remains after the local SQF rollback/autobrake mitigation.
-- The defect is tied to engine vehicle handling, class config, PhysX, gearbox, or extension behavior rather than ordinary script control flow.
-- The change is documented in a design or evaluation spec before implementation.
-- The user explicitly approves the chosen path before any non-SQF source, dependency, binary, or broad config patch is added.
+This exception authorizes the current native source scaffold, optional SQF bridge, local Windows x64 build wrapper, and approved root `FIXICSPhysics_x64.dll`.
 
-This exception authorizes the current native source scaffold, optional SQF bridge, local Windows x64 build wrapper, and approved root `FIXICSPhysics_x64.dll` after SQA reported that the config-class experiment made handling worse. It does not authorize additional native binaries, new dependencies, multiplayer authority changes, broad `CfgVehicles` patching, release packaging, or edits to generated HEMTT output.
+It does not authorize additional native binaries, new dependencies, multiplayer authority, broad config patching, release packaging, or generated-output edits.
 
 Preferred escalation order:
 
 1. SQF diagnostics and local scripted mitigation.
-2. Targeted `CfgVehicles` / vehicle handling config-class experiments.
-3. Native extension research only if config-class work cannot reach the required behavior.
+2. Targeted config-class experiment.
+3. Native extension research or implementation.

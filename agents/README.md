@@ -1,10 +1,10 @@
-# Agents
+﻿# Agents
 
-This folder contains role definitions for Codex work in FIXICS. These are guidance files, not running services.
+Agent files are guidance overlays for Codex work in FIXICS. They are not runtime services.
+
+Use `CODEX.md` for workflow, `governance/policies/` for rules, and these files for task-specific focus.
 
 ## Layout
 
-- `orchestrator/`: planning, routing, approval gates, and task decomposition.
-- `specialist/`: focused guidance for SQF, config, QA, and related work.
-
-Use these files to keep agent work scoped. A narrow role with clear validation is more useful than a broad generic agent.
+- `orchestrator/`: planning, approval, and routing.
+- `specialist/`: SQF, config, physics, validation, and phase overlays.

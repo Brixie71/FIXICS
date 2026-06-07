@@ -1,0 +1,72 @@
+﻿project: FIXICS
+
+default_validation:
+  automated:
+    - powershell -ExecutionPolicy Bypass -File tests/integration/fixics-governance-static.ps1
+    - powershell -ExecutionPolicy Bypass -File tools/check.ps1
+
+routes:
+  planning:
+    specialist: agents/orchestrator/workflow.md
+    approval: risk_based
+    validation:
+      - powershell -ExecutionPolicy Bypass -File tests/integration/fixics-governance-static.ps1
+
+  sqf_behavior:
+    specialist: agents/specialist/sqf-agent.md
+    source_paths:
+      - addons/main/functions/
+      - addons/main/stringtable.xml
+      - addons/main/config.cpp
+    validation:
+      - powershell -ExecutionPolicy Bypass -File tests/integration/fixics-vehicle-physics-static.ps1
+      - powershell -ExecutionPolicy Bypass -File tools/check.ps1
+
+  vehicle_physics:
+    specialist: agents/specialist/physics-agent.md
+    source_paths:
+      - addons/main/functions/
+      - addons/main/config.cpp
+      - native/fixics_physics/
+      - docs/fixes/
+      - docs/reference/
+    validation:
+      - powershell -ExecutionPolicy Bypass -File tests/integration/fixics-vehicle-physics-static.ps1
+      - powershell -ExecutionPolicy Bypass -File tools/check.ps1
+
+  config:
+    specialist: agents/specialist/config-agent.md
+    source_paths:
+      - addons/main/config.cpp
+      - addons/main/script_version.hpp
+      - .hemtt/project.toml
+      - mod.cpp
+      - meta.cpp
+    validation:
+      - powershell -ExecutionPolicy Bypass -File tools/check.ps1
+
+  qa_review:
+    specialist: agents/specialist/qa-agent.md
+    source_paths:
+      - addons/main/
+      - tools/
+      - docs/
+      - governance/
+    validation:
+      - powershell -ExecutionPolicy Bypass -File tests/integration/fixics-governance-static.ps1
+      - powershell -ExecutionPolicy Bypass -File tools/check.ps1
+
+  documentation:
+    specialist: agents/orchestrator/workflow.md
+    source_paths:
+      - README.md
+      - AGENTS.md
+      - CODEX.md
+      - docs/
+      - agents/
+      - governance/
+      - orchestration/
+      - prompts/
+    validation:
+      - powershell -ExecutionPolicy Bypass -File tests/integration/fixics-governance-static.ps1
+      - powershell -ExecutionPolicy Bypass -File tools/check.ps1

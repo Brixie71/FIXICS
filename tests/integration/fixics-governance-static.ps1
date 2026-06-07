@@ -80,7 +80,7 @@ if ($StaleNamespace) {
     Add-Failure "Active guidance/tools contain stale BASEARMA identifiers: $(($StaleNamespace.Path | Sort-Object -Unique) -join ', ')"
 }
 
-$Gitignore = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot '.gitignore')
+$Gitignore = (Get-Content -Raw -LiteralPath (Join-Path $RepoRoot '.gitignore')) -replace "`r`n", "`n"
 foreach ($broadPattern in @(
     '(?m)^CODEX\.md$',
     '(?m)^AGENTS\.md$',

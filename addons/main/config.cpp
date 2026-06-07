@@ -37,6 +37,7 @@ class CfgFunctions
             class applySlopeRollback {};
             class applyHandbrakeLock {};
             class applyABSBraking {};
+            class getDriverInputIntent {};
             class registerVehicleControls {};
             class updateDriverController {};
             class logVehicleHandlingConfig {};

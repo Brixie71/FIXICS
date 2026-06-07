@@ -46,8 +46,9 @@ private _inputBlocksSlopeAssist = false;
 private _driver = driver _vehicle;
 if (hasInterface && {!isNull _driver} && {_driver == player}) then {
     private _isHandbraking = (inputAction "CarHandBrake") > 0;
-    _hasForwardInput = (inputAction "CarForward") > 0;
-    _hasBackInput = (inputAction "CarBack") > 0;
+    private _driverInputIntent = call FIXICS_fnc_getDriverInputIntent;
+    _hasForwardInput = _driverInputIntent # 0;
+    _hasBackInput = _driverInputIntent # 1;
     _inputBlocksSlopeAssist = _isHandbraking || {_hasForwardInput && {_hasBackInput}};
 };
 

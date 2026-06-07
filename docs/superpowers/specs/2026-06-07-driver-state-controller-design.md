@@ -34,7 +34,9 @@ The controller fixes three related failures:
 
 ## Direction Transition
 
-The controller reads `velocityModelSpace`, where positive Y is forward. Opposite input enters `SERVICE_BRAKE` and calls `FIXICS_fnc_applyABSBraking` with a low-speed override. If ABS is disabled or cannot apply, the controller uses a direct longitudinal service-brake fallback.
+The controller normalizes `CarForward`, `CarFastForward`, and `CarSlowForward` into one forward intent before evaluating W/S state. It reads `velocityModelSpace`, where positive Y is forward. Opposite input enters `SERVICE_BRAKE` and passes that normalized direction to `FIXICS_fnc_applyABSBraking` with a low-speed override. ABS reduces model-space Y toward zero without rewriting lateral or vertical model-space velocity. If ABS is disabled or cannot apply, the controller uses a direct longitudinal service-brake fallback.
+
+`SERVICE_BRAKE` and `NEUTRAL` keep normal engine braking enabled with `disableBrakes false`. `DRIVE`, `REVERSE`, and permitted slope coasting disable idle autobrake. The configured launch velocity is applied only after the neutral handoff, never during ordinary held W/S input.
 
 When speed reaches `FIXICS_directionChangeThresholdKmh`, the controller latches the requested direction, clamps model-space Y velocity to exactly zero, and enters `NEUTRAL` for `FIXICS_directionNeutralPulseSeconds`. While the same W/S input remains held, each controller update preserves zero longitudinal velocity so Arma's automatic gearbox can observe a neutral stop. When the pulse expires, the controller applies `FIXICS_directionLaunchVelocity` in the requested direction.
 
@@ -81,6 +83,6 @@ References:
 
 ## Validation
 
-Automated validation covers registration, settings, state names, monitor ownership, model-space velocity use, handbrake edge detection, ABS integration, grounded operation, and downhill-only powered slope assist.
+Automated validation covers registration, all forward input action variants, settings, state names, monitor ownership, model-space ABS velocity use, handbrake edge detection, grounded operation, and downhill-only powered slope assist.
 
 Manual SQA validation must cover flat and sloped W/S reversals, Hold and Toggle handbrake modes, ACE handbrake actions, controller disable handoff, and ABS tuning.

@@ -5,18 +5,20 @@
  *
  * Arguments:
  *   0: Vehicle to update <OBJECT>
- *   1: Ignore normal low-speed cutoff for a direction transition <BOOL>
- *   2: Elapsed time since the previous update <NUMBER> (default: 0.25)
+ *   1: Requested direction: -1 reverse, 0 combined brake, 1 forward <NUMBER>
+ *   2: Ignore normal low-speed cutoff for a direction transition <BOOL>
+ *   3: Elapsed time since the previous update <NUMBER> (default: 0.25)
  *
  * Return: <BOOL> true when ABS changed vehicle velocity
  * Locality: local machine; vehicle velocity changes only apply where the vehicle is local
  *
  * Example:
- *   [_vehicle] call FIXICS_fnc_applyABSBraking;
+ *   [_vehicle, 1, true, _deltaTime] call FIXICS_fnc_applyABSBraking;
  */
 
 params [
     ["_vehicle", objNull, [objNull]],
+    ["_requestedDirection", 0, [0]],
     ["_ignoreLowSpeedCutoff", false, [true]],
     ["_deltaTime", 0.25, [0]]
 ];
@@ -54,13 +56,9 @@ if ((inputAction "CarHandBrake") > 0) exitWith {
     false
 };
 
-private _hasForwardInput = (inputAction "CarForward") > 0;
-private _hasBackInput = (inputAction "CarBack") > 0;
-if (_hasForwardInput && {_hasBackInput}) exitWith {
-    false
-};
-
-private _velocity = velocity _vehicle;
+_requestedDirection = (_requestedDirection max -1) min 1;
+private _modelVelocity = velocityModelSpace _vehicle;
+private _longitudinalSpeed = _modelVelocity # 1;
 private _vehicleForward = vectorDir _vehicle;
 private _forward = [_vehicleForward # 0, _vehicleForward # 1, 0];
 private _forwardLength = sqrt (((_forward # 0) * (_forward # 0)) + ((_forward # 1) * (_forward # 1)));
@@ -70,8 +68,7 @@ if (_forwardLength <= 0) exitWith {
 
 _forward = _forward vectorMultiply (1 / _forwardLength);
 
-private _longitudinalSpeed = ((_velocity # 0) * (_forward # 0)) + ((_velocity # 1) * (_forward # 1));
-private _speedKmh = abs (speed _vehicle);
+private _speedKmh = (abs _longitudinalSpeed) * 3.6;
 private _lowSpeedCutoffKmh = missionNamespace getVariable ["FIXICS_absLowSpeedCutoffKmh", 3];
 if (!_ignoreLowSpeedCutoff && {_speedKmh <= _lowSpeedCutoffKmh}) exitWith {
     false
@@ -79,8 +76,15 @@ if (!_ignoreLowSpeedCutoff && {_speedKmh <= _lowSpeedCutoffKmh}) exitWith {
 
 private _stationarySpeedKmh = missionNamespace getVariable ["FIXICS_stationaryBrakeBypassSpeedKmh", 1];
 private _stationarySpeedMps = _stationarySpeedKmh / 3.6;
-private _isForwardBraking = _hasBackInput && {_longitudinalSpeed > _stationarySpeedMps};
-private _isReverseBraking = _hasForwardInput && {_longitudinalSpeed < -_stationarySpeedMps};
+private _brakingThreshold = [_stationarySpeedMps, 0] select _ignoreLowSpeedCutoff;
+private _isForwardBraking = (
+    _requestedDirection < 0
+    || {_requestedDirection == 0}
+) && {_longitudinalSpeed > _brakingThreshold};
+private _isReverseBraking = (
+    _requestedDirection > 0
+    || {_requestedDirection == 0}
+) && {_longitudinalSpeed < -_brakingThreshold};
 private _isBraking = _isForwardBraking || {_isReverseBraking};
 if (!_isBraking) exitWith {
     false
@@ -102,11 +106,6 @@ if (_downhillLength > 0) then {
 };
 
 private _slopeCompensation = missionNamespace getVariable ["FIXICS_absSlopeCompensation", 0.25];
-private _brakeDirection = if (_isForwardBraking) then {
-    -1
-} else {
-    1
-};
 private _downhillBrakeLoad = if (_isForwardBraking) then {
     _downhillAlignment max 0
 } else {
@@ -125,16 +124,19 @@ if (_delta <= 0) exitWith {
     false
 };
 
-_vehicle setVelocity [
-    (_velocity # 0) + ((_forward # 0) * _brakeDirection * _delta),
-    (_velocity # 1) + ((_forward # 1) * _brakeDirection * _delta),
-    _velocity # 2
-];
+private _newLongitudinalSpeed = if (_isForwardBraking) then {
+    (_longitudinalSpeed - _delta) max 0
+} else {
+    (_longitudinalSpeed + _delta) min 0
+};
+_modelVelocity set [1, _newLongitudinalSpeed];
+_vehicle setVelocityModelSpace _modelVelocity;
 
 if (missionNamespace getVariable ["FIXICS_absDebugLogging", false]) then {
     diag_log format [
-        "FIXICS ABS: type=%1 speedKmh=%2 longitudinalMps=%3 delta=%4 slope=%5 downhillLoad=%6",
+        "FIXICS ABS: type=%1 requestedDirection=%2 speedKmh=%3 longitudinalMps=%4 delta=%5 slope=%6 downhillLoad=%7",
         typeOf _vehicle,
+        _requestedDirection,
         _speedKmh,
         _longitudinalSpeed,
         _delta,

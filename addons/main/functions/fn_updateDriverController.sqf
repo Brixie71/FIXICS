@@ -168,15 +168,11 @@ if (_persistentHandbrake || {_temporaryHandbrake}) exitWith {
     true
 };
 
-private _hasForwardInput = (inputAction "CarForward") > 0;
-private _hasBackInput = (inputAction "CarBack") > 0;
-private _requestedDirection = 0;
-if (_hasForwardInput && {!_hasBackInput}) then {
-    _requestedDirection = 1;
-};
-if (_hasBackInput && {!_hasForwardInput}) then {
-    _requestedDirection = -1;
-};
+(call FIXICS_fnc_getDriverInputIntent) params [
+    "_hasForwardInput",
+    "_hasBackInput",
+    "_requestedDirection"
+];
 
 private _modelVelocity = velocityModelSpace _vehicle;
 private _longitudinalSpeed = _modelVelocity # 1;
@@ -205,7 +201,7 @@ if (_transitionTarget == 0 && {_isOppositeDirection}) then {
 if (_transitionTarget != 0) exitWith {
     if (_neutralUntil > 0) then {
         [_vehicle, "NEUTRAL"] call _setState;
-        _vehicle disableBrakes true;
+        _vehicle disableBrakes false;
 
         _modelVelocity = velocityModelSpace _vehicle;
         _modelVelocity set [1, 0];
@@ -222,9 +218,14 @@ if (_transitionTarget != 0) exitWith {
         };
     } else {
         [_vehicle, "SERVICE_BRAKE"] call _setState;
-        _vehicle disableBrakes true;
+        _vehicle disableBrakes false;
 
-        private _absApplied = [_vehicle, true, _deltaTime] call FIXICS_fnc_applyABSBraking;
+        private _absApplied = [
+            _vehicle,
+            _transitionTarget,
+            true,
+            _deltaTime
+        ] call FIXICS_fnc_applyABSBraking;
         _modelVelocity = velocityModelSpace _vehicle;
         _longitudinalSpeed = _modelVelocity # 1;
 
@@ -257,9 +258,9 @@ if (_transitionTarget != 0) exitWith {
 
 if (_isCombinedBrake) exitWith {
     [_vehicle, "SERVICE_BRAKE"] call _setState;
-    _vehicle disableBrakes true;
+    _vehicle disableBrakes false;
 
-    private _absApplied = [_vehicle, true, _deltaTime] call FIXICS_fnc_applyABSBraking;
+    private _absApplied = [_vehicle, 0, true, _deltaTime] call FIXICS_fnc_applyABSBraking;
     _modelVelocity = velocityModelSpace _vehicle;
     _longitudinalSpeed = _modelVelocity # 1;
 
@@ -283,11 +284,6 @@ if (_requestedDirection != 0) exitWith {
     private _state = ["REVERSE", "DRIVE"] select (_requestedDirection > 0);
     [_vehicle, _state] call _setState;
     _vehicle disableBrakes true;
-
-    if ((_longitudinalSpeed * _requestedDirection) < _launchVelocity) then {
-        _modelVelocity set [1, _requestedDirection * _launchVelocity];
-        _vehicle setVelocityModelSpace _modelVelocity;
-    };
 
     [_vehicle, _deltaTime] call FIXICS_fnc_applySlopeRollback;
     true

@@ -322,3 +322,35 @@ Record validation runs that matter for implementation, review, or release decisi
   5. Repeat both transitions uphill and downhill.
   6. Confirm ordinary S braking while driving remains smooth and does not enter a direction transition when S is released before the threshold.
   7. Compare neutral pulse values `0.03`, `0.08`, and `0.15` seconds across several vehicle classes.
+
+### 2026-06-07 - Reverse-to-Drive forward-input and ABS correction
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: failed, exit code 1
+- Automated coverage: regression failed for the missing shared input decoder, `CarFastForward`/`CarSlowForward`, controller-decoded ABS intent, model-space ABS writes, normal braking in `SERVICE_BRAKE`/`NEUTRAL`, and launch-velocity isolation.
+- Manual coverage: SQA reproduced Reverse-to-Drive ignoring W while reverse motion remained.
+- Notes: root cause was the controller reading only `CarForward`; Arma can bind W to another forward action while S remains `CarBack`.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: verified shared W/S decoding, all three forward action variants, direction intent passed into ABS, model-space longitudinal braking, outer-scope slope input assignment, engine braking during service/neutral states, and no ordinary-drive launch injection.
+- Manual coverage: not run after implementation.
+- Notes: manual Arma testing is still required for Reverse-to-Drive across vehicle classes and slopes.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\check.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT loaded FIXICS 0.1.0.0, rapified 2 addon configs, compiled 16 SQF files, and checked 1 stringtable with no warnings.
+- Manual coverage: not run.
+- Notes: no native extension source changed.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\build.ps1`
+- Result: blocked, exit code 1
+- Automated coverage: build could not replace `.hemttout\build` because the running Arma 3 process held the directory open.
+- Manual coverage: not run.
+- Notes: do not terminate the active SQA session automatically; rebuild the normal test profile after Arma exits.
+
+- Command: `.\hemtt.exe release --no-archive`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT rapified 2 addon configs, compiled 16 SQF files, checked 1 stringtable, and built 1 PBO.
+- Manual coverage: not run.
+- Notes: packaged fallback artifact is `.hemttout/release/addons/fixics_main.pbo`; HEMTT warned that Arma 3 Tools was not installed, but no supported source required binarization.

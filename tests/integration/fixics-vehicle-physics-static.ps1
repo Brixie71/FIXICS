@@ -67,6 +67,7 @@ if ($Config -match '"A3_Soft_F"|\"A3_Armor_F\"') {
     'addons\main\functions\fn_applySlopeRollback.sqf',
     'addons\main\functions\fn_applyABSBraking.sqf',
     'addons\main\functions\fn_applyHandbrakeLock.sqf',
+    'addons\main\functions\fn_getDriverInputIntent.sqf',
     'addons\main\functions\fn_registerVehicleControls.sqf',
     'addons\main\functions\fn_updateDriverController.sqf',
     'addons\main\functions\fn_logVehicleHandlingConfig.sqf',
@@ -93,6 +94,7 @@ Assert-Contains $Config 'class monitorVehicleAutobrake\s*\{\s*\};' 'monitorVehic
 Assert-Contains $Config 'class applySlopeRollback\s*\{\s*\};' 'applySlopeRollback must be registered in CfgFunctions.'
 Assert-Contains $Config 'class applyABSBraking\s*\{\s*\};' 'applyABSBraking must be registered in CfgFunctions.'
 Assert-Contains $Config 'class applyHandbrakeLock\s*\{\s*\};' 'applyHandbrakeLock must be registered in CfgFunctions.'
+Assert-Contains $Config 'class getDriverInputIntent\s*\{\s*\};' 'getDriverInputIntent must be registered in CfgFunctions.'
 Assert-Contains $Config 'class registerVehicleControls\s*\{\s*\};' 'registerVehicleControls must be registered in CfgFunctions.'
 Assert-Contains $Config 'class updateDriverController\s*\{\s*\};' 'updateDriverController must be registered in CfgFunctions.'
 Assert-Contains $Config 'class logVehicleHandlingConfig\s*\{\s*\};' 'logVehicleHandlingConfig must be registered in CfgFunctions.'
@@ -239,22 +241,39 @@ if (Test-Path -LiteralPath $AbsFile) {
     Assert-Contains $Abs 'FIXICS_absEnabled' 'ABS helper must honor FIXICS_absEnabled.'
     Assert-Contains $Abs 'FIXICS_handbrakeEnabled' 'ABS helper must respect ACE handbrake state.'
     Assert-Contains $Abs 'inputAction "CarHandBrake"' 'ABS helper must check built-in handbrake input.'
-    Assert-Contains $Abs 'inputAction "CarForward"' 'ABS helper must check forward input.'
-    Assert-Contains $Abs 'inputAction "CarBack"' 'ABS helper must check reverse/brake input.'
+    Assert-Contains $Abs '"_requestedDirection"' 'ABS helper must accept the controller-decoded direction intent.'
+    if ($Abs -match 'inputAction "Car(?:Forward|FastForward|SlowForward|Back)"') {
+        Add-Failure 'ABS helper must not independently decode W/S input.'
+    }
     Assert-Contains $Abs 'vectorDir _vehicle' 'ABS helper must use vehicle orientation.'
-    Assert-Contains $Abs 'velocity _vehicle' 'ABS helper must read current vehicle velocity.'
+    Assert-Contains $Abs 'velocityModelSpace _vehicle' 'ABS helper must read model-space longitudinal velocity.'
     Assert-Contains $Abs 'private _isForwardBraking' 'ABS helper must classify forward braking.'
     Assert-Contains $Abs 'private _isReverseBraking' 'ABS helper must classify reverse braking.'
+    Assert-Contains $Abs '_requestedDirection < 0[\s\S]*?_longitudinalSpeed > _brakingThreshold' 'ABS helper must brake forward motion for reverse intent.'
+    Assert-Contains $Abs '_requestedDirection > 0[\s\S]*?_longitudinalSpeed < -_brakingThreshold' 'ABS helper must brake reverse motion for forward intent.'
     Assert-Contains $Abs 'FIXICS_absLowSpeedCutoffKmh' 'ABS helper must honor the low-speed cutoff setting.'
     Assert-Contains $Abs 'FIXICS_absBrakeStrength' 'ABS helper must honor the brake strength setting.'
     Assert-Contains $Abs 'FIXICS_absReleaseBias' 'ABS helper must honor the release bias setting.'
     Assert-Contains $Abs 'FIXICS_absSlopeCompensation' 'ABS helper must honor slope compensation setting.'
     Assert-Contains $Abs 'FIXICS_absDebugLogging' 'ABS helper must honor debug logging setting.'
-    Assert-Contains $Abs 'setVelocity' 'ABS helper must apply adjusted velocity.'
+    Assert-Contains $Abs 'setVelocityModelSpace' 'ABS helper must apply adjusted model-space velocity.'
+    if ($Abs -match '_vehicle setVelocity \[') {
+        Add-Failure 'ABS helper must not rewrite world-space velocity.'
+    }
     Assert-Contains $Abs '"_ignoreLowSpeedCutoff"' 'ABS helper must accept a direction-transition low-speed override.'
     Assert-Contains $Abs '!_ignoreLowSpeedCutoff' 'ABS helper must bypass the normal low-speed cutoff only when requested.'
     Assert-Contains $Abs '"_deltaTime"' 'ABS helper must accept elapsed time for controller/monitor-independent tuning.'
     Assert-Contains $Abs 'private _timeScale = \(\(_deltaTime[\s\S]*?\) / 0\.25;' 'ABS helper must normalize braking against the original monitor interval.'
+}
+
+$DriverInputFile = Join-Path $RepoRoot 'addons\main\functions\fn_getDriverInputIntent.sqf'
+if (Test-Path -LiteralPath $DriverInputFile) {
+    $DriverInput = Get-Content -Raw -LiteralPath $DriverInputFile
+    Assert-Contains $DriverInput 'inputAction "CarForward"' 'Driver input decoder must include standard forward input.'
+    Assert-Contains $DriverInput 'inputAction "CarFastForward"' 'Driver input decoder must include fast-forward input.'
+    Assert-Contains $DriverInput 'inputAction "CarSlowForward"' 'Driver input decoder must include slow-forward input.'
+    Assert-Contains $DriverInput 'inputAction "CarBack"' 'Driver input decoder must include reverse/brake input.'
+    Assert-Contains $DriverInput '\[_hasForwardInput, _hasBackInput, _requestedDirection\]' 'Driver input decoder must return normalized W/S intent.'
 }
 
 $SlopeRollbackFile = Join-Path $RepoRoot 'addons\main\functions\fn_applySlopeRollback.sqf'
@@ -263,8 +282,12 @@ if (Test-Path -LiteralPath $SlopeRollbackFile) {
     Assert-Contains $SlopeRollback 'surfaceNormal' 'Slope rollback helper must read terrain slope with surfaceNormal.'
     Assert-Contains $SlopeRollback 'setVelocity' 'Slope rollback helper must apply downhill velocity.'
     Assert-Contains $SlopeRollback 'velocity _vehicle' 'Slope rollback helper must preserve existing velocity.'
-    Assert-Contains $SlopeRollback 'inputAction "CarForward"' 'Slope rollback helper must not fight forward throttle input.'
-    Assert-Contains $SlopeRollback 'inputAction "CarBack"' 'Slope rollback helper must not fight reverse throttle input.'
+    Assert-Contains $SlopeRollback 'FIXICS_fnc_getDriverInputIntent' 'Slope rollback helper must use the shared W/S input decoder.'
+    Assert-Contains $SlopeRollback '_hasForwardInput = _driverInputIntent # 0' 'Slope rollback helper must assign decoded forward input into the outer scope.'
+    Assert-Contains $SlopeRollback '_hasBackInput = _driverInputIntent # 1' 'Slope rollback helper must assign decoded reverse input into the outer scope.'
+    if ($SlopeRollback -match 'inputAction "Car(?:Forward|FastForward|SlowForward|Back)"') {
+        Add-Failure 'Slope rollback helper must not independently decode W/S input.'
+    }
     Assert-Contains $SlopeRollback 'inputAction "CarHandBrake"' 'Slope rollback helper must respect built-in temporary handbrake input.'
     Assert-Contains $SlopeRollback 'private _hasDriveInput' 'Slope rollback helper must calculate W/S drive input.'
     if ($SlopeRollback -match 'if\s*\(\s*_hasDriveInput\s*\)\s*exitWith\s*\{\s*false\s*\}') {
@@ -309,8 +332,10 @@ if (Test-Path -LiteralPath $DriverControllerFile) {
     Assert-Contains $DriverController 'isTouchingGround' 'Driver controller must not rewrite land-vehicle velocity while airborne.'
     Assert-Contains $DriverController 'velocityModelSpace' 'Driver controller must read model-space longitudinal velocity.'
     Assert-Contains $DriverController 'setVelocityModelSpace' 'Driver controller must apply model-space direction transitions.'
-    Assert-Contains $DriverController 'inputAction "CarForward"' 'Driver controller must read forward input.'
-    Assert-Contains $DriverController 'inputAction "CarBack"' 'Driver controller must read reverse/brake input.'
+    Assert-Contains $DriverController 'FIXICS_fnc_getDriverInputIntent' 'Driver controller must use the shared W/S input decoder.'
+    if ($DriverController -match 'inputAction "Car(?:Forward|FastForward|SlowForward|Back)"') {
+        Add-Failure 'Driver controller must not independently decode W/S input.'
+    }
     Assert-Contains $DriverController 'inputAction "CarHandBrake"' 'Driver controller must honor the configured X handbrake input.'
     Assert-Contains $DriverController '"COAST"' 'Driver controller must expose a COAST state.'
     Assert-Contains $DriverController '"DRIVE"' 'Driver controller must expose a DRIVE state.'
@@ -340,9 +365,21 @@ if (Test-Path -LiteralPath $DriverControllerFile) {
     Assert-Contains $DriverController 'FIXICS_priorBrakesDisabled' 'Driver controller must restore the pre-FIXICS autobrake state.'
     Assert-Contains $DriverController 'brakesDisabled' 'Driver controller must read the pre-FIXICS autobrake state.'
     Assert-Contains $DriverController 'FIXICS_driverControllerLastUpdate' 'Driver controller must calculate elapsed update time.'
-    Assert-Contains $DriverController '\[_vehicle, true, _deltaTime\]' 'Driver controller must pass elapsed time to ABS.'
+    Assert-Contains $DriverController '\[\s*_vehicle,\s*_transitionTarget,\s*true,\s*_deltaTime\s*\]' 'Direction transitions must pass decoded intent and elapsed time to ABS.'
+    Assert-Contains $DriverController '\[_vehicle, 0, true, _deltaTime\]' 'Combined braking must pass neutral brake intent and elapsed time to ABS.'
     Assert-Contains $DriverController '\[_vehicle, _deltaTime\]' 'Driver controller must pass elapsed time to slope assistance.'
     Assert-Contains $DriverController 'FIXICS_absReleaseBias' 'Direction-transition fallback braking must honor ABS release bias.'
+    Assert-Contains $DriverController '\[_vehicle, "NEUTRAL"\] call _setState;\s*_vehicle disableBrakes false;' 'Neutral handoff must keep normal engine braking enabled.'
+    $ServiceBrakeEngineBrakeCount = [regex]::Matches(
+        $DriverController,
+        '\[_vehicle, "SERVICE_BRAKE"\] call _setState;\s*_vehicle disableBrakes false;'
+    ).Count
+    if ($ServiceBrakeEngineBrakeCount -lt 2) {
+        Add-Failure 'All service-brake paths must keep normal engine braking enabled.'
+    }
+    if ($DriverController -match 'if \(_requestedDirection != 0\) exitWith \{[\s\S]*?_modelVelocity set \[1,\s*_requestedDirection \* _launchVelocity\]') {
+        Add-Failure 'Ordinary drive/reverse input must not inject launch velocity outside the neutral handoff.'
+    }
     if ($DriverController -match 'if\s*\(\(abs _longitudinalSpeed\)\s*<=\s*_directionThreshold\)\s*then\s*\{\s*_modelVelocity set \[1,\s*_requestedDirection \* _launchVelocity\]') {
         Add-Failure 'Direction transition must not launch in the same update that first reaches the speed threshold.'
     }

@@ -1,0 +1,39 @@
+﻿project: FIXICS
+role: orchestrator
+
+source_of_truth:
+  - AGENTS.md
+  - CODEX.md
+  - governance/policies/coding-standards.md
+  - governance/policies/scope-control.md
+  - governance/policies/phase-control.md
+
+naming:
+  function_prefix: FIXICS_fnc_
+  global_prefix: FIXICS_
+  pbo_prefix: "x\\fixics\\addons\\main"
+
+forbidden_paths:
+  - .hemttout/
+  - releases/
+  - evals/reports/
+  - "*.pbo"
+  - "*.bisign"
+  - "*.biprivatekey"
+
+approval_required:
+  - gameplay_behavior
+  - architecture
+  - public_interface
+  - native_extension
+  - broad_config_patch
+  - multiplayer_authority
+  - new_dependency
+
+validation:
+  default:
+    - powershell -ExecutionPolicy Bypass -File tests/integration/fixics-governance-static.ps1
+    - powershell -ExecutionPolicy Bypass -File tools/check.ps1
+  vehicle_physics:
+    - powershell -ExecutionPolicy Bypass -File tests/integration/fixics-vehicle-physics-static.ps1
+    - powershell -ExecutionPolicy Bypass -File tools/check.ps1

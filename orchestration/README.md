@@ -1,10 +1,8 @@
-# Orchestration
+﻿# Orchestration
 
-This folder defines how Codex should route work inside FIXICS.
+This folder stores stable routing and current project facts for Codex sessions.
 
-## Files
+- `router.yaml`: task type to specialist overlay and validation mapping.
+- `state.md`: current FIXICS facts and constraints.
 
-- `router.yaml`: task type to specialist mapping.
-- `state.md`: stable project facts and current constraints.
-
-The orchestration layer is documentation for Codex sessions. It does not run code or replace the HEMTT addon structure.
+It is documentation only. It does not run code or replace HEMTT structure.

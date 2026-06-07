@@ -1,12 +1,10 @@
-# Prompts
+﻿# Prompts
 
-Reusable prompt templates for Codex work in FIXICS.
+Reusable prompt templates for FIXICS work.
 
-## Files
+- `registry.yaml`: prompt index.
+- `library/sqf-function.md`: SQF implementation context.
+- `library/code-review.md`: defect-focused review context.
+- `library/validation-report.md`: validation summary format.
 
-- `registry.yaml`: index of available prompts.
-- `library/sqf-function.md`: implementation prompt for SQF functions.
-- `library/code-review.md`: review prompt focused on defects and regressions.
-- `library/validation-report.md`: validation summary prompt.
-
-Prompts should stay project-specific and short enough to paste into a future agent instruction.
+Prompts are project-specific reminders, not policy. Governance files remain authoritative.

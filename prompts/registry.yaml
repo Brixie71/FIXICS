@@ -1,0 +1,19 @@
+﻿prompts:
+  sqf_function:
+    path: prompts/library/sqf-function.md
+    use_for:
+      - adding FIXICS SQF functions
+      - changing runtime behavior
+      - adding localized text
+  code_review:
+    path: prompts/library/code-review.md
+    use_for:
+      - reviewing changes
+      - finding regressions
+      - checking validation gaps
+  validation_report:
+    path: prompts/library/validation-report.md
+    use_for:
+      - summarizing check results
+      - documenting manual Arma coverage
+      - recording known gaps

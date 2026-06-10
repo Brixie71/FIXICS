@@ -1,4 +1,4 @@
-# FIXICS — Arma 3 Physics Improvements
+# FIXICS — Arma 3 Vehicle Physics Improvements
 
 > Targeted, SQA-validated physics improvements for Arma 3 ground vehicles. No engine replacement — just better behavior within what the engine supports.
 
@@ -8,11 +8,15 @@
 ![CBA](https://img.shields.io/badge/CBA__A3-Required-red)
 ![License](https://img.shields.io/badge/License-APL--SA-green)
 
+> **No releases yet.** Build from source using the instructions below.
+
 ---
 
 ## Overview
 
 FIXICS collaborates with SQA to research, design, implement, and validate Arma 3 physics improvements phase by phase. Every behavior change is approved before implementation, regression risk is tracked, and each phase is gated by SQA sign-off before the next begins.
+
+All public functions use the `FIXICS_fnc_*` prefix. All runtime namespace keys use the `FIXICS_*` prefix. The PBO prefix is `x\fixics\addons\main`.
 
 ---
 
@@ -53,7 +57,7 @@ A local service-brake path approximates ABS behavior. Brake strength, release bi
 Opposite direction input no longer waits for the vehicle to fully coast to zero. Drive input interrupts a Reverse run with a short controlled delay, matching the feel of a real vehicle gearbox handoff.
 
 **Driver-state controller**
-A fast per-frame controller replaces the slow implicit player-driving behavior with explicit Drive, Service Brake, Reverse, Coast, and Handbrake states.
+A fast per-frame CBA controller replaces slow implicit player-driving behavior with explicit Drive, Service Brake, Reverse, Coast, and Handbrake states.
 
 ---
 
@@ -63,26 +67,47 @@ A fast per-frame controller replaces the slow implicit player-driving behavior w
 |---|---|---|
 | [ACE3](https://github.com/acemod/ACE3) | ✅ Yes | Handbrake interaction, `ace_interact_menu` component |
 | [CBA_A3](https://github.com/CBATeam/CBA_A3) | ✅ Yes | Per-frame handler, addon settings |
+| [HEMTT](https://github.com/BrettMayson/HEMTT) | 🔧 Build only | Required to build from source |
 
 ---
 
-## Installation
+## Building from Source
 
-1. Download the latest release from the [Releases](../../releases) page.
-2. Extract the `@FIXICS` folder into your Arma 3 directory.
-3. Enable `@FIXICS`, `@ACE3`, and `@CBA_A3` in the Arma 3 launcher.
-
-### Building from source
+No packaged release is available yet. Build directly from the repository.
 
 ```powershell
-# Validate and check
-.\tools\check.ps1
+# 1. Validate static checks and governance tests
+powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1
+powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1
 
-# Build a packaged artifact
-.\tools\build.ps1
+# 2. Check HEMTT config, SQF compilation, and stringtable
+powershell -ExecutionPolicy Bypass -File tools\check.ps1
+
+# 3. Build a packaged addon artifact
+powershell -ExecutionPolicy Bypass -File tools\build.ps1
 ```
 
-Requires [HEMTT](https://github.com/BrettMayson/HEMTT).
+Built output is written to `.hemttout/`. Do not edit this directory directly.
+
+### Manual test launches
+
+```powershell
+# Launch VR test mission
+powershell -ExecutionPolicy Bypass -File tools\launch-vr.ps1
+
+# Launch Eden Editor
+powershell -ExecutionPolicy Bypass -File tools\launch-eden.ps1
+```
+
+---
+
+## Native Extension
+
+`native/fixics_physics/` contains the source for an optional Windows x64 extension (`FIXICSPhysics_x64.dll`). The extension is built with `tools/build-native.ps1`.
+
+> **Status:** The native extension is present in the repository root but release packaging is not yet approved. The extension can recommend slope deltas to the SQF layer but cannot intercept Arma input processing or replace the gearbox. All Phase 1 behavior remains in supported SQF/CBA APIs.
+
+New native binaries require explicit SQA approval before deployment.
 
 ---
 
@@ -100,6 +125,7 @@ All FIXICS settings are available in-game under **Options → Addon Options → 
 | `FIXICS_slopeCoastBreakawayVelocity` | `0.18` | `0 – 1` | m/s |
 | `FIXICS_slopeDriveAcceleration` | `0.22` | `0 – 1` | — |
 | `FIXICS_slopeDriveMaxSpeedKmh` | `120` | `10 – 240` | km/h |
+| `FIXICS_stationaryBrakeBypassSpeedKmh` | `1` | `0 – 5` | km/h |
 
 ### ABS braking
 
@@ -110,6 +136,7 @@ All FIXICS settings are available in-game under **Options → Addon Options → 
 | `FIXICS_absReleaseBias` | `0.35` | `0 – 1` | — |
 | `FIXICS_absLowSpeedCutoffKmh` | `3` | `0 – 20` | km/h |
 | `FIXICS_absSlopeCompensation` | `0.25` | `0 – 1` | — |
+| `FIXICS_absDebugLogging` | `false` | — | checkbox |
 
 ### Driver-state controller
 
@@ -135,15 +162,12 @@ All Phase 1 corrections are **local-only**. Multiplayer authority and server dep
 | No documented vehicle collision restitution setter | EL-003 | Abnormal bounce fixes need event-driven velocity clamps |
 | Suspension config is not a runtime SQF control surface | EL-004 | Bounce/bottoming corrections start as config-class research |
 
-Full engine limit records are in [`docs/reference/known-engine-limits.md`](docs/reference/known-engine-limits.md).
-
-Active workarounds are in [`docs/fixes/workaround-registry.md`](docs/fixes/workaround-registry.md).
+Full engine limit records: [`docs/reference/known-engine-limits.md`](docs/reference/known-engine-limits.md)
+Active workarounds: [`docs/fixes/workaround-registry.md`](docs/fixes/workaround-registry.md)
 
 ---
 
 ## Functions
-
-All public functions use the `FIXICS_fnc_*` prefix. All runtime namespace keys use the `FIXICS_*` prefix.
 
 | Function | Purpose |
 |---|---|
@@ -162,26 +186,16 @@ All public functions use the `FIXICS_fnc_*` prefix. All runtime namespace keys u
 
 ---
 
-## Project Structure
+## Repository Structure
 
 ```
 addons/
   main/
-    config.cpp
-    functions/
-      fn_init.sqf
-      fn_registerSettings.sqf
-      fn_registerAceInteractions.sqf
-      fn_registerVehicleControls.sqf
-      fn_monitorVehicleAutobrake.sqf
-      fn_updateDriverController.sqf
-      fn_setVehicleHandbrake.sqf
-      fn_shouldVehicleRoll.sqf
-      fn_applySlopeRollback.sqf
-      fn_applyHandbrakeLock.sqf
-      fn_applyABSBraking.sqf
-      fn_getDriverInputIntent.sqf
+    config.cpp              ← patch dependencies and CfgFunctions
+    functions/              ← one fn_name.sqf per function
+    missions/               ← manual test missions
     stringtable.xml
+agents/                     ← task-specific Codex role overlays
 docs/
   fixes/
     fix-log.md
@@ -191,10 +205,7 @@ docs/
     known-engine-limits.md
     physx-command-ref.md
     vehicle-config-ref.md
-  designs/
-    2026-06-07-local-vehicle-slope-rolling-design.md
-    2026-06-07-abs-braking-module-design.md
-    2026-06-07-driver-state-controller-design.md
+evals/                      ← automated evaluation scripts
 governance/
   policies/
     coding-standards.md
@@ -202,25 +213,45 @@ governance/
     phase-control.md
   audit/
     validation-log.md
+native/
+  fixics_physics/           ← optional Windows x64 extension source
+orchestration/              ← Codex routing data
+prompts/                    ← Codex prompt templates
+tests/
+  integration/              ← static governance and physics tests
 tools/
   check.ps1
   build.ps1
-AGENTS.md
-CODEX.md
+  build-native.ps1
+  launch-vr.ps1
+  launch-eden.ps1
+.hemtt/                     ← HEMTT build config
+.hemttout/                  ← generated build output (do not edit)
+AGENTS.md                   ← repository facts and mandatory commands
+CODEX.md                    ← workflow and approval gates
+FIXICSPhysics_x64.dll       ← built native extension (not yet release-packaged)
+build.ps1                   ← root build entry point
+meta.cpp
+mod.cpp
+SQF-Syntax.md
 ```
 
 ---
 
 ## Contributing
 
-FIXICS follows a strict phase-gated development process. All behavior changes require SQA approval before implementation.
-
-Before contributing, read:
+FIXICS follows a strict phase-gated development process. All behavior changes require SQA approval before implementation. Read these in order before contributing:
 
 1. [`AGENTS.md`](AGENTS.md) — repository facts and mandatory commands
 2. [`CODEX.md`](CODEX.md) — workflow and approval gates
 3. [`governance/policies/coding-standards.md`](governance/policies/coding-standards.md)
 4. [`governance/policies/scope-control.md`](governance/policies/scope-control.md)
+
+**Editing rules:**
+- Keep `CfgFunctions` synchronized with `fn_*.sqf` files
+- Use four-space indentation
+- Do not edit `.hemttout/`, packed PBOs, reports, logs, or private keys
+- Do not introduce new native binaries, multiplayer authority, or broad `CfgVehicles` patches without explicit SQA approval
 
 **SQA is the final authority for product behavior and acceptance.**
 
@@ -240,3 +271,6 @@ Please include:
 ## License
 
 FIXICS is released under the [Arma Public License Share Alike (APL-SA)](https://www.bohemia.net/community/licenses/arma-public-license-share-alike).
+EOF
+echo "done"
+Done

@@ -2,13 +2,15 @@
 
 > Targeted, SQA-validated physics improvements for Arma 3 ground vehicles. No engine replacement — just better behavior within what the engine supports.
 
+[![Steam Workshop](https://images.steamusercontent.com/ugc/16688676930552024864/18020FAE216B0F8B3E0A83CC09F17F01A1A2BE6B/?imw=5000&imh=5000&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=false)](https://steamcommunity.com/sharedfiles/filedetails/?id=3742055954)
+
 ![Phase](https://img.shields.io/badge/Phase%201-In%20Progress-orange)
 ![Arma 3](https://img.shields.io/badge/Arma%203-Required-blue)
 ![ACE3](https://img.shields.io/badge/ACE3-Required-red)
 ![CBA](https://img.shields.io/badge/CBA__A3-Required-red)
 ![License](https://img.shields.io/badge/License-APL--SA-green)
 
-> **No releases yet.** Build from source using the instructions below.
+> **Published on Steam Workshop:** [FIXICS](https://steamcommunity.com/sharedfiles/filedetails/?id=3742055954)
 
 ---
 
@@ -72,9 +74,17 @@ A fast per-frame CBA controller replaces slow implicit player-driving behavior w
 
 ---
 
+## Install From Steam Workshop
+
+1. Open the [FIXICS Workshop page](https://steamcommunity.com/sharedfiles/filedetails/?id=3742055954).
+2. Select **Subscribe**.
+3. Enable FIXICS, ACE3, and CBA_A3 in the Arma 3 Launcher.
+
+---
+
 ## Building from Source
 
-No packaged release is available yet. Build directly from the repository.
+For development or local builds, build directly from the repository.
 
 ```powershell
 # 1. Validate static checks and governance tests

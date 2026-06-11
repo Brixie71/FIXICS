@@ -69,7 +69,7 @@ Detailed root cause, math, before/after observations, approval, and VR evidence 
 
 ## Comments
 
-Use comments for intent, locality, engine constraints, and external references. Do not comment obvious assignments or SQF syntax.
+Use comments for intent, locality, engine constraints, and external references. Include Comments on SQF Syntax, for Balanced Technical and Easy-to-Understand purpose and instructions for SQA to adjust code themselves.
 
 ## Pre-Completion Checklist
 

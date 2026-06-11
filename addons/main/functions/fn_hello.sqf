@@ -3,7 +3,7 @@
     Basic load confirmation for the starter addon.
 */
 
-diag_log "[FIXICS] Main addon loaded.";
+diag_log "[FIXICS] Vehicle Physics Addon Loaded";
 
 if (hasInterface) then {
     [] spawn {

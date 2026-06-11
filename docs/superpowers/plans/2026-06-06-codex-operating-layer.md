@@ -1,12 +1,14 @@
 # Codex Operating Layer — Implementation Plan
 
-> **CODEX instruction:** Execute task-by-task using `superpowers:subagent-driven-development` (preferred) or `superpowers:executing-plans`. Each step uses `- [ ]` checkbox syntax. Do not skip steps. Do not mark a step complete unless its expected output was verified.
+> **Codex:** Do NOT start. Present the suggestion card. Wait for SQA approval before touching any file.
+> **Loop: Ask → Suggest → Wait → Do.**
+> Do not mark a step complete unless its expected output was verified.
 
 ---
 
 ## Goal
 
-Add a practical CODEX operating layer around the existing FIXICS HEMTT addon — without moving, renaming, or modifying any addon source files.
+Add a practical Codex operating layer around the existing FIXICS HEMTT addon — without moving, renaming, or modifying any addon source files.
 
 ## Architecture Constraints
 
@@ -16,9 +18,11 @@ AUTHORITATIVE (do not move or restructure):
   addons/main/      All addon source, functions, strings, missions
   .hemttout/        Generated output — never edited by hand
 
-NEW (CODEX support layer — add only):
-  CODEX.md          CODEX working memory and routing
-  agents/           Agent role definitions
+NEW (Codex support layer — add only):
+  CODEX.md          Codex working memory and routing
+  AGENTS.md         Delegator contract, session rules, hard rules
+  CONTEXT-LOAD.md   Objective-to-file map — controls what Codex loads
+  agents/           Agent role overlays
   tools/            PowerShell validation wrappers
   orchestration/    Task routing and shared state
   prompts/          Reusable prompt templates
@@ -30,15 +34,34 @@ NEW (CODEX support layer — add only):
 
 **Tech stack:** Arma 3 addon config, SQF, HEMTT, PowerShell, Markdown, YAML.
 
+**SQA Authority:** SQA approves each task before implementation. Codex presents one suggestion card per task. No task proceeds without a yes.
+
+---
+
+## Suggestion Card Format
+
+Before starting any task, present this to SQA:
+
+```
+Objective  : [task name]
+Approach   : [one sentence]
+Files      : [exact files to be created or modified]
+Risk       : [what could break]
+Ready to proceed?
+```
+
+Wait. Do not write code. Do not modify files. SQA says yes — then execute.
+
 ---
 
 ## Task 1 — Create Directory Scaffold
 
 **Purpose:** Establish the full folder structure before any files are created so later tasks can reference paths confidently.
 
----
+**Approval required:** No — directory creation only, no source changes.
 
-- [x] **Step 1.1 — Create all required directories**
+- [ ] Present suggestion card to SQA. Wait for yes.
+- [ ] Create all required directories:
 
 ```powershell
 New-Item -ItemType Directory -Force -Path `
@@ -59,28 +82,29 @@ New-Item -ItemType Directory -Force -Path `
   'docs\superpowers\plans'
 ```
 
-**Expected:** `Test-Path` returns `$true` for every path above.
-
----
-
-- [x] **Step 1.2 — Verify scaffold**
+- [ ] Verify scaffold:
 
 ```powershell
 Get-ChildItem -Recurse -Directory | Where-Object { $_.FullName -notmatch '\.hemttout|\.hemtt|addons' } | Select-Object FullName
 ```
 
-**Expected:** all 15 directories appear. No addon source directories appear in the new scaffold list.
+**Expected:** all 15 directories present. No addon source directories in the list.
+
+- [ ] Report completion card to SQA.
 
 ---
 
-## Task 2 — CODEX and Agent Guidance Files
+## Task 2 — Codex and Agent Guidance Files
 
-**Purpose:** Give CODEX a single authoritative entry point (`CODEX.md`) and scoped specialist roles under `agents/`.
+**Purpose:** Give Codex a single authoritative entry point (`CODEX.md`), the delegator contract (`AGENTS.md`), the file-routing map (`CONTEXT-LOAD.md`), and scoped specialist overlays under `agents/`.
 
-**Files to create:**
+**Approval required:** Yes — establishes authority order and session contract.
 
+**Files:**
 ```
 CODEX.md
+AGENTS.md
+CONTEXT-LOAD.md
 agents/README.md
 agents/orchestrator/README.md
 agents/orchestrator/workflow.md
@@ -91,70 +115,44 @@ agents/specialist/config-agent.md
 agents/specialist/qa-agent.md
 ```
 
----
-
-- [x] **Step 2.1 — Create `CODEX.md`**
-
-Must contain all of these sections:
+- [ ] Present suggestion card to SQA. Wait for yes.
+- [ ] Create `CODEX.md` with these sections:
 
 ```
 ## Purpose
-## Introduction
-## Current Priorities
-## Design Rules
-## Known Limitations
+## Current Phase
 ## First Read
-## Source Boundaries
+## Task Lifecycle
 ## Agent Routing
-## Superpowers Workflow
-## Validation Gates
-## Scope Rules
-## SQA ↔ CODEX Workflow Protocol
+## Evidence Policy
 ```
 
-The `## SQA ↔ CODEX Workflow Protocol` section must define:
+- [ ] Create `AGENTS.md` with the delegator contract:
+  - Identity: delegator under SQA authority. Loop: Ask → Suggest → Wait → Do.
+  - Session start: read `CODEX.md`, `AGENTS.md`, `orchestration/state.md` silently. Then ask: "Ready. What are we working on?"
+  - Suggestion card format
+  - Approval gate format
+  - Validation commands
+  - Completion report format
+  - Hard rules
 
-- Stage 1: Intake & Analysis (parse report, ask questions)
-- Stage 2: Pre-Implementation Review (files, requirements, risk/outcome)
-- Stage 3: Planning & Approval (wait for explicit approval before touching source)
-- Stage 4: Implementation (approved plan only, follow all standards)
+- [ ] Create `CONTEXT-LOAD.md` with:
+  - Objective-to-file map (one row per task type)
+  - Resume rule
+  - Mid-task lookup table
+  - Hard rules
 
-**Expected:** `CODEX.md` exists and `Select-String` finds all 12 section headers.
+- [ ] Create agent specialist overlays — thin domain guidance only, no duplicate policy:
+  - `sqf-agent.md` → SQF behavior in `addons/main/functions/`
+  - `config-agent.md` → `CfgFunctions`, `config.cpp`, `stringtable.xml`
+  - `qa-agent.md` → validation, smoke checks, error reporting
 
----
+- [ ] Create `agents/orchestrator/policies.yaml` with: naming rules, forbidden paths, approval triggers.
+- [ ] Create `agents/orchestrator/workflow.md` as a thin overlay — no rules duplicated from `AGENTS.md` or governance.
 
-- [x] **Step 2.2 — Create agent guidance files**
+**Expected:** `AGENTS.md` contains the delegator loop. `CONTEXT-LOAD.md` contains the objective table. Agent files contain domain guidance only.
 
-Each specialist file must state:
-
-- Which task types it handles
-- Which source paths it is allowed to touch
-- Which validation steps it must run before closing a task
-- Which other agents it should escalate to
-
-`agents/specialist/sqf-agent.md` → covers SQF behavior in `addons/main/functions/`
-`agents/specialist/config-agent.md` → covers `CfgFunctions`, `config.cpp`, `stringtable.xml`
-`agents/specialist/qa-agent.md` → covers validation, smoke checks, error reporting
-
-**Expected:** each file exists and contains a clearly labeled scope section and a validation requirements section.
-
----
-
-- [x] **Step 2.3 — Create orchestrator files**
-
-`agents/orchestrator/workflow.md` must describe:
-
-- Task intake → planning → SQA approval → implementation → validation flow
-- How tasks are routed to specialist agents
-- Escalation conditions (when to stop and ask the user)
-
-`agents/orchestrator/policies.yaml` must enumerate:
-
-- Mandatory validation gates
-- Files that must never be edited
-- Prefixes that must be used for globals and namespace keys
-
-**Expected:** both files exist and reference the `FIXICS_` prefix rule and `hemtt check` gate.
+- [ ] Report completion card to SQA.
 
 ---
 
@@ -162,58 +160,53 @@ Each specialist file must state:
 
 **Purpose:** Make HEMTT commands consistent and portable across sessions.
 
-**Files to create:**
+**Approval required:** No — wrapper scripts only, no source changes.
 
+**Files:**
 ```
 tools/README.md
 tools/check.ps1
 tools/build.ps1
 tools/launch-vr.ps1
+tools/launch-eden.ps1
+tools/rpt-patterns.ps1
+tools/rpt-parser.ps1
+tools/watch-rpt.ps1
 ```
 
----
-
-- [x] **Step 3.1 — Create PowerShell wrappers**
-
-Every script must:
-
-1. Set `$ErrorActionPreference = 'Stop'` at the top
-2. Resolve the repository root from the script's location — do not hard-code paths
-3. Prefer `.\hemtt.exe` if present; fall back to `hemtt` on PATH
-4. Pass all arguments through to HEMTT unchanged
-5. Exit with HEMTT's exit code so CI and CODEX can detect failure
+- [ ] Present suggestion card to SQA. Wait for yes.
+- [ ] Create all wrappers following this pattern:
 
 ```powershell
-# tools/check.ps1 — canonical form
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot -Parent)
 $hemtt = if (Test-Path '.\hemtt.exe') { '.\hemtt.exe' } else { 'hemtt' }
-& $hemtt check @args
+& $hemtt <command> @args
 exit $LASTEXITCODE
 ```
 
-Apply the same pattern to `build.ps1` (command: `build`) and `launch-vr.ps1` (command: `launch vr`).
-
-**Expected:** each wrapper runs without error from any working directory and exits non-zero when HEMTT fails.
-
----
-
-- [x] **Step 3.2 — Verify wrappers**
+- [ ] Create `tools/rpt-patterns.ps1` — centralize all RPT pattern strings here.
+- [ ] `rpt-parser.ps1` and `watch-rpt.ps1` import from `rpt-patterns.ps1` — no inline patterns.
+- [ ] All console output prefixed with `FIXICS`. ASCII output only.
+- [ ] Verify:
 
 ```powershell
 .\tools\check.ps1
 ```
 
-**Expected:** exits `0` on a clean repository. If HEMTT is not available, document that in `tools/README.md`.
+**Expected:** exits `0` on a clean repository.
+
+- [ ] Report completion card to SQA.
 
 ---
 
 ## Task 4 — Orchestration and Prompt Library
 
-**Purpose:** Give CODEX stable routing logic and reusable prompt templates so it does not reinvent them each session.
+**Purpose:** Give Codex stable routing logic and reusable prompt templates.
 
-**Files to create:**
+**Approval required:** No — support files only.
 
+**Files:**
 ```
 orchestration/README.md
 orchestration/router.yaml
@@ -225,81 +218,27 @@ prompts/library/code-review.md
 prompts/library/validation-report.md
 ```
 
----
-
-- [x] **Step 4.1 — Create `orchestration/router.yaml`**
-
-Must map every common task type to:
-
-- The responsible specialist agent
-- Required validation gate(s)
-- Whether SQA approval is needed before implementation
-
-Example entries required:
-
-```yaml
-tasks:
-  sqf_behavior:
-    agent: agents/specialist/sqf-agent.md
-    validation: [hemtt check]
-    sqa_approval_required: true
-
-  config_registration:
-    agent: agents/specialist/config-agent.md
-    validation: [hemtt check]
-    sqa_approval_required: true
-
-  qa_smoke_test:
-    agent: agents/specialist/qa-agent.md
-    validation: [hemtt launch vr]
-    sqa_approval_required: false
-
-  documentation:
-    agent: null
-    validation: [hemtt check]
-    sqa_approval_required: false
-```
-
-**Expected:** file is valid YAML. All four task types above are present.
-
----
-
-- [x] **Step 4.2 — Create `orchestration/state.md`**
-
-Must record:
-
-- Current active phase (Phase 1: Ground Vehicle Physics)
-- Repository root structure summary
-- Known constraints and limitations
-- Last validated state (date + result)
-
-**Expected:** file exists and accurately reflects the current project state.
-
----
-
-- [x] **Step 4.3 — Create prompt templates**
-
-Each template in `prompts/library/` must include:
-
-- A `## Purpose` section stating when to use it
-- A `## Template` section with the actual prompt text
-- Placeholders clearly marked as `{{PLACEHOLDER_NAME}}`
-- A `## Example` section showing a filled-in usage
-
-**Expected:** all three library files exist and follow this structure.
+- [ ] Present suggestion card to SQA. Wait for yes.
+- [ ] Create `orchestration/router.yaml` — maps task types to specialist, validation gates, approval flag.
+- [ ] Create `orchestration/state.md` — current phase, layout summary, last validated state.
+- [ ] Create prompt templates each with: `## Purpose`, `## Template` with `{{PLACEHOLDERS}}`, `## Example`.
+- [ ] Report completion card to SQA.
 
 ---
 
 ## Task 5 — Governance, Evals, Tests, and Docs
 
-**Purpose:** Provide CODEX with policies it can enforce, evaluation criteria it can check against, and architecture context it can use for routing.
+**Purpose:** Provide Codex with policies it can enforce, evaluation criteria, and architecture context.
 
-**Files to create:**
+**Approval required:** Yes — establishes enforceable governance.
 
+**Files:**
 ```
 governance/README.md
-governance/policies/coding-standards.md     (already handled — see arma-scripting-docs plan)
+governance/policies/coding-standards.md
 governance/policies/scope-control.md
+governance/policies/phase-control.md
+governance/policies/workaround-policy.md
 governance/guardrails/generated-files.md
 governance/audit/validation-log.md
 evals/README.md
@@ -307,78 +246,26 @@ evals/suites/hemtt-check.md
 evals/suites/vr-smoke.md
 evals/reports/.gitkeep
 tests/README.md
-tests/integration/hemtt-check.md
+tests/integration/fixics-governance-static.ps1
+tests/integration/fixics-vehicle-physics-static.ps1
 tests/manual/vr-smoke.md
 docs/architecture/project-map.md
 docs/superpowers/README.md
+docs/fixes/fix-log.md
+docs/fixes/workaround-registry.md
+docs/fixes/open-issues.md
 ```
 
----
-
-- [x] **Step 5.1 — Create `governance/policies/scope-control.md`**
-
-Must list:
-
-- Paths that CODEX must never modify (`.hemttout/`, packed PBOs, release output, private keys)
-- Paths that require SQA approval before modification
-- The rule that `addons/main/` is the only addon source location
-- The rule that `docs/additional-sqf-files` is reference-only until promotion is complete
-
----
-
-- [x] **Step 5.2 — Create `governance/guardrails/generated-files.md`**
-
-Must list every generated or protected file/folder with a one-line explanation of why it must not be edited:
-
-| Path | Reason |
-|---|---|
-| `.hemttout/` | HEMTT build output — regenerated on every build |
-| `*.pbo` | Packed addon — binary output |
-| `keys/` | Signing keys — never modify or commit |
-| `releases/` | Release archives — generated by `hemtt build` |
-
----
-
-- [x] **Step 5.3 — Create eval suites**
-
-`evals/suites/hemtt-check.md` must define:
-
-- Command to run: `.\tools\check.ps1`
-- Pass criteria: exit code `0`, no errors in output
-- Fail criteria: any non-zero exit code or error message
-- When to run: after every source change
-
-`evals/suites/vr-smoke.md` must define:
-
-- Command to run: `.\tools\launch-vr.ps1`
-- Pass criteria: mission loads, no script errors in RPT log, vehicle physics behavior matches expected
-- Fail criteria: script error, crash, or unexpected physics regression
-- When to run: after any gameplay or physics change
-
----
-
-- [x] **Step 5.4 — Create `docs/architecture/project-map.md`**
-
-Must show how the CODEX operating layer maps to the HEMTT addon structure:
-
-```
-FIXICS/
-├── .hemtt/                   HEMTT project config (authoritative)
-├── addons/main/              Addon source (authoritative)
-│   ├── functions/            fn_*.sqf files registered in CfgFunctions
-│   ├── config.cpp            CfgFunctions and addon config
-│   └── stringtable.xml       User-facing strings
-├── .hemttout/                Generated output (never edit)
-├── CODEX.md                  CODEX entry point
-├── agents/                   Agent role definitions
-├── tools/                    Validation wrappers
-├── orchestration/            Routing and state
-├── prompts/                  Reusable templates
-├── governance/               Policies and audit
-├── evals/                    Pass/fail criteria
-├── tests/                    Test procedures
-└── docs/                     Architecture and Superpowers
-```
+- [ ] Present suggestion card to SQA. Wait for yes.
+- [ ] `governance/policies/scope-control.md` — forbidden paths, SQA-approval paths, addon source rule.
+- [ ] `governance/guardrails/generated-files.md` — table of every generated/protected path with reason.
+- [ ] `governance/policies/phase-control.md` — phase table, gate rules, blocked-phase enforcement.
+- [ ] `governance/policies/workaround-policy.md` — when workarounds are allowed, how to register them.
+- [ ] `evals/suites/hemtt-check.md` and `vr-smoke.md` — command, pass criteria, fail criteria, when to run.
+- [ ] `docs/architecture/project-map.md` — visual map of addon layer vs Codex support layer.
+- [ ] `docs/superpowers/README.md` — Superpowers workflow, naming convention, design/plan/execution phases.
+- [ ] `docs/fixes/` — `fix-log.md`, `workaround-registry.md`, `open-issues.md` initialized empty with correct headers.
+- [ ] Report completion card to SQA.
 
 ---
 
@@ -386,52 +273,63 @@ FIXICS/
 
 **Purpose:** Confirm the new layer does not break HEMTT and all expected files exist.
 
----
+**Approval required:** No — validation only.
 
-- [x] **Step 6.1 — Verify file count**
+- [ ] Verify file count:
 
 ```powershell
 Get-ChildItem -Recurse -File | Where-Object { $_.FullName -notmatch '\.hemttout|addons\\main\\' } | Measure-Object
 ```
 
-**Expected:** file count matches the total number of files created in Tasks 2–5. If count is lower, identify which files are missing.
+**Expected:** count matches total files created in Tasks 2–5.
 
----
-
-- [x] **Step 6.2 — Run HEMTT validation**
+- [ ] Run HEMTT validation:
 
 ```powershell
 .\tools\check.ps1
 ```
 
-**Expected:** exit code `0`. The new scaffold files are all Markdown/YAML and do not affect HEMTT compilation.
+**Expected:** exit code `0`.
 
----
+- [ ] Run governance static test:
 
-- [x] **Step 6.3 — Record validation**
+```powershell
+powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1
+```
 
-Add an entry to `governance/audit/validation-log.md`:
+**Expected:** all assertions pass.
+
+- [ ] Record validation in `governance/audit/validation-log.md`:
 
 ```
-Date      : 2026-06-06
+Date      : [today]
 Task      : Codex Operating Layer scaffold
 Command   : .\tools\check.ps1
 Result    : [pass | fail | pre-existing failure — describe]
 Coverage  : automated only
 Manual    : not required — no addon source was changed
-Follow-up : .\hemtt.exe launch vr — required before any gameplay or physics change
+Follow-up : .\tools\launch-vr.ps1 — required before any gameplay or physics change
+```
+
+- [ ] Report final completion card to SQA:
+
+```
+Done      : Full Codex operating layer scaffold created
+Validated : fixics-governance-static.ps1, fixics-vehicle-physics-static.ps1, tools\check.ps1
+Logged    : governance/audit/validation-log.md updated
+Next      : Canonical Guidance Cleanup — verify all files are internally consistent
 ```
 
 ---
 
 ## Scope Limits
 
-This plan does **not**:
+This plan does NOT:
 
-- move or rename files under `addons/main/`
-- replace HEMTT project layout or config
-- introduce a Python, REST, or external agent platform
-- create live autonomous agents
-- edit `.hemttout/`, packed PBOs, or release output
-- generate evaluation reports before real validation data exists
-- claim manual Arma coverage unless a launch actually ran and behavior was verified
+- Move or rename files under `addons/main/`
+- Replace HEMTT project layout or config
+- Introduce Python, REST, or external agent platforms
+- Create live or autonomous agents
+- Edit `.hemttout/`, packed PBOs, or release output
+- Generate evaluation reports before real validation data exists
+- Claim manual Arma coverage unless a launch actually ran and behavior was verified by SQA

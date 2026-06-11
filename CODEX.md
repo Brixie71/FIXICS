@@ -13,6 +13,7 @@ When guidance conflicts, use this order:
 3. `governance/policies/` - enforceable coding, scope, phase, and workaround policy.
 4. `agents/` - task-specific role overlays.
 5. `docs/reference/` - technical research aids.
+6. `CONTENT-LOAD.md` - Instruction to be a Longer Development time but lessend token usage via the prompts.
 
 Addon source and actual build configuration remain the final source of truth for implementation facts. SQA is the final authority for product behavior and acceptance.
 

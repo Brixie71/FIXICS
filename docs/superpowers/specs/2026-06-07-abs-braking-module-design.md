@@ -17,9 +17,27 @@ Useful references:
 - NHTSA interpretation of ABS as automatic rotational wheel-slip control during braking: https://www.nhtsa.gov/interpretations/1210corrforweb
 - Bosch wheel-speed sensor documentation: https://www.bosch-mobility.com/en/solutions/sensors/wheel-speed-sensor/
 - Continental ABS pressure-control behavior on changing road conditions: https://www.continental.com/en-us/press/press-releases/latest-abs-generation-from-continental/
+- Wikipedia : https://en.wikipedia.org/wiki/Anti-lock_braking_system
 - Bohemia `disableBrakes`: https://community.bohemia.net/wiki/disableBrakes
 - Bohemia `setVelocity`: https://community.bohemia.net/wiki/setVelocity
 - CBA `CBA_fnc_addSetting`: https://cbateam.github.io/CBA_A3/docs/files/settings/fnc_addSetting-sqf.html
+
+# Future ABS Improvements (Research Based)
+
+- Performance of Anti-Lock Braking Systems Based on Adaptive
+and Intelligent Control Methodologies : https://d1wqtxts1xzle7.cloudfront.net/99886767/3794-8667-1-PB-libre.pdf?1678893481=&response-content-disposition=inline%3B+filename%3DPerformance_of_Anti_Lock_Braking_Systems.pdf&Expires=1781113035&Signature=G9e7wRJZPRKB7EYc12x4qugVed-JOqk5RvMq7gtveWQwzxxPvQydcSveiaYPbnrt8CYUJD5j34fI8QQLS~lss6kU6w3fPM-3koAIdHxM9vF7kKPI8oWSje7THVIQ7GDW~1z7pvXkndOtq2tRBT3Qt4eWNoDuhvtaPvXtAz~j72M0zIcZNC33k9Lcue4hs-~RdSG2WgMCcAzCl~aa9a2wFKSxRNo~7bC3yZR4yIquac2PAngcfnuHgoFyyfcxNdrgHyLuf01Y8j3xMRxBr~GaqcZeWQpUSwnXjaLIxr7VYS99e2ey9OrHo4JMLVqLG-w4orJadOmXPO2ll~PYbF5Eug__&Key-Pair-Id=APKAJLOHF5GGSLRBV4ZA
+- Dynamic Coordinated Control for Regenerative
+Braking System and Anti-Lock Braking System
+for Electrified Vehicles Under Emergency
+Braking Conditions : https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9200637
+
+- Research on Anti-lock Braking System of Electro
+mechanical Braking Vehicle Based on Feature
+Extraction
+https://iopscience.iop.org/article/10.1088/1742-6596/1982/1/012001/pdf
+
+- Experimental Study on the Effect of Emergency Braking without Anti-Lock Braking
+System to Vehicle Dynamics Behaviour : https://journal.ump.edu.my/index.php/ijame/article/view/3704/818
 
 ## Requirements
 

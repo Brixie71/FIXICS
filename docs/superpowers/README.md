@@ -2,6 +2,9 @@
 
 This folder stores Superpowers design and planning artifacts for FIXICS.
 
+> **Codex:** These files are loaded on demand only — one plan + one spec per session.
+> Do not load all files in this folder. Use `CONTEXT-LOAD.md` to match the active task to the correct pair.
+
 ---
 
 ## Layout
@@ -9,27 +12,39 @@ This folder stores Superpowers design and planning artifacts for FIXICS.
 ```
 docs/superpowers/
 ├── README.md          This file — how to use Superpowers in this repo
-├── specs/             Approved design specs (output of superpowers:brainstorming)
-└── plans/             Implementation plans (output of superpowers:writing-plans)
+├── specs/             Approved design specs
+└── plans/             Implementation plans
 ```
 
 ---
 
-## When to Use Each Superpowers Skill
+## When to Use Each File
 
-| Skill | Trigger condition | Output location |
+| File Type | When | Who Triggers |
 |---|---|---|
-| `superpowers:brainstorming` | Before any broad design or behavior change — new phase work, architecture decisions, major rewrites | `docs/superpowers/specs/` |
-| `superpowers:writing-plans` | After a design is approved and implementation needs to be decomposed into trackable steps | `docs/superpowers/plans/` |
-| `superpowers:subagent-driven-development` | When executing a multi-step plan — preferred over `executing-plans` for parallel or complex tasks | Used during plan execution |
-| `superpowers:executing-plans` | When executing a single-threaded step-by-step plan | Used during plan execution |
-| `superpowers:verification-before-completion` | Before claiming any validation passed or any task is complete | Applied as a final check |
+| `specs/` | SQA approves a design — save the output here | SQA |
+| `plans/` | Design is approved and implementation is ready to decompose | SQA |
+
+Codex loads a spec or plan only when SQA assigns that specific task.
+Codex does not scan this folder. Codex does not load all specs or all plans together.
+
+---
+
+## Superpowers Skills Reference
+
+| Skill | When to Use | Output |
+|---|---|---|
+| `superpowers:brainstorming` | Before any broad design or behavior change | `docs/superpowers/specs/` |
+| `superpowers:writing-plans` | After a design is approved — decompose into trackable steps | `docs/superpowers/plans/` |
+| `superpowers:subagent-driven-development` | Executing a multi-step plan — preferred for complex tasks | Used during execution |
+| `superpowers:executing-plans` | Executing a single-threaded step-by-step plan | Used during execution |
+| `superpowers:verification-before-completion` | Before claiming any validation passed or task is complete | Applied as final check |
 
 ---
 
 ## File Naming Convention
 
-All specs and plans use ISO date prefixes for chronological ordering:
+All specs and plans use ISO date prefixes:
 
 ```
 YYYY-MM-DD-short-description.md
@@ -37,60 +52,62 @@ YYYY-MM-DD-short-description.md
 
 Examples:
 ```
-docs/superpowers/specs/2026-06-06-vehicle-collision-detection.md
-docs/superpowers/plans/2026-06-06-arma-scripting-docs.md
+docs/superpowers/specs/2026-06-07-abs-braking-module-design.md
+docs/superpowers/plans/2026-06-07-abs-braking-module.md
 ```
 
 ---
 
 ## Workflow
 
-### Design Phase (Brainstorming → Spec)
+### Design Phase
 
-1. Trigger `superpowers:brainstorming` for the topic.
-2. Review and approve the output with SQA.
-3. Save the approved design as `docs/superpowers/specs/YYYY-MM-DD-topic.md`.
+1. SQA triggers `superpowers:brainstorming` for the topic.
+2. SQA reviews and approves the output.
+3. Save approved design as `docs/superpowers/specs/YYYY-MM-DD-topic.md`.
 
-### Planning Phase (Spec → Plan)
+### Planning Phase
 
-1. Trigger `superpowers:writing-plans` with the approved spec as input.
-2. Review the generated plan — confirm task order, expected outputs, and validation steps.
+1. SQA triggers `superpowers:writing-plans` with the approved spec as input.
+2. SQA reviews — confirm task order, expected outputs, and validation steps.
 3. Save as `docs/superpowers/plans/YYYY-MM-DD-topic.md`.
 
-### Execution Phase (Plan → Implementation)
+### Execution Phase
 
-1. Use `superpowers:subagent-driven-development` or `superpowers:executing-plans` to execute the plan task-by-task.
-2. Check off `- [ ]` steps as they are completed.
-3. Do not mark a step complete unless its expected output was verified.
-4. Run `.\tools\check.ps1` after every source change.
-5. Apply `superpowers:verification-before-completion` before closing the plan.
+1. SQA assigns the task. Codex loads the matching plan and spec via `CONTEXT-LOAD.md`.
+2. Codex presents a suggestion card. Waits for SQA yes.
+3. Codex executes task by task. Checks off `- [ ]` steps only when output is verified.
+4. Codex runs `.\tools\check.ps1` after every source change.
+5. Codex applies `superpowers:verification-before-completion` before closing the plan.
+6. Codex presents a completion report to SQA.
 
 ---
 
 ## Validation
 
-The primary automated validation command for this project is:
-
 ```powershell
+# Required after every source change
 .\tools\check.ps1
-```
 
-Equivalent direct command:
-
-```powershell
-hemtt check
-```
-
-Manual Arma gameplay checks require a separate launch:
-
-```powershell
+# Required after any gameplay or physics change — SQA runs this
 .\tools\launch-vr.ps1
 ```
 
-> **Always report manual and automated validation separately.** Do not claim manual coverage unless `.\tools\launch-vr.ps1` was actually run and behavior was verified.
+> Always report manual and automated validation separately.
+> Do not claim manual coverage unless `.\tools\launch-vr.ps1` was actually run and behavior was verified by SQA.
 
 ---
 
-## Git Worktree Note
+## Active Plans and Specs
 
-Git worktree workflows (parallel branches, isolated working trees) may be limited when this folder is not part of a git repository. If worktree commands fail, fall back to sequential branch work and document the limitation in the relevant plan file.
+| Task | Plan | Spec |
+|---|---|---|
+| ABS Braking Module | `plans/2026-06-07-abs-braking-module.md` | `specs/2026-06-07-abs-braking-module-design.md` |
+| Canonical Guidance Cleanup | `plans/2026-06-07-canonical-guidance-cleanup.md` | `specs/2026-06-07-canonical-guidance-cleanup-design.md` |
+| Driver State Controller | `plans/2026-06-07-driver-state-controller.md` | `specs/2026-06-07-driver-state-controller-design.md` |
+| Local Vehicle Slope Rolling | `plans/2026-06-07-local-vehicle-slope-rolling.md` | `specs/2026-06-07-local-vehicle-slope-rolling-design.md` |
+| Neutral Direction Transition | `plans/2026-06-07-neutral-direction-transition.md` | *(no spec yet)* |
+| Arma Scripting Docs | `plans/2026-06-06-arma-scripting-docs.md` | `specs/2026-06-06-arma-scripting-docs-design.md` |
+| Codex Operating Layer | `plans/2026-06-06-codex-operating-layer.md` | `specs/2026-06-06-codex-operating-layer-design.md` |
+
+Load only the row that matches the active task. All others stay unloaded.

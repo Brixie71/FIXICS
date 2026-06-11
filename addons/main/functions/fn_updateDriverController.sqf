@@ -179,6 +179,66 @@ private _longitudinalSpeed = _modelVelocity # 1;
 private _directionThreshold = (missionNamespace getVariable ["FIXICS_directionChangeThresholdKmh", 2]) / 3.6;
 private _launchVelocity = missionNamespace getVariable ["FIXICS_directionLaunchVelocity", 0.35];
 private _neutralPulseSeconds = missionNamespace getVariable ["FIXICS_directionNeutralPulseSeconds", 0.08];
+private _getDriverAssist = {
+    params ["_state", "_direction", "_speed", "_ignoreLowSpeedCutoff"];
+
+    private _normal = surfaceNormal (getPosASL _vehicle);
+    private _normalZ = ((_normal # 2) max -1) min 1;
+    private _slope = sin (acos _normalZ);
+    private _forward = vectorDir _vehicle;
+    private _forwardLength = sqrt (((_forward # 0) * (_forward # 0)) + ((_forward # 1) * (_forward # 1)));
+    private _downhillAlignment = 0;
+    if (_forwardLength > 0) then {
+        _forward = _forward vectorMultiply (1 / _forwardLength);
+        private _downhill = [_normal # 0, _normal # 1, 0];
+        private _downhillLength = sqrt (((_downhill # 0) * (_downhill # 0)) + ((_downhill # 1) * (_downhill # 1)));
+        if (_downhillLength > 0) then {
+            _downhill = _downhill vectorMultiply (1 / _downhillLength);
+            _downhillAlignment = ((_downhill # 0) * (_forward # 0)) + ((_downhill # 1) * (_forward # 1));
+        };
+    };
+
+    private _advice = [
+        _state,
+        _direction,
+        _speed,
+        _slope,
+        _downhillAlignment,
+        _deltaTime,
+        missionNamespace getVariable ["FIXICS_absBrakeStrength", 0.45],
+        missionNamespace getVariable ["FIXICS_absReleaseBias", 0.35],
+        missionNamespace getVariable ["FIXICS_absSlopeCompensation", 0.25],
+        _directionThreshold,
+        _launchVelocity,
+        _neutralPulseSeconds,
+        (missionNamespace getVariable ["FIXICS_absLowSpeedCutoffKmh", 3]) / 3.6,
+        _ignoreLowSpeedCutoff
+    ] call FIXICS_fnc_getNativeDriverAssist;
+
+    if !(_advice isEqualType [] && {count _advice == 6}) exitWith {
+        []
+    };
+
+    _advice
+};
+private _logDriverAssist = {
+    params ["_state", "_direction", "_speed", "_source", "_mode", "_targetSpeed", "_detail"];
+
+    if (missionNamespace getVariable ["FIXICS_driverAssistDebugLogging", false]) then {
+        diag_log format [
+            "FIXICS driver assist: type=%1 state=%2 direction=%3 speed=%4 source=%5 mode=%6 target=%7 time=%8 detail=%9",
+            typeOf _vehicle,
+            _state,
+            _direction,
+            _speed,
+            _source,
+            _mode,
+            _targetSpeed,
+            _now,
+            _detail
+        ];
+    };
+};
 private _isOppositeDirection = (_requestedDirection > 0 && {_longitudinalSpeed < 0})
     || {_requestedDirection < 0 && {_longitudinalSpeed > 0}};
 private _isCombinedBrake = _hasForwardInput && {_hasBackInput};
@@ -212,9 +272,44 @@ if (_transitionTarget != 0) exitWith {
             [_vehicle, _state] call _setState;
             [_vehicle] call _clearDirectionTransition;
 
+            private _launchSpeed = _transitionTarget * _launchVelocity;
+            private _launchSource = "sqf";
+            private _launchMode = "LAUNCH";
+            private _launchDetail = "fallback";
+            private _nativeAdvice = ["NEUTRAL", _transitionTarget, 0, true] call _getDriverAssist;
+            if (
+                _nativeAdvice isEqualType []
+                && {count _nativeAdvice == 6}
+                && {_nativeAdvice # 0}
+                && {_nativeAdvice # 1 == "LAUNCH"}
+                && {_nativeAdvice # 4 == _transitionTarget}
+            ) then {
+                private _nativeLaunchSpeed = _nativeAdvice # 2;
+                private _isSignCorrect = (_transitionTarget > 0 && {_nativeLaunchSpeed > 0})
+                    || {_transitionTarget < 0 && {_nativeLaunchSpeed < 0}};
+                if (
+                    finite _nativeLaunchSpeed
+                    && {_isSignCorrect}
+                    && {abs _nativeLaunchSpeed <= abs _launchVelocity}
+                ) then {
+                    _launchSpeed = _nativeLaunchSpeed;
+                    _launchSource = "native";
+                    _launchDetail = _nativeAdvice # 5;
+                };
+            };
+
             _modelVelocity = velocityModelSpace _vehicle;
-            _modelVelocity set [1, _transitionTarget * _launchVelocity];
+            _modelVelocity set [1, _launchSpeed];
             _vehicle setVelocityModelSpace _modelVelocity;
+            [
+                "NEUTRAL",
+                _transitionTarget,
+                0,
+                _launchSource,
+                _launchMode,
+                _launchSpeed,
+                _launchDetail
+            ] call _logDriverAssist;
         };
     } else {
         [_vehicle, "SERVICE_BRAKE"] call _setState;

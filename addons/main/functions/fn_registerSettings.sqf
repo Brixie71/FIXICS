@@ -20,6 +20,8 @@ if (missionNamespace getVariable ["FIXICS_settingsRegistered", false]) exitWith 
 missionNamespace setVariable ["FIXICS_settingsRegistered", true, false];
 missionNamespace setVariable ["FIXICS_disableIdleAutobrake", true, false];
 missionNamespace setVariable ["FIXICS_nativeSlopeControlEnabled", false, false];
+missionNamespace setVariable ["FIXICS_nativeDriverAssistEnabled", false, false];
+missionNamespace setVariable ["FIXICS_driverAssistDebugLogging", false, false];
 missionNamespace setVariable ["FIXICS_slopeRollbackMinimumSlope", 0.035, false];
 missionNamespace setVariable ["FIXICS_slopeRollbackMaxSpeed", 2.2, false];
 missionNamespace setVariable ["FIXICS_slopeRollbackAcceleration", 0.55, false];
@@ -62,6 +64,34 @@ missionNamespace setVariable ["FIXICS_driverControllerInterval", 0.03, false];
     "FIXICS",
     false,
     1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_nativeDriverAssistEnabled",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_NATIVE_DRIVER_ASSIST",
+        localize "STR_FIXICS_SETTING_NATIVE_DRIVER_ASSIST_TOOLTIP"
+    ],
+    ["FIXICS", "Driver Controller"],
+    false,
+    1,
+    {},
+    false
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_driverAssistDebugLogging",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_DRIVER_ASSIST_DEBUG_LOGGING",
+        localize "STR_FIXICS_SETTING_DRIVER_ASSIST_DEBUG_LOGGING_TOOLTIP"
+    ],
+    ["FIXICS", "Driver Controller"],
+    false,
+    1,
+    {},
+    false
 ] call CBA_fnc_addSetting;
 
 [

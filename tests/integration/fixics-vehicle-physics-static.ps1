@@ -71,13 +71,15 @@ if ($Config -match '"A3_Soft_F"|\"A3_Armor_F\"') {
     'addons\main\functions\fn_registerVehicleControls.sqf',
     'addons\main\functions\fn_updateDriverController.sqf',
     'addons\main\functions\fn_logVehicleHandlingConfig.sqf',
-    'addons\main\functions\fn_getNativeSlopeControl.sqf'
+    'addons\main\functions\fn_getNativeSlopeControl.sqf',
+    'addons\main\functions\fn_getNativeDriverAssist.sqf'
 ) | ForEach-Object {
     Assert-FileExists $_
 }
 
 @(
     'native\fixics_physics\src\FIXICSPhysics.cpp',
+    'native\fixics_physics\tests\FIXICSPhysicsTests.cpp',
     'native\fixics_physics\README.md',
     'native\fixics_physics\CMakeLists.txt',
     'tools\build-native.ps1',
@@ -99,6 +101,7 @@ Assert-Contains $Config 'class registerVehicleControls\s*\{\s*\};' 'registerVehi
 Assert-Contains $Config 'class updateDriverController\s*\{\s*\};' 'updateDriverController must be registered in CfgFunctions.'
 Assert-Contains $Config 'class logVehicleHandlingConfig\s*\{\s*\};' 'logVehicleHandlingConfig must be registered in CfgFunctions.'
 Assert-Contains $Config 'class getNativeSlopeControl\s*\{\s*\};' 'getNativeSlopeControl must be registered in CfgFunctions.'
+Assert-Contains $Config 'class getNativeDriverAssist\s*\{\s*\};' 'getNativeDriverAssist must be registered in CfgFunctions.'
 if ($Config -match 'class CfgVehicles|brakeIdleSpeed\s*=\s*0\.01|dampingRateZeroThrottleClutchEngaged\s*=\s*0\.25|dampingRateZeroThrottleClutchDisengaged\s*=\s*0\.25') {
     Add-Failure 'Failed config-class experiment must be removed before native gameplay-control escalation.'
 }
@@ -133,6 +136,10 @@ Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DRIVER_CONTROLLER_ENABLED' 'Str
 Assert-Contains $Stringtable 'STR_FIXICS_SETTING_HANDBRAKE_INPUT_MODE' 'Stringtable must define the handbrake input mode setting title.'
 Assert-Contains $Stringtable 'STR_FIXICS_SETTING_HANDBRAKE_INPUT_HOLD' 'Stringtable must define the hold handbrake input mode.'
 Assert-Contains $Stringtable 'STR_FIXICS_SETTING_HANDBRAKE_INPUT_TOGGLE' 'Stringtable must define the toggle handbrake input mode.'
+Assert-Contains $Stringtable 'ID="STR_FIXICS_SETTING_NATIVE_DRIVER_ASSIST"' 'Stringtable must define the native driver assist setting title.'
+Assert-Contains $Stringtable 'ID="STR_FIXICS_SETTING_NATIVE_DRIVER_ASSIST_TOOLTIP"' 'Stringtable must define the native driver assist setting tooltip.'
+Assert-Contains $Stringtable 'ID="STR_FIXICS_SETTING_DRIVER_ASSIST_DEBUG_LOGGING"' 'Stringtable must define the driver assist debug logging setting title.'
+Assert-Contains $Stringtable 'ID="STR_FIXICS_SETTING_DRIVER_ASSIST_DEBUG_LOGGING_TOOLTIP"' 'Stringtable must define the driver assist debug logging setting tooltip.'
 Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DIRECTION_CHANGE_THRESHOLD' 'Stringtable must define the direction change threshold setting title.'
 Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DIRECTION_LAUNCH_VELOCITY' 'Stringtable must define the direction launch velocity setting title.'
 Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DIRECTION_NEUTRAL_PULSE' 'Stringtable must define the direction neutral pulse setting title.'
@@ -206,6 +213,8 @@ if (Test-Path -LiteralPath $SettingsFile) {
     Assert-Contains $Settings '"FIXICS_absSlopeCompensation"' 'Settings registration must define FIXICS_absSlopeCompensation.'
     Assert-Contains $Settings '"FIXICS_absDebugLogging"' 'Settings registration must define FIXICS_absDebugLogging.'
     Assert-Contains $Settings '"FIXICS_driverControllerEnabled"' 'Settings registration must define FIXICS_driverControllerEnabled.'
+    Assert-Contains $Settings '"FIXICS_nativeDriverAssistEnabled"' 'Settings registration must define FIXICS_nativeDriverAssistEnabled.'
+    Assert-Contains $Settings '"FIXICS_driverAssistDebugLogging"' 'Settings registration must define FIXICS_driverAssistDebugLogging.'
     Assert-Contains $Settings '"FIXICS_handbrakeInputMode"' 'Settings registration must define FIXICS_handbrakeInputMode.'
     Assert-Contains $Settings '"FIXICS_directionChangeThresholdKmh"' 'Settings registration must define FIXICS_directionChangeThresholdKmh.'
     Assert-Contains $Settings '"FIXICS_directionLaunchVelocity"' 'Settings registration must define FIXICS_directionLaunchVelocity.'
@@ -256,6 +265,12 @@ if (Test-Path -LiteralPath $AbsFile) {
     Assert-Contains $Abs 'FIXICS_absReleaseBias' 'ABS helper must honor the release bias setting.'
     Assert-Contains $Abs 'FIXICS_absSlopeCompensation' 'ABS helper must honor slope compensation setting.'
     Assert-Contains $Abs 'FIXICS_absDebugLogging' 'ABS helper must honor debug logging setting.'
+    Assert-Contains $Abs 'FIXICS_fnc_getNativeDriverAssist' 'ABS helper must consult the optional native driver assist bridge.'
+    Assert-Contains $Abs 'source=%' 'ABS helper telemetry must include its recommendation source.'
+    Assert-Contains $Abs '"native"' 'ABS helper telemetry must identify native-sourced recommendations.'
+    Assert-Contains $Abs '"sqf"' 'ABS helper telemetry must identify SQF fallback recommendations.'
+    Assert-Contains $Abs 'FIXICS_driverAssistDebugLogging' 'ABS helper must honor driver assist debug logging.'
+    Assert-Contains $Abs 'private _applySqfAbsFallback' 'ABS helper must keep an explicit SQF fallback path.'
     Assert-Contains $Abs 'setVelocityModelSpace' 'ABS helper must apply adjusted model-space velocity.'
     if ($Abs -match '_vehicle setVelocity \[') {
         Add-Failure 'ABS helper must not rewrite world-space velocity.'
@@ -329,6 +344,11 @@ if (Test-Path -LiteralPath $DriverControllerFile) {
     $DriverController = Get-Content -Raw -LiteralPath $DriverControllerFile
     Assert-Contains $DriverController 'FIXICS_driverControllerEnabled' 'Driver controller must honor its enable setting.'
     Assert-Contains $DriverController 'FIXICS_driverControllerInterval' 'Driver controller must honor its update interval.'
+    Assert-Contains $DriverController '_getDriverAssist[\s\S]*FIXICS_fnc_getNativeDriverAssist' 'Driver controller helper must consult the optional native driver assist bridge.'
+    Assert-Contains $DriverController 'FIXICS_driverAssistDebugLogging' 'Driver controller must honor driver assist debug logging.'
+    Assert-Contains $DriverController 'source=%' 'Driver controller telemetry must include its recommendation source.'
+    Assert-Contains $DriverController '"native"' 'Driver controller telemetry must identify native-sourced recommendations.'
+    Assert-Contains $DriverController '"sqf"' 'Driver controller telemetry must identify SQF fallback recommendations.'
     Assert-Contains $DriverController 'isTouchingGround' 'Driver controller must not rewrite land-vehicle velocity while airborne.'
     Assert-Contains $DriverController 'velocityModelSpace' 'Driver controller must read model-space longitudinal velocity.'
     Assert-Contains $DriverController 'setVelocityModelSpace' 'Driver controller must apply model-space direction transitions.'
@@ -352,6 +372,7 @@ if (Test-Path -LiteralPath $DriverControllerFile) {
     Assert-Contains $DriverController 'FIXICS_directionNeutralPulseSeconds' 'Driver controller must honor the neutral pulse duration.'
     Assert-Contains $DriverController 'FIXICS_directionTransitionTarget' 'Driver controller must latch the requested direction during opposite-input braking.'
     Assert-Contains $DriverController 'FIXICS_directionTransitionNeutralUntil' 'Driver controller must store the neutral pulse deadline.'
+    Assert-Contains $DriverController '_now >= _neutralUntil[\s\S]*"NEUTRAL"[\s\S]*call _getDriverAssist' 'Native launch recommendations must be gated after the neutral pulse expires.'
     Assert-Contains $DriverController '_requestedDirection > 0 && \{_longitudinalSpeed < 0\}' 'Reverse-to-Drive detection must latch on any remaining reverse motion.'
     Assert-Contains $DriverController '_requestedDirection < 0 && \{_longitudinalSpeed > 0\}' 'Drive-to-Reverse detection must latch on any remaining forward motion.'
     Assert-Contains $DriverController '_requestedDirection != _transitionTarget' 'Driver controller must cancel a latched transition when input changes or is released.'
@@ -415,6 +436,17 @@ if (Test-Path -LiteralPath $NativeBridgeFile) {
     Assert-Contains $NativeBridge '_minimumDelta' 'Native gameplay-control bridge must pass the coasting breakaway delta.'
 }
 
+$NativeDriverAssistFile = Join-Path $RepoRoot 'addons\main\functions\fn_getNativeDriverAssist.sqf'
+if (Test-Path -LiteralPath $NativeDriverAssistFile) {
+    $NativeDriverAssist = Get-Content -Raw -LiteralPath $NativeDriverAssistFile
+    Assert-Contains $NativeDriverAssist '"FIXICS_nativeDriverAssistEnabled", false' 'Native driver assist bridge must default disabled.'
+    Assert-Contains $NativeDriverAssist '"FIXICSPhysics"\s+callExtension\s+\[[\s\S]*?"driverAssist"' 'Native driver assist bridge must call the FIXICSPhysics driverAssist function.'
+    Assert-Contains $NativeDriverAssist 'parseSimpleArray' 'Native driver assist bridge must parse the extension response.'
+    Assert-Contains $NativeDriverAssist 'errorCode' 'Native driver assist bridge must check callExtension errorCode.'
+    Assert-Contains $NativeDriverAssist 'isEqualType' 'Native driver assist bridge must validate response element types.'
+    Assert-Contains $NativeDriverAssist 'finite' 'Native driver assist bridge must reject non-finite numeric recommendations.'
+}
+
 $NativeSourceFile = Join-Path $RepoRoot 'native\fixics_physics\src\FIXICSPhysics.cpp'
 if (Test-Path -LiteralPath $NativeSourceFile) {
     $NativeSource = Get-Content -Raw -LiteralPath $NativeSourceFile
@@ -423,9 +455,36 @@ if (Test-Path -LiteralPath $NativeSourceFile) {
     Assert-Contains $NativeSource 'slopeControl' 'Native source must implement slopeControl dispatch.'
     Assert-Contains $NativeSource 'FIXICSPhysics' 'Native source must use the FIXICSPhysics extension identity.'
     Assert-Contains $NativeSource 'minimumDelta' 'Native source must support a coasting breakaway delta.'
+    Assert-Contains $NativeSource 'driverAssist' 'Native source must implement driverAssist dispatch.'
+    Assert-Contains $NativeSource 'command == "driverAssist"' 'Native source must dispatch driverAssist explicitly.'
+    Assert-Contains $NativeSource 'driverAssist\(args, argsCount\)' 'Native source must route driverAssist command arguments through the driverAssist handler.'
+    Assert-Contains $NativeSource 'copyOutput\(output, outputSize, "\[\\"slopeControl[\s\S]*\\"driverAssist\\"' 'Native source schema payload must advertise driverAssist.'
+    Assert-Contains $NativeSource 'std::isfinite' 'Native source must reject non-finite driver assist inputs.'
+    Assert-Contains $NativeSource 'DriverAssistInput' 'Native source must use a named input structure for driver assist.'
+    Assert-Contains $NativeSource 'DriverAssistResult' 'Native source must use a named result structure for driver assist.'
+    Assert-Contains $NativeSource 'targetLongitudinalSpeed' 'Native source must return a bounded target longitudinal speed.'
+    Assert-Contains $NativeSource 'brakeDelta' 'Native source must return a bounded brake delta.'
     if ($NativeSource -match 'strncpy') {
         Add-Failure 'Native source must avoid strncpy to keep MSVC warning output clean.'
     }
+}
+
+$NativeTestsFile = Join-Path $RepoRoot 'native\fixics_physics\tests\FIXICSPhysicsTests.cpp'
+if (Test-Path -LiteralPath $NativeTestsFile) {
+    $NativeTests = Get-Content -Raw -LiteralPath $NativeTestsFile
+    Assert-Contains $NativeTests 'driverAssist' 'Native tests must cover driverAssist.'
+    Assert-Contains $NativeTests 'expectEqual' 'Native tests must compare exact driverAssist outputs.'
+    Assert-Contains $NativeTests 'callDriverAssist' 'Native tests must invoke driverAssist through a shared helper.'
+    Assert-Contains $NativeTests 'forward braking' 'Native tests must cover forward braking driverAssist behavior.'
+    Assert-Contains $NativeTests 'reverse braking' 'Native tests must cover reverse braking driverAssist behavior.'
+    Assert-Contains $NativeTests 'low speed cutoff' 'Native tests must cover the driverAssist low speed cutoff.'
+    Assert-Contains $NativeTests 'neutral launch' 'Native tests must cover neutral launch driverAssist behavior.'
+    Assert-Contains $NativeTests 'non-finite input' 'Native tests must cover non-finite driverAssist input rejection.'
+    Assert-Contains $NativeTests '\[true,\\"SERVICE_BRAKE\\",4\.7075,0\.2925,0,\\"brake\\"\]' 'Native tests must verify forward braking output exactly.'
+    Assert-Contains $NativeTests '\[true,\\"SERVICE_BRAKE\\",-4\.7075,0\.2925,0,\\"brake\\"\]' 'Native tests must verify reverse braking output exactly.'
+    Assert-Contains $NativeTests '\[false,\\"NONE\\",0\.5,0,0,\\"below-cutoff\\"\]' 'Native tests must verify low-speed cutoff output exactly.'
+    Assert-Contains $NativeTests '\[true,\\"LAUNCH\\",0\.35,0,1,\\"launch\\"\]' 'Native tests must verify neutral launch output exactly.'
+    Assert-Contains $NativeTests '\[false,\\"NONE\\",0,0,0,\\"invalid\\"\]' 'Native tests must verify non-finite input rejection output exactly.'
 }
 
 $NativeReadmeFile = Join-Path $RepoRoot 'native\fixics_physics\README.md'
@@ -433,6 +492,8 @@ if (Test-Path -LiteralPath $NativeReadmeFile) {
     $NativeReadme = Get-Content -Raw -LiteralPath $NativeReadmeFile
     Assert-Contains $NativeReadme 'native-assisted gameplay control' 'Native README must describe the native-assisted gameplay-control boundary.'
     Assert-Contains $NativeReadme 'FIXICSPhysics_x64\.dll' 'Native README must document the approved Windows x64 binary.'
+    Assert-Contains $NativeReadme 'driverAssist' 'Native README must document driverAssist.'
+    Assert-Contains $NativeReadme 'native advisor' 'Native README must preserve the SQF-owned mutation boundary.'
 }
 
 $NativeCmakeFile = Join-Path $RepoRoot 'native\fixics_physics\CMakeLists.txt'
@@ -440,6 +501,10 @@ if (Test-Path -LiteralPath $NativeCmakeFile) {
     $NativeCmake = Get-Content -Raw -LiteralPath $NativeCmakeFile
     Assert-Contains $NativeCmake 'add_library\(FIXICSPhysics SHARED' 'Native CMake file must build FIXICSPhysics as a shared library.'
     Assert-Contains $NativeCmake 'FIXICSPhysics_x64' 'Native CMake file must name the Windows x64 output FIXICSPhysics_x64.'
+    Assert-Contains $NativeCmake 'include\(CTest\)' 'Native CMake must enable CTest.'
+    Assert-Contains $NativeCmake 'add_executable\(FIXICSPhysicsTests' 'Native CMake must build FIXICSPhysicsTests.'
+    Assert-Contains $NativeCmake 'target_link_libraries\(FIXICSPhysicsTests PRIVATE FIXICSPhysics\)' 'Native CMake must link FIXICSPhysicsTests against FIXICSPhysics.'
+    Assert-Contains $NativeCmake 'add_test\(NAME FIXICSPhysicsTests COMMAND FIXICSPhysicsTests\)' 'Native CMake must register FIXICSPhysicsTests with CTest.'
 }
 
 $NativeBuildScriptFile = Join-Path $RepoRoot 'tools\build-native.ps1'
@@ -448,6 +513,7 @@ if (Test-Path -LiteralPath $NativeBuildScriptFile) {
     Assert-Contains $NativeBuildScript 'VsDevCmd\.bat' 'Native build script must load the Visual Studio developer environment.'
     Assert-Contains $NativeBuildScript 'cmake' 'Native build script must invoke CMake.'
     Assert-Contains $NativeBuildScript 'FIXICSPhysics_x64\.dll' 'Native build script must verify the approved Windows x64 DLL output.'
+    Assert-Contains $NativeBuildScript 'ctest --test-dir `"\$NativeBuild`"[^\r\n]*--output-on-failure' 'Native build script must run CTest against the native build directory with failure output enabled.'
 }
 
 $NativeBinaries = @()

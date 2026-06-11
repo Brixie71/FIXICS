@@ -25,7 +25,9 @@ This file records active scripted FIXICS workarounds where Arma 3 does not expos
 - **VR verified**       : 2026-06-07, pass for FIX-004 Reverse-to-Drive behavior
 
 #### What it does
-The local driver controller interprets accelerator, brake, reverse, and ACE handbrake state, then applies bounded service braking and launch correction during direction changes. ABS settings control brake strength, release bias, low-speed cutoff, and slope compensation. The persistent handbrake remains the ACE interaction state only.
+The local driver controller interprets accelerator, brake, reverse, and ACE handbrake state, then applies bounded service braking and launch correction during direction changes. ABS settings control brake strength, release bias, low-speed cutoff, and slope compensation. Native Driver Assist v2 can optionally provide advisory math for ABS service-brake targets and post-neutral Drive/Reverse launch recommendations. Its settings are disabled by default, and telemetry can identify whether accepted advice came from the native or SQF source. The persistent handbrake remains the ACE interaction state only.
+
+SQF remains the final authority for vehicle mutation. The existing SQF path remains the fallback when native assistance is disabled, the extension is unavailable, its response is invalid, or its advice is unusable.
 
 #### What it achieves
 Reverse-to-Drive no longer waits for natural coast-down before responding to Drive input, and service braking can be adjusted without using the persistent FIXICS handbrake.
@@ -36,13 +38,13 @@ Reverse-to-Drive no longer waits for natural coast-down before responding to Dri
 | Persistent handbrake source | Could be confused with brake/reverse behavior | ACE handbrake only | Native separated handbrake/brake model | Engine drivetrain still exists underneath |
 
 #### Remaining gap
-The workaround cannot directly set the engine gearbox state. It corrects model-space velocity and brake state locally, so it may still need multiplayer authority work before server deployment.
+The workaround cannot directly set the engine gearbox state. The optional native advisor only calculates recommendations; it does not mutate the vehicle or bypass SQF validation. The controller corrects model-space velocity and brake state locally, so it may still need multiplayer authority work before server deployment.
 
 #### Removal condition
-Remove or redesign this workaround if Bohemia documents a reliable runtime command or config-backed API to set ground vehicle gearbox state directly, or if a vetted native extension provides equivalent control without fighting normal vehicle simulation.
+Remove or redesign the affected portion of this workaround if Bohemia documents a reliable runtime command or config-backed API for direct ground vehicle gearbox or brake control.
 
 #### Review triggers
-Review when adding multiplayer support, native extension control, non-car ground vehicle classes, or class-specific gearbox config patches.
+Review when adding multiplayer support, non-car ground vehicle classes, or class-specific gearbox config patches. Revisit and remove or redesign the affected portion of WA-002 if Arma exposes direct engine gearbox or brake control. Revisit the native advisor if SQA-verified manual testing shows that it causes regressions or does not improve controller consistency.
 
 ### WA-001 - Local slope rolling and ACE handbrake separation
 

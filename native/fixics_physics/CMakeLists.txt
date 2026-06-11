@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(FIXICSPhysics VERSION 0.1.0 LANGUAGES CXX)
+project(FIXICSPhysics VERSION 0.2.0 LANGUAGES CXX)
+
+include(CTest)
 
 add_library(FIXICSPhysics SHARED
     src/FIXICSPhysics.cpp
@@ -13,6 +15,23 @@ if (MSVC)
 else()
     target_compile_options(FIXICSPhysics PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+add_executable(FIXICSPhysicsTests
+    tests/FIXICSPhysicsTests.cpp
+)
+
+target_compile_features(FIXICSPhysicsTests PRIVATE cxx_std_17)
+target_link_libraries(FIXICSPhysicsTests PRIVATE FIXICSPhysics)
+
+if (WIN32)
+    add_custom_command(TARGET FIXICSPhysicsTests POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:FIXICSPhysics>
+            $<TARGET_FILE_DIR:FIXICSPhysicsTests>
+    )
+endif()
+
+add_test(NAME FIXICSPhysicsTests COMMAND FIXICSPhysicsTests)
 
 set(FIXICS_EXTENSION_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/../..")
 

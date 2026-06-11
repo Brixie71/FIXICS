@@ -42,6 +42,7 @@ class CfgFunctions
             class updateDriverController {};
             class logVehicleHandlingConfig {};
             class getNativeSlopeControl {};
+            class getNativeDriverAssist {};
         };
     };
 };

@@ -23,16 +23,32 @@ if (-not (Test-Path -LiteralPath $VsDevCmd)) {
 $BuildCommand = @(
     "`"$VsDevCmd`" -arch=x64",
     "cmake -S `"$NativeSource`" -B `"$NativeBuild`" -A x64",
-    "cmake --build `"$NativeBuild`" --config Release"
+    "cmake --build `"$NativeBuild`" --config Release",
+    "ctest --test-dir `"$NativeBuild`" -C Release --output-on-failure"
 ) -join ' && '
 
-cmd.exe /d /s /c $BuildCommand
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-}
+try {
+    cmd.exe /d /s /c $BuildCommand
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
 
-if (-not (Test-Path -LiteralPath $OutputDll)) {
-    throw "Native build completed but FIXICSPhysics_x64.dll was not found at $OutputDll."
-}
+    if (-not (Test-Path -LiteralPath $OutputDll)) {
+        throw "Native build completed but FIXICSPhysics_x64.dll was not found at $OutputDll."
+    }
 
-Write-Host "Built $OutputDll"
+    Write-Host "Built $OutputDll"
+}
+finally {
+    if (Test-Path -LiteralPath $NativeBuild) {
+        $ResolvedNativeSource = (Resolve-Path -LiteralPath $NativeSource).Path
+        $ResolvedNativeBuild = (Resolve-Path -LiteralPath $NativeBuild).Path
+        $ExpectedNativeBuild = [IO.Path]::GetFullPath((Join-Path $ResolvedNativeSource 'build'))
+
+        if ($ResolvedNativeBuild -ne $ExpectedNativeBuild) {
+            throw "Refusing to clean unexpected native build path: $ResolvedNativeBuild"
+        }
+
+        Remove-Item -LiteralPath $ResolvedNativeBuild -Recurse -Force
+    }
+}

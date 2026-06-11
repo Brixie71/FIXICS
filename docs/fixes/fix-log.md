@@ -47,6 +47,44 @@ WA-[number] or N/A.
 
 ## Log
 
+### FIX-005 - Native Driver Assist v2
+
+- **Date**          : 2026-06-12
+- **Phase**         : Phase 1 - Ground Vehicle Physics
+- **Failure class** : braking or direction-transition consistency
+- **Function(s)**   : `FIXICS_fnc_getNativeDriverAssist`, `FIXICS_fnc_applyABSBraking`, `FIXICS_fnc_updateDriverController`
+- **Files changed** :
+  - `addons/main/functions/fn_getNativeDriverAssist.sqf`
+  - `addons/main/functions/fn_applyABSBraking.sqf`
+  - `addons/main/functions/fn_updateDriverController.sqf`
+  - `native/fixics_physics/src/FIXICSPhysics.cpp`
+- **Bug reported by**: SQA, 2026-06-07
+- **Resolution type**: Workaround
+
+#### Root Cause
+Arma does not expose direct scripted control of its hidden gearbox and brake transition state. The existing SQF controller therefore needed more consistent service-brake targets and post-neutral launch recommendations without transferring vehicle-mutation authority to the native extension.
+
+#### Fix Summary
+Added optional native advisory math for ABS service braking and post-neutral Drive/Reverse launch transitions. SQF validates every recommendation, remains the final vehicle-mutation authority, and retains the prior SQF behavior as fallback. Native assistance is disabled by default and exposes source-aware debug telemetry.
+
+#### Outcome
+SQA reported superb ABS braking during high-speed straight-road testing and stable behavior through moderate left and right turns. Native Driver Assist v2 was accepted for integration. A separate sharp-turn steering lock and oversteer issue is tracked independently.
+
+#### Workaround Registry Entry
+WA-002
+
+#### Verification
+- `hemtt check`  : pass
+- Static checks  : pass
+- VR test date   : 2026-06-12
+- VR result      : pass
+- VR notes       : SQA tested high-speed straight-road braking and moderate left/right rally-style turns. Sharp high-speed turns exposed a separate steering-lock issue not attributed to ABS.
+
+#### SQA Sign-Off
+- Approved by : SQA
+- Date        : 2026-06-12
+- Notes       : "Overall ABS Braking Functionality is Superb!"
+
 ### FIX-004 - Reverse-to-Drive input and model-space braking correction
 
 - **Date**          : 2026-06-07

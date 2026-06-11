@@ -8,7 +8,7 @@ The approved local Windows x64 binary is `FIXICSPhysics_x64.dll` in the reposito
 
 This is native-assisted gameplay control, not a direct replacement for Arma's PhysX vehicle simulation.
 
-Arma calls the extension through `callExtension`. The extension returns a slope rollback recommendation, and SQF remains responsible for mutating the vehicle with engine commands such as `setVelocity`. The extension does not own Arma objects, wheels, gearbox state, or hidden PhysX internals.
+Arma calls the extension through `callExtension`. The extension returns slope rollback and driver-assist recommendations, and SQF remains the final mutation authority responsible for changing the vehicle with engine commands such as `setVelocity`. The extension does not own Arma objects, wheels, gearbox state, or hidden PhysX internals.
 
 ## Current Interface
 
@@ -31,6 +31,7 @@ Supported calls:
 "FIXICSPhysics" callExtension "ping";
 "FIXICSPhysics" callExtension ["schema", []];
 "FIXICSPhysics" callExtension ["slopeControl", [_downhillX, _downhillY, _velocityX, _velocityY, _slope, _maxRollbackSpeed, _rollbackAcceleration, _minimumDelta]];
+"FIXICSPhysics" callExtension ["driverAssist", [_state, _requestedDirection, _longitudinalSpeed, _slope, _downhillAlignment, _deltaTime, _absBrakeStrength, _absReleaseBias, _absSlopeCompensation, _directionThreshold, _directionLaunchVelocity, _neutralPulseSeconds, _lowSpeedCutoff, _ignoreLowSpeedCutoff]];
 ```
 
 `slopeControl` returns:
@@ -42,6 +43,14 @@ Supported calls:
 The SQF bridge is `FIXICS_fnc_getNativeSlopeControl`. It is gated by the CBA setting `FIXICS_nativeSlopeControlEnabled`, which defaults to `false`.
 
 `_minimumDelta` is optional for backward compatibility. FIXICS passes it during coasting so the native recommendation can provide a small near-zero downhill breakaway after reverse-release on a hill.
+
+`driverAssist` is a native advisor for service braking, ABS braking, and low-speed direction launches. It returns:
+
+```sqf
+[applied, mode, targetLongitudinalSpeed, brakeDelta, launchDirection, telemetry]
+```
+
+The recommendation contains controller math only. SQF validates the result and remains responsible for every vehicle mutation.
 
 ## Build Notes
 

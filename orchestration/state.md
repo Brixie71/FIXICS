@@ -23,6 +23,13 @@ Current Phase 1 systems:
 - ABS-like service braking.
 - Reverse/Drive neutral handoff.
 - Optional native slope-control bridge, disabled by default.
+- Optional Native Driver Assist v2 advisory math for ABS and direction transitions, disabled by default.
+
+## Last Decision
+
+- Native Driver Assist v2 was accepted by SQA on 2026-06-12 after high-speed braking and moderate-turn testing.
+- A separate high-speed sharp-turn steering lock issue remains open.
+- Feature branch `native-driver-assist-v2` is approved for integration into `main`.
 
 ## Constraints
 

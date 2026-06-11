@@ -79,6 +79,12 @@
         <Key ID="STR_FIXICS_SETTING_DISABLE_IDLE_AUTOBRAKE_TOOLTIP">
             <Original>Keeps Arma's idle vehicle autobrake disabled while stationary unless the FIXICS ACE handbrake is set.</Original>
         </Key>
+        <Key ID="STR_FIXICS_SETTING_DRIVER_ASSIST_DEBUG_LOGGING">
+            <Original>Driver assist debug logging</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DRIVER_ASSIST_DEBUG_LOGGING_TOOLTIP">
+            <Original>Writes native driver assist recommendations and SQF fallback decisions to the RPT log for diagnostics.</Original>
+        </Key>
         <Key ID="STR_FIXICS_SETTING_DRIVER_CONTROLLER_ENABLED">
             <Original>Enable driver state controller</Original>
         </Key>
@@ -102,6 +108,12 @@
         </Key>
         <Key ID="STR_FIXICS_SETTING_HANDBRAKE_INPUT_TOGGLE">
             <Original>Toggle</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_NATIVE_DRIVER_ASSIST">
+            <Original>Enable native driver assist advisor</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_NATIVE_DRIVER_ASSIST_TOOLTIP">
+            <Original>Uses the optional FIXICSPhysics extension for driver-control recommendations. SQF remains responsible for applying vehicle changes.</Original>
         </Key>
         <Key ID="STR_FIXICS_SETTING_NATIVE_SLOPE_CONTROL">
             <Original>Enable native slope control</Original>

@@ -104,6 +104,7 @@ Assert-Contains $Config 'class getNativeSlopeControl\s*\{\s*\};' 'getNativeSlope
 Assert-Contains $Config 'class getNativeDriverAssist\s*\{\s*\};' 'getNativeDriverAssist must be registered in CfgFunctions.'
 Assert-Contains $Config 'class getVehicleStabilityProfile\s*\{\s*\};' 'Stability profile resolver must be registered.'
 Assert-Contains $Config 'class getVehicleStabilityRecommendation\s*\{\s*\};' 'Stability recommendation math must be registered.'
+Assert-Contains $Config 'class applyVehicleStability\s*\{\s*\};' 'Local stability mutation boundary must be registered.'
 if ($Config -match 'class CfgVehicles|brakeIdleSpeed\s*=\s*0\.01|dampingRateZeroThrottleClutchEngaged\s*=\s*0\.25|dampingRateZeroThrottleClutchDisengaged\s*=\s*0\.25') {
     Add-Failure 'Failed config-class experiment must be removed before native gameplay-control escalation.'
 }
@@ -289,6 +290,37 @@ if (Test-Path -LiteralPath $StabilityRecommendationFile) {
     Assert-Contains $Recommendation '_longitudinalSpeed' 'Recommendation must carry longitudinal speed unchanged.'
     if ($Recommendation -match 'setVelocity|setVelocityModelSpace|setDir|setVectorDirAndUp|disableBrakes') {
         Add-Failure 'Stability recommendation must remain pure and must not mutate objects.'
+    }
+}
+
+$StabilityControllerFile = Join-Path $RepoRoot 'addons\main\functions\fn_applyVehicleStability.sqf'
+Assert-FileExists 'addons\main\functions\fn_applyVehicleStability.sqf'
+if (Test-Path -LiteralPath $StabilityControllerFile) {
+    $StabilityController = Get-Content -Raw -LiteralPath $StabilityControllerFile
+    Assert-Contains $StabilityController 'local _vehicle' 'Stability controller must only mutate a local vehicle.'
+    Assert-Contains $StabilityController 'driver _vehicle == player' 'Stability controller must require the local player to be the driver.'
+    Assert-Contains $StabilityController 'isTouchingGround _vehicle' 'Stability controller must reject airborne vehicles.'
+    Assert-Contains $StabilityController 'FIXICS_handbrakeEnabled' 'Stability controller must reject active FIXICS handbrake ownership.'
+    Assert-Contains $StabilityController 'FIXICS_fnc_getVehicleStabilityProfile' 'Stability controller must resolve the approved vehicle profile.'
+    Assert-Contains $StabilityController 'FIXICS_fnc_getVehicleStabilityRecommendation' 'Stability controller must call the pure recommendation function.'
+    Assert-Contains $StabilityController 'FIXICS_stabilityPreviousHeading' 'Stability controller must retain the previous heading.'
+    Assert-Contains $StabilityController 'FIXICS_stabilityPreviousTime' 'Stability controller must retain the previous sample time.'
+    Assert-Contains $StabilityController '\(\(\(inputAction "CarRight"\) - \(inputAction "CarLeft"\)\) / 3\) max -1 min 1' 'Stability controller must normalize observed 0..3 steering input.'
+    Assert-Contains $StabilityController 'private _headingDelta = \(\(_heading - _previousHeading \+ 540\) mod 360\) - 180;' 'Stability controller must calculate wrapped heading delta.'
+    Assert-Contains $StabilityController 'private _yawRate = _headingDelta / \(_deltaTime max 0\.001\);' 'Stability controller must calculate yaw rate from elapsed time.'
+    Assert-Contains $StabilityController 'velocityModelSpace _vehicle' 'Stability controller must sample model-space velocity.'
+    Assert-Contains $StabilityController 'private _longitudinal = _velocity # 1;' 'Stability controller must preserve model-space longitudinal index 1.'
+    Assert-Contains $StabilityController '_velocity set \[0, _recommendedLateral\];' 'Stability controller must apply only the recommended lateral speed.'
+    Assert-Contains $StabilityController 'setVelocityModelSpace _velocity' 'Stability controller must apply model-space lateral velocity.'
+    Assert-Contains $StabilityController 'unusedYawRecommendation=' 'Stability debug evidence must identify the unused yaw recommendation.'
+    if ($StabilityController -match 'FIXICS_fnc_(?:applyABSBraking|applySlopeRollback|applyHandbrakeLock)|disableBrakes') {
+        Add-Failure 'Stability controller must not call ABS, slope rollback, handbrake lock, or disableBrakes.'
+    }
+    if ($StabilityController -match '\w+\s+set\s+\[\s*1\s*,') {
+        Add-Failure 'Stability controller must not change model-space longitudinal index 1.'
+    }
+    if ($StabilityController -match 'setDir|setVectorDirAndUp') {
+        Add-Failure 'Stability controller must not mutate vehicle orientation.'
     }
 }
 

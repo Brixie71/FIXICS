@@ -122,16 +122,65 @@ if (Test-Path -LiteralPath $StabilityProfileFile) {
     }
 }
 
-function Assert-CbaSetting {
+function Split-SqfArray {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$ArrayText
+    )
+
+    $Trimmed = $ArrayText.Trim()
+    if (-not ($Trimmed.StartsWith('[') -and $Trimmed.EndsWith(']'))) {
+        return $null
+    }
+
+    $Arguments = New-Object System.Collections.Generic.List[string]
+    $Start = 1
+    $Depth = 1
+    $InString = $false
+
+    for ($Index = 1; $Index -lt ($Trimmed.Length - 1); $Index++) {
+        $Character = $Trimmed[$Index]
+        if ($Character -eq '"') {
+            if ($InString -and ($Index + 1) -lt $Trimmed.Length -and $Trimmed[$Index + 1] -eq '"') {
+                $Index++
+                continue
+            }
+
+            $InString = -not $InString
+            continue
+        }
+
+        if ($InString) {
+            continue
+        }
+
+        if ($Character -in @('[', '(', '{')) {
+            $Depth++
+            continue
+        }
+
+        if ($Character -in @(']', ')', '}')) {
+            $Depth--
+            continue
+        }
+
+        if ($Character -eq ',' -and $Depth -eq 1) {
+            $Arguments.Add($Trimmed.Substring($Start, $Index - $Start).Trim())
+            $Start = $Index + 1
+        }
+    }
+
+    $Arguments.Add($Trimmed.Substring($Start, ($Trimmed.Length - 1) - $Start).Trim())
+    return $Arguments.ToArray()
+}
+
+function Get-CbaSettingArguments {
     param (
         [Parameter(Mandatory = $true)]
         [string]$Content,
 
         [Parameter(Mandatory = $true)]
-        [string]$Variable,
-
-        [Parameter(Mandatory = $true)]
-        [string]$ControlType
+        [string]$Variable
     )
 
     $BlockPattern = '(?ms)^\[\s*\r?\n\s*"' + [regex]::Escape($Variable) +
@@ -139,13 +188,71 @@ function Assert-CbaSetting {
     $BlockMatch = [regex]::Match($Content, $BlockPattern)
     if (-not $BlockMatch.Success) {
         Add-Failure "$Variable must be registered through CBA_fnc_addSetting."
-        return
+        return $null
     }
 
     $Block = $BlockMatch.Value
-    Assert-Contains $Block ('(?s)^\[\s*"' + [regex]::Escape($Variable) + '",\s*"' + [regex]::Escape($ControlType) + '",') "$Variable must use a CBA $ControlType control."
-    Assert-Contains $Block '\["FIXICS",\s*"Vehicle Stability"\]' "$Variable must appear under Vehicle Stability."
-    Assert-Contains $Block ',\s*1(?:\s*,.*?)?\s*\]\s*call CBA_fnc_addSetting;$' "$Variable must use CBA global flag 1."
+    $CallSuffixIndex = $Block.LastIndexOf('call CBA_fnc_addSetting;')
+    return Split-SqfArray $Block.Substring(0, $CallSuffixIndex).Trim()
+}
+
+function Normalize-Sqf {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Text
+    )
+
+    return ($Text -replace '\s+', '')
+}
+
+function Assert-CbaSetting {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Content,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Spec
+    )
+
+    $Arguments = Get-CbaSettingArguments $Content $Spec.Variable
+    if ($null -eq $Arguments) {
+        return
+    }
+
+    if ($Arguments.Count -ne 6) {
+        Add-Failure "$($Spec.Variable) must use exactly six CBA setting arguments."
+        return
+    }
+
+    if ($Arguments[0] -ne "`"$($Spec.Variable)`"") {
+        Add-Failure "$($Spec.Variable) must be the first CBA setting argument."
+    }
+    if ($Arguments[1] -ne "`"$($Spec.ControlType)`"") {
+        Add-Failure "$($Spec.Variable) must use a CBA $($Spec.ControlType) control."
+    }
+    if ((Normalize-Sqf $Arguments[3]) -ne '["FIXICS","VehicleStability"]') {
+        Add-Failure "$($Spec.Variable) must appear under Vehicle Stability."
+    }
+    if ((Normalize-Sqf $Arguments[4]) -ne (Normalize-Sqf $Spec.Payload)) {
+        Add-Failure "$($Spec.Variable) must use payload $($Spec.Payload)."
+    }
+    if ($Arguments[5] -ne '1') {
+        Add-Failure "$($Spec.Variable) must use CBA global flag 1 as argument six."
+    }
+
+    $PayloadDefault = if ($Spec.ControlType -in @('LIST', 'SLIDER')) {
+        $PayloadArguments = Split-SqfArray $Arguments[4]
+        if ($null -eq $PayloadArguments) {
+            $null
+        } else {
+            $PayloadArguments[$Spec.DefaultIndex]
+        }
+    } else {
+        $Arguments[4]
+    }
+    if ($PayloadDefault -ne $Spec.NamespaceDefault) {
+        Add-Failure "$($Spec.Variable) CBA payload default must match missionNamespace default $($Spec.NamespaceDefault)."
+    }
 }
 
 $StabilityRecommendationFile = Join-Path $RepoRoot 'addons\main\functions\fn_getVehicleStabilityRecommendation.sqf'
@@ -321,36 +428,78 @@ if (Test-Path -LiteralPath $SettingsFile) {
     Assert-Contains $Settings '"FIXICS_driverControllerInterval"' 'Settings registration must define FIXICS_driverControllerInterval.'
     Assert-Contains $Settings '"LIST"' 'Handbrake input mode must use a CBA list setting.'
 
-    $StabilityDefaults = @(
-        @('FIXICS_stabilityPreset', '0'),
-        @('FIXICS_stabilityAssistMode', '0'),
-        @('FIXICS_stabilityActivationSpeedKmh', '35'),
-        @('FIXICS_stabilitySlipThreshold', '0\.12'),
-        @('FIXICS_stabilityYawStrength', '0\.22'),
-        @('FIXICS_stabilityLateralStrength', '0\.12'),
-        @('FIXICS_stabilityCountersteerStrength', '0\.08'),
-        @('FIXICS_stabilityMaximumCorrection', '0\.12'),
-        @('FIXICS_stabilityDebugLogging', 'false')
+    $StabilitySettings = @(
+        @{
+            Variable = 'FIXICS_stabilityPreset'
+            ControlType = 'LIST'
+            NamespaceDefault = '0'
+            Payload = '[[0, 1, 2], [localize "STR_FIXICS_SETTING_STABILITY_PRESET_REALISTIC_STABLE", localize "STR_FIXICS_SETTING_STABILITY_PRESET_RALLY", localize "STR_FIXICS_SETTING_STABILITY_PRESET_CUSTOM"], 0]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_stabilityAssistMode'
+            ControlType = 'LIST'
+            NamespaceDefault = '0'
+            Payload = '[[0, 1, 2, 3], [localize "STR_FIXICS_SETTING_STABILITY_ASSIST_OFF", localize "STR_FIXICS_SETTING_STABILITY_ASSIST_YAW", localize "STR_FIXICS_SETTING_STABILITY_ASSIST_YAW_LATERAL", localize "STR_FIXICS_SETTING_STABILITY_ASSIST_COUNTERSTEER"], 0]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_stabilityActivationSpeedKmh'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '35'
+            Payload = '[10, 160, 35, 0]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_stabilitySlipThreshold'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.12'
+            Payload = '[0.05, 0.8, 0.12, 2]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_stabilityYawStrength'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.22'
+            Payload = '[0, 1, 0.22, 2]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_stabilityLateralStrength'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.12'
+            Payload = '[0, 1, 0.12, 2]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_stabilityCountersteerStrength'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.08'
+            Payload = '[0, 0.5, 0.08, 2]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_stabilityMaximumCorrection'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.12'
+            Payload = '[0.01, 0.5, 0.12, 2]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_stabilityDebugLogging'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'false'
+            Payload = 'false'
+            DefaultIndex = 0
+        }
     )
-    foreach ($Default in $StabilityDefaults) {
+    foreach ($Spec in $StabilitySettings) {
         Assert-Contains `
             $Settings `
-            ('missionNamespace setVariable \["' + $Default[0] + '", ' + $Default[1] + ', false\];') `
-            "$($Default[0]) must have the approved Task 3 default."
+            ('missionNamespace setVariable \["' + $Spec.Variable + '", ' + [regex]::Escape($Spec.NamespaceDefault) + ', false\];') `
+            "$($Spec.Variable) must have the approved Task 3 default."
+        Assert-CbaSetting $Settings $Spec
     }
-
-    Assert-CbaSetting $Settings 'FIXICS_stabilityPreset' 'LIST'
-    Assert-CbaSetting $Settings 'FIXICS_stabilityAssistMode' 'LIST'
-    Assert-CbaSetting $Settings 'FIXICS_stabilityActivationSpeedKmh' 'SLIDER'
-    Assert-CbaSetting $Settings 'FIXICS_stabilitySlipThreshold' 'SLIDER'
-    Assert-CbaSetting $Settings 'FIXICS_stabilityYawStrength' 'SLIDER'
-    Assert-CbaSetting $Settings 'FIXICS_stabilityLateralStrength' 'SLIDER'
-    Assert-CbaSetting $Settings 'FIXICS_stabilityCountersteerStrength' 'SLIDER'
-    Assert-CbaSetting $Settings 'FIXICS_stabilityMaximumCorrection' 'SLIDER'
-    Assert-CbaSetting $Settings 'FIXICS_stabilityDebugLogging' 'CHECKBOX'
-
-    Assert-Contains $Settings '\[\s*\[0, 1, 2\],\s*\[[\s\S]*?STABILITY_PRESET_REALISTIC_STABLE[\s\S]*?STABILITY_PRESET_RALLY[\s\S]*?STABILITY_PRESET_CUSTOM[\s\S]*?\],\s*0\s*\]' 'Stability preset list must map 0, 1, and 2 to Realistic Stable, Rally, and Custom.'
-    Assert-Contains $Settings '\[\s*\[0, 1, 2, 3\],\s*\[[\s\S]*?STABILITY_ASSIST_OFF[\s\S]*?STABILITY_ASSIST_YAW[\s\S]*?STABILITY_ASSIST_YAW_LATERAL[\s\S]*?STABILITY_ASSIST_COUNTERSTEER[\s\S]*?\],\s*0\s*\]' 'Stability assistance list must map 0 through 3 to the approved modes.'
 }
 
 $MonitorFile = Join-Path $RepoRoot 'addons\main\functions\fn_monitorVehicleAutobrake.sqf'

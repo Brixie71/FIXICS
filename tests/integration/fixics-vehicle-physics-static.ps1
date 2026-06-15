@@ -102,8 +102,23 @@ Assert-Contains $Config 'class updateDriverController\s*\{\s*\};' 'updateDriverC
 Assert-Contains $Config 'class logVehicleHandlingConfig\s*\{\s*\};' 'logVehicleHandlingConfig must be registered in CfgFunctions.'
 Assert-Contains $Config 'class getNativeSlopeControl\s*\{\s*\};' 'getNativeSlopeControl must be registered in CfgFunctions.'
 Assert-Contains $Config 'class getNativeDriverAssist\s*\{\s*\};' 'getNativeDriverAssist must be registered in CfgFunctions.'
+Assert-Contains $Config 'class getVehicleStabilityProfile\s*\{\s*\};' 'Stability profile resolver must be registered.'
 if ($Config -match 'class CfgVehicles|brakeIdleSpeed\s*=\s*0\.01|dampingRateZeroThrottleClutchEngaged\s*=\s*0\.25|dampingRateZeroThrottleClutchDisengaged\s*=\s*0\.25') {
     Add-Failure 'Failed config-class experiment must be removed before native gameplay-control escalation.'
+}
+
+$StabilityProfileFile = Join-Path $RepoRoot 'addons\main\functions\fn_getVehicleStabilityProfile.sqf'
+Assert-FileExists 'addons\main\functions\fn_getVehicleStabilityProfile.sqf'
+if (Test-Path -LiteralPath $StabilityProfileFile) {
+    $StabilityProfile = Get-Content -Raw -LiteralPath $StabilityProfileFile
+    Assert-Contains $StabilityProfile '"EMP_Polaris_DAGOR"' 'Initial compatibility registry must contain only the approved DAGOR class.'
+    Assert-Contains $StabilityProfile '"REALISTIC_STABLE"' 'Profile resolver must support the realistic preset.'
+    Assert-Contains $StabilityProfile '"RALLY"' 'Profile resolver must support the rally preset.'
+    Assert-Contains $StabilityProfile '"CUSTOM"' 'Profile resolver must support the custom preset.'
+    Assert-Contains $StabilityProfile 'missionNamespace getVariable' 'Custom profile must read synchronized CBA values.'
+    if ($StabilityProfile -match 'isKindOf\s+"(?:Car_F|LandVehicle)"') {
+        Add-Failure 'Stability compatibility must use exact approved classes, not broad vehicle inheritance.'
+    }
 }
 
 Assert-Contains $Init 'FIXICS_fnc_hello' 'fn_init.sqf must call FIXICS_fnc_hello.'

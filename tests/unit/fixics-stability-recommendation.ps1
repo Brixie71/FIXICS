@@ -1,7 +1,13 @@
+param (
+    [string]$SqfPath
+)
+
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$SqfPath = Join-Path $RepoRoot 'addons\main\functions\fn_getVehicleStabilityRecommendation.sqf'
+if ([string]::IsNullOrWhiteSpace($SqfPath)) {
+    $SqfPath = Join-Path $RepoRoot 'addons\main\functions\fn_getVehicleStabilityRecommendation.sqf'
+}
 $Sqf = Get-Content -Raw -LiteralPath $SqfPath
 
 function Require-Match {
@@ -48,15 +54,6 @@ function Get-ClampBounds {
     )
 }
 
-function Apply-Clamp {
-    param (
-        [double]$Value,
-        [double[]]$Bounds
-    )
-
-    return [math]::Min([math]::Max($Value, $Bounds[0]), $Bounds[1])
-}
-
 function Get-ModeBlock {
     param ([string]$Mode)
 
@@ -66,7 +63,7 @@ function Get-ModeBlock {
         "$Mode branch").Groups['body'].Value
 }
 
-function Get-YawFormula {
+function Require-YawFormula {
     param (
         [string]$Block,
         [string]$StrengthVariable
@@ -82,19 +79,6 @@ function Get-YawFormula {
         throw "SQF source contract missing: yaw formula using $StrengthVariable"
     }
 
-    return {
-        param (
-            [double]$YawRate,
-            [double]$Strength,
-            [double]$DeltaTime,
-            [double]$MaximumCorrection
-        )
-
-        [math]::Min(
-            [math]::Max(-$YawRate * $Strength * $DeltaTime, -$MaximumCorrection),
-            $MaximumCorrection
-        )
-    }
 }
 
 $modeList = (Require-Match `
@@ -107,9 +91,9 @@ if ($modes.Count -ne 4) {
     throw "Expected four parsed assistance modes, got $($modes.Count)."
 }
 
-$finiteMatch = Require-Match `
+Require-Match `
     '!finite\s+_longitudinalSpeed[\s\S]*?!finite\s+_lateralSpeed[\s\S]*?!finite\s+_yawRate[\s\S]*?!finite\s+_steeringInput[\s\S]*?!finite\s+_deltaTime[\s\S]*?\[false,\s*0,\s*0,\s*0,\s*"OFF"\]' `
-    'finite-input rejection and safe return'
+    'finite-input rejection and safe return' | Out-Null
 
 $activationPredicate = Require-Match `
     '\(abs\s+_longitudinalSpeed\)\s*\*\s*(?<conversion>\d+(?:\.\d+)?)\s*<\s*_activationSpeedKmh' `
@@ -136,8 +120,8 @@ $bounds = @{
 $yawBlock = Get-ModeBlock 'YAW'
 $yawLateralBlock = Get-ModeBlock 'YAW_LATERAL'
 $countersteerBlock = Get-ModeBlock 'COUNTERSTEER'
-$yawFormula = Get-YawFormula $yawBlock '_yawStrength'
-$yawLateralFormula = Get-YawFormula $yawLateralBlock '_yawStrength'
+Require-YawFormula $yawBlock '_yawStrength'
+Require-YawFormula $yawLateralBlock '_yawStrength'
 
 $lateralMatch = [regex]::Match(
     $yawLateralBlock,
@@ -169,40 +153,20 @@ Assert-Near $conversion 3.6 'Speed conversion'
 Assert-Near $slipFloor 1 'Slip denominator floor'
 Assert-Near $lateralCap 0.5 'Lateral damping cap'
 
-Assert-Near (Apply-Clamp -20 $bounds.Activation) 0 'Activation lower clamp'
-Assert-Near (Apply-Clamp 500 $bounds.Activation) 160 'Activation upper clamp'
-Assert-Near (Apply-Clamp -1 $bounds.Slip) 0 'Slip lower clamp'
-Assert-Near (Apply-Clamp 2 $bounds.Slip) 1 'Slip upper clamp'
-Assert-Near (Apply-Clamp 5 $bounds.Yaw) 1 'Yaw strength upper clamp'
-Assert-Near (Apply-Clamp 5 $bounds.Lateral) 1 'Lateral strength upper clamp'
-Assert-Near (Apply-Clamp 5 $bounds.Countersteer) 0.5 'Countersteer upper clamp'
-Assert-Near (Apply-Clamp 5 $bounds.Correction) 0.5 'Correction upper clamp'
-Assert-Near (Apply-Clamp 2 $bounds.DeltaTime) 1 'Delta-time upper clamp'
-
-$yawCorrection = & $yawFormula 10 0.22 0.1 0.12
-Assert-Near $yawCorrection -0.12 'YAW extracted formula'
-
-$yawLateralCorrection = & $yawLateralFormula 2 0.22 0.5 0.12
-Assert-Near $yawLateralCorrection -0.12 'YAW_LATERAL extracted yaw formula'
-$lateralAfter = 4 * (1 - [math]::Min(0.12 * 0.5, $lateralCap))
-Assert-Near $lateralAfter 3.76 'YAW_LATERAL extracted damping formula'
-
-$countersteerCorrection = [math]::Min(
-    [math]::Max(-10 * 0.08 * 0.1, -0.12),
-    0.12
-)
-Assert-Near $countersteerCorrection -0.08 'COUNTERSTEER extracted formula'
-
-$activationSpeed = 35
-$belowActivation = ([math]::Abs(5) * $conversion) -lt $activationSpeed
-if (-not $belowActivation) {
-    throw 'Extracted activation threshold did not reject low speed.'
-}
-
-$slipRatio = [math]::Abs(1) / [math]::Max([math]::Abs(20), $slipFloor)
-if (-not ($slipRatio -lt 0.12)) {
-    throw 'Extracted slip threshold did not reject low slip.'
-}
+Assert-Near $bounds.Activation[0] 0 'Activation lower clamp'
+Assert-Near $bounds.Activation[1] 160 'Activation upper clamp'
+Assert-Near $bounds.Slip[0] 0 'Slip lower clamp'
+Assert-Near $bounds.Slip[1] 1 'Slip upper clamp'
+Assert-Near $bounds.Yaw[0] 0 'Yaw strength lower clamp'
+Assert-Near $bounds.Yaw[1] 1 'Yaw strength upper clamp'
+Assert-Near $bounds.Lateral[0] 0 'Lateral strength lower clamp'
+Assert-Near $bounds.Lateral[1] 1 'Lateral strength upper clamp'
+Assert-Near $bounds.Countersteer[0] 0 'Countersteer lower clamp'
+Assert-Near $bounds.Countersteer[1] 0.5 'Countersteer upper clamp'
+Assert-Near $bounds.Correction[0] 0 'Correction lower clamp'
+Assert-Near $bounds.Correction[1] 0.5 'Correction upper clamp'
+Assert-Near $bounds.DeltaTime[0] 0 'Delta-time lower clamp'
+Assert-Near $bounds.DeltaTime[1] 1 'Delta-time upper clamp'
 
 if ($returnTuple.Groups['longitudinal'].Value -ne '_longitudinalSpeed') {
     throw 'Production return tuple does not preserve longitudinal speed.'

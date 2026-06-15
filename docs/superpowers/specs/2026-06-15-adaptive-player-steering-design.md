@@ -2,7 +2,8 @@
 
 ## Status
 
-Research recommendation only. No implementation is authorized by this document.
+Architecture and settings design approved by SQA. Implementation requires a
+separate approved plan.
 
 ## Problem
 
@@ -61,6 +62,18 @@ Recent context:
 - https://www.theverge.com/transportation/906539/mercedes-steer-by-wire-steering-yoke-eqs
 - https://www.automotive-technology.com/articles/driving-innovation-steering-and-automotive-components-in-the-modern-era
 
+### Assessment Of The Suggested Technologies
+
+| Suggested technology | Real vehicle purpose | Useful FIXICS concept | Not directly portable |
+|---|---|---|---|
+| EPS | Reduces steering effort with electric motor assistance | Speed-dependent steering response | Physical torque assistance and road feel |
+| Torque/angle/position sensors | Measure driver effort, steering position, and actuator state | Observe input magnitude, requested direction, and actual steering animation | Adding unavailable wheel-torque sensors |
+| Lightweight materials | Reduce mass and steering/suspension inertia | None for a player input curve | Carbon-fiber or alloy effects cannot be simulated by steering coefficients |
+| ADAS integration | Adds lane, yaw, stability, and collision assistance | Optional future stability research | Automatic countersteer should not be bundled with steering sensitivity |
+| Steer-by-wire | Electronically maps input to wheel angle with configurable ratio | Nonlinear, speed-adaptive input mapping | Claiming an SQF/config profile is actual steer-by-wire |
+
+Materials innovation is therefore outside ISSUE-001. It may affect a real vehicle's mass and inertia, but it does not explain Arma's keyboard steering lock.
+
 ## Recommendation
 
 Use a config-first adaptive steering profile based on `PlayerSteeringCoefficients`.
@@ -79,6 +92,19 @@ Keyboard input should behave like a rate-controlled steering request:
 
 This is nonlinear steering build-up. It is not a linear WASD-to-wheel-angle mapping.
 
+### Keyboard Versus Analog
+
+Bohemia documents `inputAction` as returning the state of mapped input devices. It can return analog values rather than only zero or one; joystick axes return values between zero and one.
+
+Source: https://community.bohemia.net/wiki/inputAction
+
+This gives the reproduction test a meaningful split:
+
+- Keyboard: digital request that the engine must turn into a steering ramp.
+- Controller/wheel: continuous magnitude that already carries partial steering intent.
+
+If the defect is keyboard-only, the likely problem is input buildup, speed sensitivity, or maximum-angle limiting. If analog input produces the same wheel angle and the same failure, the likely problem moves toward class configuration, tire force, suspension, or load transfer.
+
 ### Initial Parameter Strategy
 
 Exact values require inheritance inspection and SQA testing. The initial experiment should:
@@ -90,6 +116,39 @@ Exact values require inheritance inspection and SQA testing. The initial experim
 - increase `maxTurnHundred` only if measured wheel angle is being limited too severely at high speed.
 
 No value should be applied broadly to all `LandVehicle` classes. Use an opt-in class list or narrowly inherited vehicle families after reproduction identifies affected classes.
+
+### Controlled Profile Experiments
+
+Do not search for one final profile immediately. Compare profiles against the affected class's inherited values.
+
+1. **Baseline**
+   - Record all seven inherited `PlayerSteeringCoefficients`.
+   - Do not change tire or suspension parameters.
+2. **Response profile**
+   - Increase only `turnIncreaseConst` by a small relative amount.
+   - Purpose: determine whether steering buildup is simply too slow.
+3. **High-speed authority profile**
+   - Restore baseline buildup.
+   - Increase only `maxTurnHundred` modestly or reduce `turnIncreaseLinear` modestly.
+   - Purpose: determine whether high-speed steering is limited too aggressively.
+4. **Progressive profile**
+   - Restore baseline.
+   - Increase `turnIncreaseTime` moderately.
+   - Purpose: keep a stable center while making sustained input stronger near maximum angle.
+5. **Recentering profile**
+   - Change only `turnDecreaseConst`, `turnDecreaseLinear`, or `turnDecreaseTime`.
+   - Purpose: isolate slow release, snap-back, or oscillation from turn-in behavior.
+
+Change one coefficient family per experiment. Do not combine successful values until each effect is understood.
+
+Suggested safety bounds for the first experimental pass are relative to inherited values:
+
+- sensitivity and recentering coefficients: no more than approximately 10-20% per step;
+- `maxTurnHundred`: no more than 0.05 per step;
+- no coefficient below zero;
+- no test profile applied to an untested broad parent class.
+
+These are project test limits, not Bohemia-prescribed values.
 
 ## Tire Grip Decision
 
@@ -128,6 +187,67 @@ Capture:
 - time from key release to recentering;
 - whether analog input reproduces the problem.
 
+## Diagnostic Method
+
+### Config Inspection
+
+For each vehicle, record `typeOf _vehicle`, then inspect the inherited `PlayerSteeringCoefficients` under:
+
+```sqf
+configFile >> "CfgVehicles" >> typeOf _vehicle >> "PlayerSteeringCoefficients"
+```
+
+`configProperties` can include inherited entries. `getNumber` can read each numeric coefficient, but a missing entry returns zero, so the test tooling must distinguish missing config from a real zero value.
+
+Sources:
+
+- https://community.bohemia.net/wiki/typeOf
+- https://community.bohemia.net/wiki/configProperties
+- https://community.bohemia.net/wiki/getNumber
+
+### Runtime Observation
+
+Record at a fixed interval:
+
+- input magnitude from the mapped left/right `inputAction`;
+- speed;
+- `velocityModelSpace`, especially lateral X and longitudinal Y;
+- vehicle heading change or yaw-rate estimate;
+- visible steering animation source or phase when available;
+- throttle and brake intent;
+- ground surface and slope.
+
+`velocityModelSpace` reports left/right, backward/forward, and down/up velocity in the vehicle's local frame. Changes in lateral velocity help separate a wheel-angle command from actual lateral movement.
+
+Source: https://community.bohemia.net/wiki/velocityModelSpace
+
+### Diagnostic Executable
+
+Bohemia's diagnostic executable exposes:
+
+- `AnimSrcUnit` for animation sources on the player's vehicle;
+- `EPEVehicle` for gearbox, friction, thrust, brake, and other PhysX vehicle values;
+- `EPEForce` and `Force` for applied forces;
+- `Suspension` for per-wheel suspension state.
+
+It also supports `diag_mergeConfigFile` for development-only config iteration. This should be used only in an isolated diagnostic workflow because Bohemia warns of limitations and possible exit crashes.
+
+Sources:
+
+- https://community.bohemia.net/wiki/Arma_3:_Diagnostics_Exe
+- https://community.bohemia.net/wiki/diag_mergeConfigFile
+
+### Classification Metrics
+
+Use observations to classify the run:
+
+- **Input limitation**: full input but steering animation/angle stops below expected authority.
+- **Buildup limitation**: steering angle eventually arrives, but too late for the corner.
+- **Understeer**: steering angle increases while yaw and lateral response remain insufficient.
+- **Oversteer**: yaw grows faster than the intended path and the rear rotates outward.
+- **Recentering defect**: input releases but steering animation or yaw persists too long.
+- **Oscillation**: rapid sign changes or recentering cause repeated yaw correction.
+
 ## Decision Tree
 
 1. Wheel angle stops increasing too early at speed:
@@ -157,11 +277,130 @@ Manual:
 - test adjacent braking and slope behavior;
 - record vehicle-specific results rather than declaring global success.
 
+## Recommended Implementation Sequence
+
+1. Add read-only steering diagnostics and a manual reproduction mission/procedure.
+2. Record inherited coefficients for representative vanilla vehicles.
+3. Test keyboard and analog input without ABS/native steering changes.
+4. Approve a narrow config experiment for one or two affected vehicle families.
+5. Compare controlled profiles one coefficient family at a time.
+6. Only if steering angle is correct, open a separate tire/suspension handling design.
+7. Only after both stages fail should scripted or native steering assistance be considered.
+
+## Approved Handling Architecture
+
+### Goals
+
+FIXICS will provide realistic, stable handling while preserving controlled,
+recoverable sliding. The system must reduce abrupt body roll and rollover risk
+without globally increasing tire grip or suppressing deliberate driver input.
+
+### Compatibility Boundary
+
+Handling profiles apply only to explicitly registered vehicle families.
+Unsupported vehicles retain their original configuration and runtime behavior.
+The first compatibility target is `EMP_Polaris_DAGOR`; additional families
+require separate SQA validation before registration.
+
+Passive profiles may tune:
+
+- `PlayerSteeringCoefficients` for progressive turn-in, high-speed authority,
+  and recentering;
+- vehicle-specific anti-roll values to reduce excessive lateral load transfer;
+- suspension or tire values only after diagnostics show steering and anti-roll
+  tuning are insufficient.
+
+No broad `Car_F` or `LandVehicle` patch is permitted.
+
+### Presets
+
+The server-global handling preset is one of:
+
+- `Realistic Stable`: progressive steering, controlled body roll, and
+  recoverable passive sliding;
+- `Rally`: quicker response and greater permitted slip while retaining bounded
+  rollover control;
+- `Custom`: administrator-defined values within project safety bounds.
+
+Custom values cover steering response, recentering, high-speed authority,
+anti-roll strength, assistance activation speed, slip threshold, assistance
+strength, and maximum correction.
+
+### Assistance Modes
+
+The server-global assisted handling mode is one of:
+
+- `Off`: passive profile only;
+- `Yaw damping`: reduce excessive yaw while preserving lateral slip;
+- `Yaw + lateral damping`: reduce excessive yaw and lateral velocity;
+- `Countersteering`: apply bounded corrective steering against excessive yaw.
+
+Assistance is separate from ABS, slope rolling, handbrake, and direction
+transition control. It cannot inject longitudinal speed.
+
+### Runtime Controller
+
+The stability controller runs only when:
+
+- the vehicle is in the compatibility registry;
+- the vehicle is local;
+- the local player is the driver;
+- the vehicle is grounded;
+- the persistent handbrake is released;
+- speed and slip exceed their configured activation thresholds.
+
+The controller performs no correction while airborne or stationary. Each
+correction is bounded by elapsed time, configured strength, and a maximum
+per-update limit. Countersteering uses the most conservative preset strength
+because it has the highest risk of conflicting with driver intent.
+
+Initial implementation remains local. The CBA settings are server-global so
+clients use the same selected preset and assistance mode. Multiplayer
+authority and synchronization beyond the existing locality boundary remain
+deferred.
+
+### Data Flow
+
+1. Resolve the driven vehicle against the compatibility registry.
+2. Resolve the server-global preset and assistance mode.
+3. Read steering input, speed, model-space velocity, heading change, grounded
+   state, and handbrake state.
+4. Estimate yaw rate and lateral slip from consecutive samples.
+5. Reject the update when any activation guard fails.
+6. Calculate one bounded recommendation for the selected assistance mode.
+7. Apply only the permitted lateral/yaw correction; preserve longitudinal
+   velocity and driver throttle/brake intent.
+8. Emit optional diagnostic telemetry without altering controller behavior.
+
+### Validation
+
+Automated validation must verify:
+
+- only registered vehicle families are eligible;
+- presets resolve to bounded values;
+- each assistance mode has isolated behavior tests;
+- all activation guards fail closed;
+- corrections preserve longitudinal velocity;
+- no ABS, handbrake, slope, or direction-transition ownership is duplicated.
+
+Manual SQA validation must cover:
+
+- paved roads, dirt, grass, and slopes;
+- gradual and sudden turns across low, medium, and high speeds;
+- passive controlled slides and recovery;
+- body-roll and rollover tendency;
+- braking during turns;
+- Drive/Reverse transitions;
+- handbrake activation;
+- each preset and assistance mode.
+
+No claim of improved gameplay behavior is valid until SQA records the
+corresponding in-game result.
+
 ## Out Of Scope
 
 - Simulating physical steering torque or road feedback.
 - Claiming actual EPS, ADAS, or steer-by-wire functionality.
 - Global tire-grip increases.
-- Automatic countersteering or stability control.
 - Native input injection.
 - Multiplayer authority.

@@ -122,6 +122,32 @@ if (Test-Path -LiteralPath $StabilityProfileFile) {
     }
 }
 
+function Assert-CbaSetting {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Content,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Variable,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ControlType
+    )
+
+    $BlockPattern = '(?ms)^\[\s*\r?\n\s*"' + [regex]::Escape($Variable) +
+        '".*?\]\s*call CBA_fnc_addSetting;'
+    $BlockMatch = [regex]::Match($Content, $BlockPattern)
+    if (-not $BlockMatch.Success) {
+        Add-Failure "$Variable must be registered through CBA_fnc_addSetting."
+        return
+    }
+
+    $Block = $BlockMatch.Value
+    Assert-Contains $Block ('(?s)^\[\s*"' + [regex]::Escape($Variable) + '",\s*"' + [regex]::Escape($ControlType) + '",') "$Variable must use a CBA $ControlType control."
+    Assert-Contains $Block '\["FIXICS",\s*"Vehicle Stability"\]' "$Variable must appear under Vehicle Stability."
+    Assert-Contains $Block ',\s*1(?:\s*,.*?)?\s*\]\s*call CBA_fnc_addSetting;$' "$Variable must use CBA global flag 1."
+}
+
 $StabilityRecommendationFile = Join-Path $RepoRoot 'addons\main\functions\fn_getVehicleStabilityRecommendation.sqf'
 Assert-FileExists 'addons\main\functions\fn_getVehicleStabilityRecommendation.sqf'
 if (Test-Path -LiteralPath $StabilityRecommendationFile) {
@@ -185,6 +211,39 @@ Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DIRECTION_LAUNCH_VELOCITY' 'Str
 Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DIRECTION_NEUTRAL_PULSE' 'Stringtable must define the direction neutral pulse setting title.'
 Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DIRECTION_NEUTRAL_PULSE_TOOLTIP' 'Stringtable must define the direction neutral pulse setting tooltip.'
 Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DRIVER_CONTROLLER_INTERVAL' 'Stringtable must define the driver controller interval setting title.'
+
+@(
+    'STR_FIXICS_SETTING_STABILITY_PRESET',
+    'STR_FIXICS_SETTING_STABILITY_PRESET_TOOLTIP',
+    'STR_FIXICS_SETTING_STABILITY_PRESET_REALISTIC_STABLE',
+    'STR_FIXICS_SETTING_STABILITY_PRESET_RALLY',
+    'STR_FIXICS_SETTING_STABILITY_PRESET_CUSTOM',
+    'STR_FIXICS_SETTING_STABILITY_ASSIST_MODE',
+    'STR_FIXICS_SETTING_STABILITY_ASSIST_MODE_TOOLTIP',
+    'STR_FIXICS_SETTING_STABILITY_ASSIST_OFF',
+    'STR_FIXICS_SETTING_STABILITY_ASSIST_YAW',
+    'STR_FIXICS_SETTING_STABILITY_ASSIST_YAW_LATERAL',
+    'STR_FIXICS_SETTING_STABILITY_ASSIST_COUNTERSTEER',
+    'STR_FIXICS_SETTING_STABILITY_ACTIVATION_SPEED',
+    'STR_FIXICS_SETTING_STABILITY_ACTIVATION_SPEED_TOOLTIP',
+    'STR_FIXICS_SETTING_STABILITY_SLIP_THRESHOLD',
+    'STR_FIXICS_SETTING_STABILITY_SLIP_THRESHOLD_TOOLTIP',
+    'STR_FIXICS_SETTING_STABILITY_YAW_STRENGTH',
+    'STR_FIXICS_SETTING_STABILITY_YAW_STRENGTH_TOOLTIP',
+    'STR_FIXICS_SETTING_STABILITY_LATERAL_STRENGTH',
+    'STR_FIXICS_SETTING_STABILITY_LATERAL_STRENGTH_TOOLTIP',
+    'STR_FIXICS_SETTING_STABILITY_COUNTERSTEER_STRENGTH',
+    'STR_FIXICS_SETTING_STABILITY_COUNTERSTEER_STRENGTH_TOOLTIP',
+    'STR_FIXICS_SETTING_STABILITY_MAXIMUM_CORRECTION',
+    'STR_FIXICS_SETTING_STABILITY_MAXIMUM_CORRECTION_TOOLTIP',
+    'STR_FIXICS_SETTING_STABILITY_DEBUG_LOGGING',
+    'STR_FIXICS_SETTING_STABILITY_DEBUG_LOGGING_TOOLTIP'
+) | ForEach-Object {
+    Assert-Contains $Stringtable ('ID="' + $_ + '"') "Stringtable must define $_."
+}
+Assert-Contains $Stringtable 'server-global' 'Stability descriptions must state that settings are server-global.'
+Assert-Contains $Stringtable 'registered vehicles' 'Stability descriptions must state that only registered vehicles are eligible.'
+Assert-Contains $Stringtable 'Custom values are ignored by fixed presets' 'Stability descriptions must state that fixed presets ignore Custom values.'
 
 $AddonFiles = Get-ChildItem -LiteralPath (Join-Path $RepoRoot 'addons\main') -Recurse -File
 $BaseArmaRefs = $AddonFiles | Select-String -Pattern 'BASEARMA_fnc_' -List
@@ -261,6 +320,37 @@ if (Test-Path -LiteralPath $SettingsFile) {
     Assert-Contains $Settings '"FIXICS_directionNeutralPulseSeconds"' 'Settings registration must define FIXICS_directionNeutralPulseSeconds.'
     Assert-Contains $Settings '"FIXICS_driverControllerInterval"' 'Settings registration must define FIXICS_driverControllerInterval.'
     Assert-Contains $Settings '"LIST"' 'Handbrake input mode must use a CBA list setting.'
+
+    $StabilityDefaults = @(
+        @('FIXICS_stabilityPreset', '0'),
+        @('FIXICS_stabilityAssistMode', '0'),
+        @('FIXICS_stabilityActivationSpeedKmh', '35'),
+        @('FIXICS_stabilitySlipThreshold', '0\.12'),
+        @('FIXICS_stabilityYawStrength', '0\.22'),
+        @('FIXICS_stabilityLateralStrength', '0\.12'),
+        @('FIXICS_stabilityCountersteerStrength', '0\.08'),
+        @('FIXICS_stabilityMaximumCorrection', '0\.12'),
+        @('FIXICS_stabilityDebugLogging', 'false')
+    )
+    foreach ($Default in $StabilityDefaults) {
+        Assert-Contains `
+            $Settings `
+            ('missionNamespace setVariable \["' + $Default[0] + '", ' + $Default[1] + ', false\];') `
+            "$($Default[0]) must have the approved Task 3 default."
+    }
+
+    Assert-CbaSetting $Settings 'FIXICS_stabilityPreset' 'LIST'
+    Assert-CbaSetting $Settings 'FIXICS_stabilityAssistMode' 'LIST'
+    Assert-CbaSetting $Settings 'FIXICS_stabilityActivationSpeedKmh' 'SLIDER'
+    Assert-CbaSetting $Settings 'FIXICS_stabilitySlipThreshold' 'SLIDER'
+    Assert-CbaSetting $Settings 'FIXICS_stabilityYawStrength' 'SLIDER'
+    Assert-CbaSetting $Settings 'FIXICS_stabilityLateralStrength' 'SLIDER'
+    Assert-CbaSetting $Settings 'FIXICS_stabilityCountersteerStrength' 'SLIDER'
+    Assert-CbaSetting $Settings 'FIXICS_stabilityMaximumCorrection' 'SLIDER'
+    Assert-CbaSetting $Settings 'FIXICS_stabilityDebugLogging' 'CHECKBOX'
+
+    Assert-Contains $Settings '\[\s*\[0, 1, 2\],\s*\[[\s\S]*?STABILITY_PRESET_REALISTIC_STABLE[\s\S]*?STABILITY_PRESET_RALLY[\s\S]*?STABILITY_PRESET_CUSTOM[\s\S]*?\],\s*0\s*\]' 'Stability preset list must map 0, 1, and 2 to Realistic Stable, Rally, and Custom.'
+    Assert-Contains $Settings '\[\s*\[0, 1, 2, 3\],\s*\[[\s\S]*?STABILITY_ASSIST_OFF[\s\S]*?STABILITY_ASSIST_YAW[\s\S]*?STABILITY_ASSIST_YAW_LATERAL[\s\S]*?STABILITY_ASSIST_COUNTERSTEER[\s\S]*?\],\s*0\s*\]' 'Stability assistance list must map 0 through 3 to the approved modes.'
 }
 
 $MonitorFile = Join-Path $RepoRoot 'addons\main\functions\fn_monitorVehicleAutobrake.sqf'

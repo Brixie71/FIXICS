@@ -137,6 +137,15 @@ if (Test-Path -LiteralPath $StabilityRecommendationFile) {
     }
 }
 
+$StabilityMutationRunnerFile = Join-Path $RepoRoot 'tests\unit\fixics-stability-recommendation-mutations.ps1'
+Assert-FileExists 'tests\unit\fixics-stability-recommendation-mutations.ps1'
+if (Test-Path -LiteralPath $StabilityMutationRunnerFile) {
+    $StabilityMutationRunner = Get-Content -Raw -LiteralPath $StabilityMutationRunnerFile
+    if ($StabilityMutationRunner -match 'Start-Process') {
+        Add-Failure 'Stability mutation runner must avoid Start-Process environment serialization.'
+    }
+}
+
 Assert-Contains $Init 'FIXICS_fnc_hello' 'fn_init.sqf must call FIXICS_fnc_hello.'
 Assert-Contains $Init 'FIXICS_fnc_registerSettings' 'fn_init.sqf must register CBA settings.'
 Assert-Contains $Init 'FIXICS_fnc_registerAceInteractions' 'fn_init.sqf must register ACE interactions.'

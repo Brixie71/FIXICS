@@ -90,23 +90,20 @@ try {
         )
         Set-Content -LiteralPath $mutantPath -Value $mutatedSource -Encoding UTF8
 
-        $stdoutPath = "$mutantPath.stdout"
-        $stderrPath = "$mutantPath.stderr"
-        $process = Start-Process `
-            -FilePath 'powershell.exe' `
-            -ArgumentList @(
-                '-NoProfile',
-                '-ExecutionPolicy', 'Bypass',
-                '-File', "`"$ValidatorPath`"",
-                '-SqfPath', "`"$mutantPath`""
-            ) `
-            -RedirectStandardOutput $stdoutPath `
-            -RedirectStandardError $stderrPath `
-            -WindowStyle Hidden `
-            -Wait `
-            -PassThru
+        $priorErrorActionPreference = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            & powershell.exe `
+                -NoProfile `
+                -ExecutionPolicy Bypass `
+                -File $ValidatorPath `
+                -SqfPath $mutantPath *> $null
+            $validatorExitCode = $LASTEXITCODE
+        } finally {
+            $ErrorActionPreference = $priorErrorActionPreference
+        }
 
-        if ($process.ExitCode -eq 0) {
+        if ($validatorExitCode -eq 0) {
             throw "Mutation survived: $($mutation.Name)"
         }
 

@@ -40,4 +40,12 @@ At high speed, a sharp steering input can appear to lock the steering response w
 
 This issue is not currently attributed to ABS braking or Native Driver Assist v2. Root-cause research and a separate approved design are required before implementation.
 
+#### Research Direction
+
+Bohemia documents `PlayerSteeringCoefficients` as a player-only steering-sensitivity configuration with independent controls for steering build-up, speed sensitivity, nonlinear response near maximum steering angle, caster-like recentering, and maximum steering angle at 100 km/h.
+
+The first investigation should therefore compare the affected vehicle classes' inherited `PlayerSteeringCoefficients` before adding scripted steering or changing tire grip. Tire parameters such as `latStiffX`, `latStiffY`, and `frictionVsSlipGraph` affect the lateral force available after steering input reaches the wheels; they do not directly repair a keyboard-input response curve.
+
+Approved research artifact: `docs/superpowers/specs/2026-06-15-adaptive-player-steering-design.md`.
+
 Resolved Phase 1 milestones are recorded in `docs/fixes/fix-log.md`. Active approximations are recorded in `docs/fixes/workaround-registry.md`.

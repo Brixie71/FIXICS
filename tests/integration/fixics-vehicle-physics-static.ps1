@@ -103,6 +103,7 @@ Assert-Contains $Config 'class logVehicleHandlingConfig\s*\{\s*\};' 'logVehicleH
 Assert-Contains $Config 'class getNativeSlopeControl\s*\{\s*\};' 'getNativeSlopeControl must be registered in CfgFunctions.'
 Assert-Contains $Config 'class getNativeDriverAssist\s*\{\s*\};' 'getNativeDriverAssist must be registered in CfgFunctions.'
 Assert-Contains $Config 'class getVehicleStabilityProfile\s*\{\s*\};' 'Stability profile resolver must be registered.'
+Assert-Contains $Config 'class getVehicleStabilityRecommendation\s*\{\s*\};' 'Stability recommendation math must be registered.'
 if ($Config -match 'class CfgVehicles|brakeIdleSpeed\s*=\s*0\.01|dampingRateZeroThrottleClutchEngaged\s*=\s*0\.25|dampingRateZeroThrottleClutchDisengaged\s*=\s*0\.25') {
     Add-Failure 'Failed config-class experiment must be removed before native gameplay-control escalation.'
 }
@@ -118,6 +119,21 @@ if (Test-Path -LiteralPath $StabilityProfileFile) {
     Assert-Contains $StabilityProfile 'missionNamespace getVariable' 'Custom profile must read synchronized CBA values.'
     if ($StabilityProfile -match 'isKindOf\s+"(?:Car_F|LandVehicle)"') {
         Add-Failure 'Stability compatibility must use exact approved classes, not broad vehicle inheritance.'
+    }
+}
+
+$StabilityRecommendationFile = Join-Path $RepoRoot 'addons\main\functions\fn_getVehicleStabilityRecommendation.sqf'
+Assert-FileExists 'addons\main\functions\fn_getVehicleStabilityRecommendation.sqf'
+if (Test-Path -LiteralPath $StabilityRecommendationFile) {
+    $Recommendation = Get-Content -Raw -LiteralPath $StabilityRecommendationFile
+    Assert-Contains $Recommendation '"OFF"' 'Recommendation must support disabled assistance.'
+    Assert-Contains $Recommendation '"YAW"' 'Recommendation must support yaw damping.'
+    Assert-Contains $Recommendation '"YAW_LATERAL"' 'Recommendation must support yaw and lateral damping.'
+    Assert-Contains $Recommendation '"COUNTERSTEER"' 'Recommendation must support bounded countersteering.'
+    Assert-Contains $Recommendation 'finite' 'Recommendation must reject non-finite inputs.'
+    Assert-Contains $Recommendation '_longitudinalSpeed' 'Recommendation must carry longitudinal speed unchanged.'
+    if ($Recommendation -match 'setVelocity|setVelocityModelSpace|setDir|setVectorDirAndUp|disableBrakes') {
+        Add-Failure 'Stability recommendation must remain pure and must not mutate objects.'
     }
 }
 

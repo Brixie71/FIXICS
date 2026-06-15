@@ -44,6 +44,7 @@ class CfgFunctions
             class getNativeSlopeControl {};
             class getNativeDriverAssist {};
             class getVehicleStabilityProfile {};
+            class getVehicleStabilityRecommendation {};
         };
     };
 };

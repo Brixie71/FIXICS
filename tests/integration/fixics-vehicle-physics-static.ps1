@@ -202,7 +202,29 @@ function Normalize-Sqf {
         [string]$Text
     )
 
-    return ($Text -replace '\s+', '')
+    $Normalized = New-Object System.Text.StringBuilder
+    $InString = $false
+
+    for ($Index = 0; $Index -lt $Text.Length; $Index++) {
+        $Character = $Text[$Index]
+        if ($Character -eq '"') {
+            [void]$Normalized.Append($Character)
+            if ($InString -and ($Index + 1) -lt $Text.Length -and $Text[$Index + 1] -eq '"') {
+                [void]$Normalized.Append($Text[$Index + 1])
+                $Index++
+                continue
+            }
+
+            $InString = -not $InString
+            continue
+        }
+
+        if ($InString -or -not [char]::IsWhiteSpace($Character)) {
+            [void]$Normalized.Append($Character)
+        }
+    }
+
+    return $Normalized.ToString()
 }
 
 function Assert-CbaSetting {
@@ -230,7 +252,7 @@ function Assert-CbaSetting {
     if ($Arguments[1] -ne "`"$($Spec.ControlType)`"") {
         Add-Failure "$($Spec.Variable) must use a CBA $($Spec.ControlType) control."
     }
-    if ((Normalize-Sqf $Arguments[3]) -ne '["FIXICS","VehicleStability"]') {
+    if ((Normalize-Sqf $Arguments[3]) -ne '["FIXICS","Vehicle Stability"]') {
         Add-Failure "$($Spec.Variable) must appear under Vehicle Stability."
     }
     if ((Normalize-Sqf $Arguments[4]) -ne (Normalize-Sqf $Spec.Payload)) {

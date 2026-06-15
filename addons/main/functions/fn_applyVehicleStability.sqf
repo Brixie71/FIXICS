@@ -24,25 +24,47 @@ params [
 if (isNull _vehicle) exitWith {
     false
 };
+
+private _clearYawSample = {
+    params ["_sampleVehicle"];
+
+    _sampleVehicle setVariable [
+        "FIXICS_stabilityPreviousHeading",
+        nil,
+        false
+    ];
+    _sampleVehicle setVariable [
+        "FIXICS_stabilityPreviousTime",
+        nil,
+        false
+    ];
+};
+
 if (!local _vehicle) exitWith {
+    [_vehicle] call _clearYawSample;
     false
 };
 if (isNull player) exitWith {
+    [_vehicle] call _clearYawSample;
     false
 };
 private _isPlayerDriver = driver _vehicle == player;
 if (!_isPlayerDriver) exitWith {
+    [_vehicle] call _clearYawSample;
     false
 };
 if !(isTouchingGround _vehicle) exitWith {
+    [_vehicle] call _clearYawSample;
     false
 };
 if (_vehicle getVariable ["FIXICS_handbrakeEnabled", false]) exitWith {
+    [_vehicle] call _clearYawSample;
     false
 };
 
 private _profile = [_vehicle] call FIXICS_fnc_getVehicleStabilityProfile;
 if ((count _profile) < 7 || {!(_profile # 0)}) exitWith {
+    [_vehicle] call _clearYawSample;
     false
 };
 
@@ -80,6 +102,7 @@ private _mode = ["OFF", "YAW", "YAW_LATERAL", "COUNTERSTEER"] param [
 private _velocity = velocityModelSpace _vehicle;
 private _lateral = _velocity # 0;
 private _longitudinal = _velocity # 1;
+private _vertical = _velocity # 2;
 private _recommendation = [
     _mode,
     _longitudinal,
@@ -98,6 +121,17 @@ _recommendation params [
     ["_recommendedMode", _mode, [""]]
 ];
 
+if (!_recommended || {_recommendedLateral == _lateral}) exitWith {
+    false
+};
+
+_velocity set [0, _recommendedLateral];
+_vehicle setVelocityModelSpace _velocity;
+
+private _actualVelocity = velocityModelSpace _vehicle;
+private _actualLateral = _actualVelocity # 0;
+private _actualLongitudinal = _actualVelocity # 1;
+private _actualVertical = _actualVelocity # 2;
 private _slipRatio = (abs _lateral) / ((abs _longitudinal) max 1);
 if (missionNamespace getVariable ["FIXICS_stabilityDebugLogging", false]) then {
     private _presetIndex = missionNamespace getVariable [
@@ -110,7 +144,7 @@ if (missionNamespace getVariable ["FIXICS_stabilityDebugLogging", false]) then {
     ];
 
     diag_log format [
-        "[FIXICS][Stability] class=%1 preset=%2 mode=%3 speedKmh=%4 slip=%5 yawRate=%6 lateralBefore=%7 lateralAfter=%8 longitudinalBefore=%9 longitudinalAfter=%10 recommendedLongitudinal=%11 unusedYawRecommendation=%12",
+        "[FIXICS][Stability] class=%1 preset=%2 mode=%3 speedKmh=%4 slip=%5 yawRate=%6 lateralBefore=%7 lateralAfter=%8 longitudinalBefore=%9 longitudinalAfter=%10 verticalBefore=%11 verticalAfter=%12 recommendedLongitudinal=%13 unusedYawRecommendation=%14",
         typeOf _vehicle,
         _preset,
         _recommendedMode,
@@ -118,18 +152,14 @@ if (missionNamespace getVariable ["FIXICS_stabilityDebugLogging", false]) then {
         _slipRatio,
         _yawRate,
         _lateral,
-        _recommendedLateral,
+        _actualLateral,
         _longitudinal,
-        _velocity # 1,
+        _actualLongitudinal,
+        _vertical,
+        _actualVertical,
         _recommendedLongitudinal,
         _yawRecommendation
     ];
 };
 
-if (!_recommended || {_recommendedLateral == _lateral}) exitWith {
-    false
-};
-
-_velocity set [0, _recommendedLateral];
-_vehicle setVelocityModelSpace _velocity;
 true

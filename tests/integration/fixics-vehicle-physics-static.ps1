@@ -297,30 +297,172 @@ $StabilityControllerFile = Join-Path $RepoRoot 'addons\main\functions\fn_applyVe
 Assert-FileExists 'addons\main\functions\fn_applyVehicleStability.sqf'
 if (Test-Path -LiteralPath $StabilityControllerFile) {
     $StabilityController = Get-Content -Raw -LiteralPath $StabilityControllerFile
-    Assert-Contains $StabilityController 'local _vehicle' 'Stability controller must only mutate a local vehicle.'
-    Assert-Contains $StabilityController 'driver _vehicle == player' 'Stability controller must require the local player to be the driver.'
-    Assert-Contains $StabilityController 'isTouchingGround _vehicle' 'Stability controller must reject airborne vehicles.'
-    Assert-Contains $StabilityController 'FIXICS_handbrakeEnabled' 'Stability controller must reject active FIXICS handbrake ownership.'
-    Assert-Contains $StabilityController 'FIXICS_fnc_getVehicleStabilityProfile' 'Stability controller must resolve the approved vehicle profile.'
-    Assert-Contains $StabilityController 'FIXICS_fnc_getVehicleStabilityRecommendation' 'Stability controller must call the pure recommendation function.'
-    Assert-Contains $StabilityController 'FIXICS_stabilityPreviousHeading' 'Stability controller must retain the previous heading.'
-    Assert-Contains $StabilityController 'FIXICS_stabilityPreviousTime' 'Stability controller must retain the previous sample time.'
-    Assert-Contains $StabilityController '\(\(\(inputAction "CarRight"\) - \(inputAction "CarLeft"\)\) / 3\) max -1 min 1' 'Stability controller must normalize observed 0..3 steering input.'
-    Assert-Contains $StabilityController 'private _headingDelta = \(\(_heading - _previousHeading \+ 540\) mod 360\) - 180;' 'Stability controller must calculate wrapped heading delta.'
-    Assert-Contains $StabilityController 'private _yawRate = _headingDelta / \(_deltaTime max 0\.001\);' 'Stability controller must calculate yaw rate from elapsed time.'
-    Assert-Contains $StabilityController 'velocityModelSpace _vehicle' 'Stability controller must sample model-space velocity.'
-    Assert-Contains $StabilityController 'private _longitudinal = _velocity # 1;' 'Stability controller must preserve model-space longitudinal index 1.'
-    Assert-Contains $StabilityController '_velocity set \[0, _recommendedLateral\];' 'Stability controller must apply only the recommended lateral speed.'
-    Assert-Contains $StabilityController 'setVelocityModelSpace _velocity' 'Stability controller must apply model-space lateral velocity.'
-    Assert-Contains $StabilityController 'unusedYawRecommendation=' 'Stability debug evidence must identify the unused yaw recommendation.'
-    if ($StabilityController -match 'FIXICS_fnc_(?:applyABSBraking|applySlopeRollback|applyHandbrakeLock)|disableBrakes') {
-        Add-Failure 'Stability controller must not call ABS, slope rollback, handbrake lock, or disableBrakes.'
+    function Get-StabilityControllerContractFailures {
+        param (
+            [Parameter(Mandatory = $true)]
+            [string]$Content
+        )
+
+        $ContractFailures = New-Object System.Collections.Generic.List[string]
+        $RequiredPatterns = @(
+            @{
+                Pattern = 'private _clearYawSample = \{[\s\S]*?FIXICS_stabilityPreviousHeading",\s*nil,\s*false[\s\S]*?FIXICS_stabilityPreviousTime",\s*nil,\s*false[\s\S]*?\};'
+                Message = 'Stability controller must use one helper to clear heading and time before re-entry.'
+            },
+            @{
+                Pattern = 'if \(!local _vehicle\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*false\s*\};'
+                Message = 'Nonlocal guard must clear yaw state before exit.'
+            },
+            @{
+                Pattern = 'if \(!_isPlayerDriver\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*false\s*\};'
+                Message = 'Wrong-driver guard must clear yaw state before exit.'
+            },
+            @{
+                Pattern = 'if !\(isTouchingGround _vehicle\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*false\s*\};'
+                Message = 'Airborne guard must clear yaw state before exit.'
+            },
+            @{
+                Pattern = 'if \(_vehicle getVariable \["FIXICS_handbrakeEnabled", false\]\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*false\s*\};'
+                Message = 'Handbrake guard must clear yaw state before exit.'
+            },
+            @{
+                Pattern = 'if \(\(count _profile\) < 7 \|\| \{!\(_profile # 0\)\}\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*false\s*\};'
+                Message = 'Unsupported-profile guard must clear yaw state before exit.'
+            },
+            @{
+                Pattern = 'driver _vehicle == player'
+                Message = 'Stability controller must require the local player to be the driver.'
+            },
+            @{
+                Pattern = 'FIXICS_fnc_getVehicleStabilityProfile'
+                Message = 'Stability controller must resolve the approved vehicle profile.'
+            },
+            @{
+                Pattern = 'FIXICS_fnc_getVehicleStabilityRecommendation'
+                Message = 'Stability controller must call the pure recommendation function.'
+            },
+            @{
+                Pattern = '\(\(\(inputAction "CarRight"\) - \(inputAction "CarLeft"\)\) / 3\) max -1 min 1'
+                Message = 'Stability controller must normalize observed 0..3 steering input.'
+            },
+            @{
+                Pattern = 'private _headingDelta = \(\(_heading - _previousHeading \+ 540\) mod 360\) - 180;'
+                Message = 'Stability controller must calculate wrapped heading delta.'
+            },
+            @{
+                Pattern = 'private _yawRate = _headingDelta / \(_deltaTime max 0\.001\);'
+                Message = 'Stability controller must calculate yaw rate from elapsed time.'
+            },
+            @{
+                Pattern = 'private _longitudinal = _velocity # 1;'
+                Message = 'Stability controller must preserve model-space longitudinal index 1.'
+            },
+            @{
+                Pattern = 'private _vertical = _velocity # 2;'
+                Message = 'Stability controller must preserve model-space vertical index 2.'
+            },
+            @{
+                Pattern = '_velocity set \[0, _recommendedLateral\];'
+                Message = 'Stability controller must apply only the recommended lateral speed at index 0.'
+            },
+            @{
+                Pattern = '_vehicle setVelocityModelSpace _velocity;[\s\S]*?private _actualVelocity = velocityModelSpace _vehicle;'
+                Message = 'Stability controller must resample actual model-space velocity after applying the correction.'
+            },
+            @{
+                Pattern = 'private _actualLateral = _actualVelocity # 0;'
+                Message = 'Stability diagnostics must report actual lateral velocity after mutation.'
+            },
+            @{
+                Pattern = 'private _actualLongitudinal = _actualVelocity # 1;'
+                Message = 'Stability diagnostics must report actual longitudinal velocity after mutation.'
+            },
+            @{
+                Pattern = 'private _actualVertical = _actualVelocity # 2;'
+                Message = 'Stability diagnostics must report actual vertical velocity after mutation.'
+            },
+            @{
+                Pattern = 'unusedYawRecommendation='
+                Message = 'Stability debug evidence must identify the unused yaw recommendation.'
+            },
+            @{
+                Pattern = 'verticalAfter='
+                Message = 'Stability debug evidence must include actual vertical velocity after mutation.'
+            }
+        )
+
+        foreach ($Requirement in $RequiredPatterns) {
+            if ($Content -notmatch $Requirement.Pattern) {
+                $ContractFailures.Add($Requirement.Message)
+            }
+        }
+
+        $ArraySetMatches = [regex]::Matches(
+            $Content,
+            '(?m)\b[A-Za-z_][A-Za-z0-9_]*\s+set\s+\['
+        )
+        if ($ArraySetMatches.Count -ne 1) {
+            $ContractFailures.Add('Stability controller must contain exactly one array set operation.')
+        }
+
+        $VelocityMutationMatches = [regex]::Matches(
+            $Content,
+            '(?m)\bsetVelocityModelSpace\b'
+        )
+        if ($VelocityMutationMatches.Count -ne 1) {
+            $ContractFailures.Add('Stability controller must contain exactly one model-space velocity mutation.')
+        }
+
+        if ($Content -match '\w+\s+set\s+\[\s*[12]\s*,') {
+            $ContractFailures.Add('Stability controller must not mutate longitudinal or vertical vector indices.')
+        }
+        if ($Content -match 'setVelocityModelSpace\s+\[') {
+            $ContractFailures.Add('Stability controller must not replace model-space velocity with a new vector.')
+        }
+        if ($Content -match '(?m)^\s*(?:private\s+)?_velocity\s*=\s*\[') {
+            $ContractFailures.Add('Stability controller must not assign a replacement model-space velocity vector.')
+        }
+        if ($Content -match 'diag_log[\s\S]*?_vehicle setVelocityModelSpace') {
+            $ContractFailures.Add('Stability diagnostics must run after model-space velocity mutation.')
+        }
+        if ($Content -match 'FIXICS_fnc_(?:applyABSBraking|applySlopeRollback|applyHandbrakeLock)|disableBrakes') {
+            $ContractFailures.Add('Stability controller must not call ABS, slope rollback, handbrake lock, or disableBrakes.')
+        }
+        if ($Content -match 'setDir|setVectorDirAndUp') {
+            $ContractFailures.Add('Stability controller must not mutate vehicle orientation.')
+        }
+
+        return $ContractFailures.ToArray()
     }
-    if ($StabilityController -match '\w+\s+set\s+\[\s*1\s*,') {
-        Add-Failure 'Stability controller must not change model-space longitudinal index 1.'
+
+    foreach ($ContractFailure in (Get-StabilityControllerContractFailures $StabilityController)) {
+        Add-Failure $ContractFailure
     }
-    if ($StabilityController -match 'setDir|setVectorDirAndUp') {
-        Add-Failure 'Stability controller must not mutate vehicle orientation.'
+
+    if ((Get-StabilityControllerContractFailures $StabilityController).Count -eq 0) {
+        $StaleStatePattern = [regex]::new(
+            '(if \(!local _vehicle\) exitWith \{\s*)\[_vehicle\] call _clearYawSample;\s*'
+        )
+        $StaleStateMutation = $StaleStatePattern.Replace(
+            $StabilityController,
+            '$1',
+            1
+        )
+        if ((Get-StabilityControllerContractFailures $StaleStateMutation).Count -eq 0) {
+            Add-Failure 'Mutation survived: stale yaw state on nonlocal eligibility gap.'
+        } else {
+            Write-Host 'Killed mutation: stale yaw state on eligibility gap'
+        }
+
+        $VerticalMutation = $StabilityController.Replace(
+            '_velocity set [0, _recommendedLateral];',
+            '_velocity set [2, _recommendedLateral];'
+        )
+        if ((Get-StabilityControllerContractFailures $VerticalMutation).Count -eq 0) {
+            Add-Failure 'Mutation survived: vertical velocity mutation.'
+        } else {
+            Write-Host 'Killed mutation: vertical velocity mutation'
+        }
     }
 }
 

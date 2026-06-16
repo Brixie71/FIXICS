@@ -71,6 +71,7 @@ if ($Config -match '"A3_Soft_F"|\"A3_Armor_F\"') {
     'addons\main\functions\fn_registerVehicleControls.sqf',
     'addons\main\functions\fn_updateDriverController.sqf',
     'addons\main\functions\fn_logVehicleHandlingConfig.sqf',
+    'addons\main\functions\fn_startSteeringDiagnostics.sqf',
     'addons\main\functions\fn_getNativeSlopeControl.sqf',
     'addons\main\functions\fn_getNativeDriverAssist.sqf'
 ) | ForEach-Object {
@@ -100,6 +101,7 @@ Assert-Contains $Config 'class getDriverInputIntent\s*\{\s*\};' 'getDriverInputI
 Assert-Contains $Config 'class registerVehicleControls\s*\{\s*\};' 'registerVehicleControls must be registered in CfgFunctions.'
 Assert-Contains $Config 'class updateDriverController\s*\{\s*\};' 'updateDriverController must be registered in CfgFunctions.'
 Assert-Contains $Config 'class logVehicleHandlingConfig\s*\{\s*\};' 'logVehicleHandlingConfig must be registered in CfgFunctions.'
+Assert-Contains $Config 'class startSteeringDiagnostics\s*\{\s*\};' 'startSteeringDiagnostics must be registered in CfgFunctions.'
 Assert-Contains $Config 'class getNativeSlopeControl\s*\{\s*\};' 'getNativeSlopeControl must be registered in CfgFunctions.'
 Assert-Contains $Config 'class getNativeDriverAssist\s*\{\s*\};' 'getNativeDriverAssist must be registered in CfgFunctions.'
 if ($Config -match 'class CfgVehicles|brakeIdleSpeed\s*=\s*0\.01|dampingRateZeroThrottleClutchEngaged\s*=\s*0\.25|dampingRateZeroThrottleClutchDisengaged\s*=\s*0\.25') {
@@ -423,7 +425,49 @@ if (Test-Path -LiteralPath $HandlingConfigLogFile) {
     Assert-Contains $HandlingConfigLog 'brakeIdleSpeed' 'Handling diagnostic must include brakeIdleSpeed.'
     Assert-Contains $HandlingConfigLog 'dampingRateZeroThrottleClutchEngaged' 'Handling diagnostic must include engaged zero-throttle damping.'
     Assert-Contains $HandlingConfigLog 'dampingRateZeroThrottleClutchDisengaged' 'Handling diagnostic must include disengaged zero-throttle damping.'
+    Assert-Contains $HandlingConfigLog 'PlayerSteeringCoefficients' 'Handling diagnostic must inspect inherited player steering coefficients.'
+    @(
+        'turnIncreaseConst',
+        'turnIncreaseLinear',
+        'turnIncreaseTime',
+        'turnDecreaseConst',
+        'turnDecreaseLinear',
+        'turnDecreaseTime',
+        'maxTurnHundred'
+    ) | ForEach-Object {
+        Assert-Contains $HandlingConfigLog $_ "Handling diagnostic must include steering coefficient $_."
+    }
+    Assert-Contains $HandlingConfigLog 'inputAction "CarLeft"' 'Handling diagnostic must record left steering input.'
+    Assert-Contains $HandlingConfigLog 'inputAction "CarRight"' 'Handling diagnostic must record right steering input.'
+    Assert-Contains $HandlingConfigLog 'velocityModelSpace _vehicle' 'Handling diagnostic must record model-space velocity.'
+    Assert-Contains $HandlingConfigLog 'getDir _vehicle' 'Handling diagnostic must record vehicle heading.'
+    Assert-Contains $HandlingConfigLog 'speed _vehicle' 'Handling diagnostic must record vehicle speed.'
+    Assert-Contains $HandlingConfigLog 'spawn' 'Handling diagnostic must support continuous capture after the Debug Console closes.'
+    Assert-Contains $HandlingConfigLog 'diag_tickTime' 'Handling diagnostic must bound continuous capture by elapsed time.'
+    Assert-Contains $HandlingConfigLog 'sleep _interval' 'Handling diagnostic must honor its continuous sample interval.'
+    Assert-Contains $HandlingConfigLog 'FIXICS_handlingConfigLogRunning' 'Handling diagnostic must prevent overlapping continuous captures.'
     Assert-Contains $HandlingConfigLog 'diag_log' 'Handling diagnostic must write evidence to the RPT log.'
+    if ($HandlingConfigLog -match '\b(setVelocity|setVelocityModelSpace|setDir|setVectorDirAndUp|disableBrakes)\b') {
+        Add-Failure 'Handling diagnostic must remain read-only and must not mutate vehicle physics.'
+    }
+}
+
+$SteeringDiagnosticsFile = Join-Path $RepoRoot 'addons\main\functions\fn_startSteeringDiagnostics.sqf'
+if (Test-Path -LiteralPath $SteeringDiagnosticsFile) {
+    $SteeringDiagnostics = Get-Content -Raw -LiteralPath $SteeringDiagnosticsFile
+    Assert-Contains $SteeringDiagnostics 'params' 'Steering diagnostics must accept bounded duration and interval inputs.'
+    Assert-Contains $SteeringDiagnostics 'spawn' 'Steering diagnostics must continue after the Debug Console closes.'
+    Assert-Contains $SteeringDiagnostics 'inputAction "CarLeft"' 'Steering diagnostics must sample live left input.'
+    Assert-Contains $SteeringDiagnostics 'inputAction "CarRight"' 'Steering diagnostics must sample live right input.'
+    Assert-Contains $SteeringDiagnostics 'velocityModelSpace _vehicle' 'Steering diagnostics must sample model-space velocity.'
+    Assert-Contains $SteeringDiagnostics 'getDir _vehicle' 'Steering diagnostics must sample heading.'
+    Assert-Contains $SteeringDiagnostics 'speed _vehicle' 'Steering diagnostics must sample speed.'
+    Assert-Contains $SteeringDiagnostics 'diag_tickTime' 'Steering diagnostics must use a bounded elapsed-time deadline.'
+    Assert-Contains $SteeringDiagnostics 'sleep _interval' 'Steering diagnostics must use the requested sample interval.'
+    Assert-Contains $SteeringDiagnostics 'FIXICS_steeringDiagnosticsRunning' 'Steering diagnostics must prevent overlapping captures.'
+    if ($SteeringDiagnostics -match '\b(setVelocity|setVelocityModelSpace|setDir|setVectorDirAndUp|disableBrakes)\b') {
+        Add-Failure 'Steering diagnostics must remain read-only and must not mutate vehicle physics.'
+    }
 }
 
 $NativeBridgeFile = Join-Path $RepoRoot 'addons\main\functions\fn_getNativeSlopeControl.sqf'

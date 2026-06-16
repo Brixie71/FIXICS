@@ -28,8 +28,8 @@ Current Phase 1 systems:
 ## Last Decision
 
 - Native Driver Assist v2 was accepted by SQA on 2026-06-12 after high-speed braking and moderate-turn testing.
-- A separate high-speed sharp-turn steering lock issue remains open.
-- Feature branch `native-driver-assist-v2` is approved for integration into `main`.
+- ISSUE-001 steering research is complete and a bounded continuous diagnostic sampler is implemented.
+- SQA must run `FIXICS_fnc_startSteeringDiagnostics` for keyboard and analog high-speed sharp turns before steering coefficients are changed.
 
 ## Constraints
 

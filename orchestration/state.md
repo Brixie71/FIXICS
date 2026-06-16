@@ -24,12 +24,16 @@ Current Phase 1 systems:
 - Reverse/Drive neutral handoff.
 - Optional native slope-control bridge, disabled by default.
 - Optional Native Driver Assist v2 advisory math for ABS and direction transitions, disabled by default.
+- Vehicle Stability Assistance for the approved `EMP_Polaris_DAGOR` class, applying bounded lateral damping only through the local driver controller.
 
 ## Last Decision
 
 - Native Driver Assist v2 was accepted by SQA on 2026-06-12 after high-speed braking and moderate-turn testing.
 - ISSUE-001 steering research is complete and a bounded continuous diagnostic sampler is implemented.
 - SQA must run `FIXICS_fnc_startSteeringDiagnostics` for keyboard and analog high-speed sharp turns before steering coefficients are changed.
+- Vehicle Stability Assistance implementation was approved by SQA for `EMP_Polaris_DAGOR`.
+- The first release boundary is bounded lateral damping only; direct yaw/countersteering mutation and passive config changes remain pending SQA evidence.
+- ISSUE-001 remains open until SQA completes the manual `EMP_Polaris_DAGOR` matrix across 30, 60, 90, and 120 km/h on paved, dirt, and grass surfaces.
 
 ## Constraints
 
@@ -37,6 +41,7 @@ Current Phase 1 systems:
 - Multiplayer vehicle authority is deferred.
 - Broad config patches and additional native binaries require explicit SQA approval.
 - Generated output and reports are ignored and not edited by hand.
+- Do not mark ISSUE-001 resolved until SQA verifies rollover behavior and controlled sliding in-game.
 
 ## Required Checks
 

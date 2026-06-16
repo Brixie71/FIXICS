@@ -104,8 +104,377 @@ Assert-Contains $Config 'class logVehicleHandlingConfig\s*\{\s*\};' 'logVehicleH
 Assert-Contains $Config 'class startSteeringDiagnostics\s*\{\s*\};' 'startSteeringDiagnostics must be registered in CfgFunctions.'
 Assert-Contains $Config 'class getNativeSlopeControl\s*\{\s*\};' 'getNativeSlopeControl must be registered in CfgFunctions.'
 Assert-Contains $Config 'class getNativeDriverAssist\s*\{\s*\};' 'getNativeDriverAssist must be registered in CfgFunctions.'
+Assert-Contains $Config 'class getVehicleStabilityProfile\s*\{\s*\};' 'Stability profile resolver must be registered.'
+Assert-Contains $Config 'class getVehicleStabilityRecommendation\s*\{\s*\};' 'Stability recommendation math must be registered.'
+Assert-Contains $Config 'class applyVehicleStability\s*\{\s*\};' 'Local stability mutation boundary must be registered.'
 if ($Config -match 'class CfgVehicles|brakeIdleSpeed\s*=\s*0\.01|dampingRateZeroThrottleClutchEngaged\s*=\s*0\.25|dampingRateZeroThrottleClutchDisengaged\s*=\s*0\.25') {
     Add-Failure 'Failed config-class experiment must be removed before native gameplay-control escalation.'
+}
+
+$StabilityProfileFile = Join-Path $RepoRoot 'addons\main\functions\fn_getVehicleStabilityProfile.sqf'
+Assert-FileExists 'addons\main\functions\fn_getVehicleStabilityProfile.sqf'
+if (Test-Path -LiteralPath $StabilityProfileFile) {
+    $StabilityProfile = Get-Content -Raw -LiteralPath $StabilityProfileFile
+    Assert-Contains $StabilityProfile '"EMP_Polaris_DAGOR"' 'Initial compatibility registry must contain only the approved DAGOR class.'
+    Assert-Contains $StabilityProfile '"REALISTIC_STABLE"' 'Profile resolver must support the realistic preset.'
+    Assert-Contains $StabilityProfile '"RALLY"' 'Profile resolver must support the rally preset.'
+    Assert-Contains $StabilityProfile '"CUSTOM"' 'Profile resolver must support the custom preset.'
+    Assert-Contains $StabilityProfile 'missionNamespace getVariable' 'Custom profile must read synchronized CBA values.'
+    if ($StabilityProfile -match 'isKindOf\s+"(?:Car_F|LandVehicle)"') {
+        Add-Failure 'Stability compatibility must use exact approved classes, not broad vehicle inheritance.'
+    }
+}
+
+function Split-SqfArray {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$ArrayText
+    )
+
+    $Trimmed = $ArrayText.Trim()
+    if (-not ($Trimmed.StartsWith('[') -and $Trimmed.EndsWith(']'))) {
+        return $null
+    }
+
+    $Arguments = New-Object System.Collections.Generic.List[string]
+    $Start = 1
+    $Depth = 1
+    $InString = $false
+
+    for ($Index = 1; $Index -lt ($Trimmed.Length - 1); $Index++) {
+        $Character = $Trimmed[$Index]
+        if ($Character -eq '"') {
+            if ($InString -and ($Index + 1) -lt $Trimmed.Length -and $Trimmed[$Index + 1] -eq '"') {
+                $Index++
+                continue
+            }
+
+            $InString = -not $InString
+            continue
+        }
+
+        if ($InString) {
+            continue
+        }
+
+        if ($Character -in @('[', '(', '{')) {
+            $Depth++
+            continue
+        }
+
+        if ($Character -in @(']', ')', '}')) {
+            $Depth--
+            continue
+        }
+
+        if ($Character -eq ',' -and $Depth -eq 1) {
+            $Arguments.Add($Trimmed.Substring($Start, $Index - $Start).Trim())
+            $Start = $Index + 1
+        }
+    }
+
+    $Arguments.Add($Trimmed.Substring($Start, ($Trimmed.Length - 1) - $Start).Trim())
+    return $Arguments.ToArray()
+}
+
+function Get-CbaSettingArguments {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Content,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Variable
+    )
+
+    $BlockPattern = '(?ms)^\[\s*\r?\n\s*"' + [regex]::Escape($Variable) +
+        '".*?\]\s*call CBA_fnc_addSetting;'
+    $BlockMatch = [regex]::Match($Content, $BlockPattern)
+    if (-not $BlockMatch.Success) {
+        Add-Failure "$Variable must be registered through CBA_fnc_addSetting."
+        return $null
+    }
+
+    $Block = $BlockMatch.Value
+    $CallSuffixIndex = $Block.LastIndexOf('call CBA_fnc_addSetting;')
+    return Split-SqfArray $Block.Substring(0, $CallSuffixIndex).Trim()
+}
+
+function Normalize-Sqf {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Text
+    )
+
+    $Normalized = New-Object System.Text.StringBuilder
+    $InString = $false
+
+    for ($Index = 0; $Index -lt $Text.Length; $Index++) {
+        $Character = $Text[$Index]
+        if ($Character -eq '"') {
+            [void]$Normalized.Append($Character)
+            if ($InString -and ($Index + 1) -lt $Text.Length -and $Text[$Index + 1] -eq '"') {
+                [void]$Normalized.Append($Text[$Index + 1])
+                $Index++
+                continue
+            }
+
+            $InString = -not $InString
+            continue
+        }
+
+        if ($InString -or -not [char]::IsWhiteSpace($Character)) {
+            [void]$Normalized.Append($Character)
+        }
+    }
+
+    return $Normalized.ToString()
+}
+
+function Assert-CbaSetting {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Content,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Spec
+    )
+
+    $Arguments = Get-CbaSettingArguments $Content $Spec.Variable
+    if ($null -eq $Arguments) {
+        return
+    }
+
+    if ($Arguments.Count -ne 6) {
+        Add-Failure "$($Spec.Variable) must use exactly six CBA setting arguments."
+        return
+    }
+
+    if ($Arguments[0] -ne "`"$($Spec.Variable)`"") {
+        Add-Failure "$($Spec.Variable) must be the first CBA setting argument."
+    }
+    if ($Arguments[1] -ne "`"$($Spec.ControlType)`"") {
+        Add-Failure "$($Spec.Variable) must use a CBA $($Spec.ControlType) control."
+    }
+    if ((Normalize-Sqf $Arguments[3]) -ne '["FIXICS","Vehicle Stability"]') {
+        Add-Failure "$($Spec.Variable) must appear under Vehicle Stability."
+    }
+    if ((Normalize-Sqf $Arguments[4]) -ne (Normalize-Sqf $Spec.Payload)) {
+        Add-Failure "$($Spec.Variable) must use payload $($Spec.Payload)."
+    }
+    if ($Arguments[5] -ne '1') {
+        Add-Failure "$($Spec.Variable) must use CBA global flag 1 as argument six."
+    }
+
+    $PayloadDefault = if ($Spec.ControlType -in @('LIST', 'SLIDER')) {
+        $PayloadArguments = Split-SqfArray $Arguments[4]
+        if ($null -eq $PayloadArguments) {
+            $null
+        } else {
+            $PayloadArguments[$Spec.DefaultIndex]
+        }
+    } else {
+        $Arguments[4]
+    }
+    if ($PayloadDefault -ne $Spec.NamespaceDefault) {
+        Add-Failure "$($Spec.Variable) CBA payload default must match missionNamespace default $($Spec.NamespaceDefault)."
+    }
+}
+
+$StabilityRecommendationFile = Join-Path $RepoRoot 'addons\main\functions\fn_getVehicleStabilityRecommendation.sqf'
+Assert-FileExists 'addons\main\functions\fn_getVehicleStabilityRecommendation.sqf'
+if (Test-Path -LiteralPath $StabilityRecommendationFile) {
+    $Recommendation = Get-Content -Raw -LiteralPath $StabilityRecommendationFile
+    Assert-Contains $Recommendation '"OFF"' 'Recommendation must support disabled assistance.'
+    Assert-Contains $Recommendation '"YAW"' 'Recommendation must support yaw damping.'
+    Assert-Contains $Recommendation '"YAW_LATERAL"' 'Recommendation must support yaw and lateral damping.'
+    Assert-Contains $Recommendation '"COUNTERSTEER"' 'Recommendation must support bounded countersteering.'
+    Assert-Contains $Recommendation 'finite' 'Recommendation must reject non-finite inputs.'
+    Assert-Contains $Recommendation '_longitudinalSpeed' 'Recommendation must carry longitudinal speed unchanged.'
+    if ($Recommendation -match 'setVelocity|setVelocityModelSpace|setDir|setVectorDirAndUp|disableBrakes') {
+        Add-Failure 'Stability recommendation must remain pure and must not mutate objects.'
+    }
+}
+
+$StabilityControllerFile = Join-Path $RepoRoot 'addons\main\functions\fn_applyVehicleStability.sqf'
+Assert-FileExists 'addons\main\functions\fn_applyVehicleStability.sqf'
+if (Test-Path -LiteralPath $StabilityControllerFile) {
+    $StabilityController = Get-Content -Raw -LiteralPath $StabilityControllerFile
+    function Get-StabilityControllerContractFailures {
+        param (
+            [Parameter(Mandatory = $true)]
+            [string]$Content
+        )
+
+        $ContractFailures = New-Object System.Collections.Generic.List[string]
+        $RequiredPatterns = @(
+            @{
+                Pattern = 'private _clearYawSample = \{[\s\S]*?FIXICS_stabilityPreviousHeading",\s*nil,\s*false[\s\S]*?FIXICS_stabilityPreviousTime",\s*nil,\s*false[\s\S]*?\};'
+                Message = 'Stability controller must use one helper to clear heading and time before re-entry.'
+            },
+            @{
+                Pattern = 'if \(!local _vehicle\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*false\s*\};'
+                Message = 'Nonlocal guard must clear yaw state before exit.'
+            },
+            @{
+                Pattern = 'if \(!_isPlayerDriver\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*false\s*\};'
+                Message = 'Wrong-driver guard must clear yaw state before exit.'
+            },
+            @{
+                Pattern = 'if !\(isTouchingGround _vehicle\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*false\s*\};'
+                Message = 'Airborne guard must clear yaw state before exit.'
+            },
+            @{
+                Pattern = 'if \(_vehicle getVariable \["FIXICS_handbrakeEnabled", false\]\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*false\s*\};'
+                Message = 'Handbrake guard must clear yaw state before exit.'
+            },
+            @{
+                Pattern = 'if \(\(count _profile\) < 7 \|\| \{!\(_profile # 0\)\}\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*false\s*\};'
+                Message = 'Unsupported-profile guard must clear yaw state before exit.'
+            },
+            @{
+                Pattern = 'driver _vehicle == player'
+                Message = 'Stability controller must require the local player to be the driver.'
+            },
+            @{
+                Pattern = 'FIXICS_fnc_getVehicleStabilityProfile'
+                Message = 'Stability controller must resolve the approved vehicle profile.'
+            },
+            @{
+                Pattern = 'FIXICS_fnc_getVehicleStabilityRecommendation'
+                Message = 'Stability controller must call the pure recommendation function.'
+            },
+            @{
+                Pattern = '\(\(\(inputAction "CarRight"\) - \(inputAction "CarLeft"\)\) / 3\) max -1 min 1'
+                Message = 'Stability controller must normalize observed 0..3 steering input.'
+            },
+            @{
+                Pattern = 'private _headingDelta = \(\(_heading - _previousHeading \+ 540\) mod 360\) - 180;'
+                Message = 'Stability controller must calculate wrapped heading delta.'
+            },
+            @{
+                Pattern = 'private _yawRate = _headingDelta / \(_deltaTime max 0\.001\);'
+                Message = 'Stability controller must calculate yaw rate from elapsed time.'
+            },
+            @{
+                Pattern = 'private _longitudinal = _velocity # 1;'
+                Message = 'Stability controller must preserve model-space longitudinal index 1.'
+            },
+            @{
+                Pattern = 'private _vertical = _velocity # 2;'
+                Message = 'Stability controller must preserve model-space vertical index 2.'
+            },
+            @{
+                Pattern = '_velocity set \[0, _recommendedLateral\];'
+                Message = 'Stability controller must apply only the recommended lateral speed at index 0.'
+            },
+            @{
+                Pattern = '_vehicle setVelocityModelSpace _velocity;[\s\S]*?private _actualVelocity = velocityModelSpace _vehicle;'
+                Message = 'Stability controller must resample actual model-space velocity after applying the correction.'
+            },
+            @{
+                Pattern = 'private _actualLateral = _actualVelocity # 0;'
+                Message = 'Stability diagnostics must report actual lateral velocity after mutation.'
+            },
+            @{
+                Pattern = 'private _actualLongitudinal = _actualVelocity # 1;'
+                Message = 'Stability diagnostics must report actual longitudinal velocity after mutation.'
+            },
+            @{
+                Pattern = 'private _actualVertical = _actualVelocity # 2;'
+                Message = 'Stability diagnostics must report actual vertical velocity after mutation.'
+            },
+            @{
+                Pattern = 'unusedYawRecommendation='
+                Message = 'Stability debug evidence must identify the unused yaw recommendation.'
+            },
+            @{
+                Pattern = 'verticalAfter='
+                Message = 'Stability debug evidence must include actual vertical velocity after mutation.'
+            }
+        )
+
+        foreach ($Requirement in $RequiredPatterns) {
+            if ($Content -notmatch $Requirement.Pattern) {
+                $ContractFailures.Add($Requirement.Message)
+            }
+        }
+
+        $ArraySetMatches = [regex]::Matches(
+            $Content,
+            '(?m)\b[A-Za-z_][A-Za-z0-9_]*\s+set\s+\['
+        )
+        if ($ArraySetMatches.Count -ne 1) {
+            $ContractFailures.Add('Stability controller must contain exactly one array set operation.')
+        }
+
+        $VelocityMutationMatches = [regex]::Matches(
+            $Content,
+            '(?m)\bsetVelocityModelSpace\b'
+        )
+        if ($VelocityMutationMatches.Count -ne 1) {
+            $ContractFailures.Add('Stability controller must contain exactly one model-space velocity mutation.')
+        }
+
+        if ($Content -match '\w+\s+set\s+\[\s*[12]\s*,') {
+            $ContractFailures.Add('Stability controller must not mutate longitudinal or vertical vector indices.')
+        }
+        if ($Content -match 'setVelocityModelSpace\s+\[') {
+            $ContractFailures.Add('Stability controller must not replace model-space velocity with a new vector.')
+        }
+        if ($Content -match '(?m)^\s*(?:private\s+)?_velocity\s*=\s*\[') {
+            $ContractFailures.Add('Stability controller must not assign a replacement model-space velocity vector.')
+        }
+        if ($Content -match 'diag_log[\s\S]*?_vehicle setVelocityModelSpace') {
+            $ContractFailures.Add('Stability diagnostics must run after model-space velocity mutation.')
+        }
+        if ($Content -match 'FIXICS_fnc_(?:applyABSBraking|applySlopeRollback|applyHandbrakeLock)|disableBrakes') {
+            $ContractFailures.Add('Stability controller must not call ABS, slope rollback, handbrake lock, or disableBrakes.')
+        }
+        if ($Content -match 'setDir|setVectorDirAndUp') {
+            $ContractFailures.Add('Stability controller must not mutate vehicle orientation.')
+        }
+
+        return $ContractFailures.ToArray()
+    }
+
+    foreach ($ContractFailure in (Get-StabilityControllerContractFailures $StabilityController)) {
+        Add-Failure $ContractFailure
+    }
+
+    if ((Get-StabilityControllerContractFailures $StabilityController).Count -eq 0) {
+        $StaleStatePattern = [regex]::new(
+            '(if \(!local _vehicle\) exitWith \{\s*)\[_vehicle\] call _clearYawSample;\s*'
+        )
+        $StaleStateMutation = $StaleStatePattern.Replace(
+            $StabilityController,
+            '$1',
+            1
+        )
+        if ((Get-StabilityControllerContractFailures $StaleStateMutation).Count -eq 0) {
+            Add-Failure 'Mutation survived: stale yaw state on nonlocal eligibility gap.'
+        } else {
+            Write-Host 'Killed mutation: stale yaw state on eligibility gap'
+        }
+
+        $VerticalMutation = $StabilityController.Replace(
+            '_velocity set [0, _recommendedLateral];',
+            '_velocity set [2, _recommendedLateral];'
+        )
+        if ((Get-StabilityControllerContractFailures $VerticalMutation).Count -eq 0) {
+            Add-Failure 'Mutation survived: vertical velocity mutation.'
+        } else {
+            Write-Host 'Killed mutation: vertical velocity mutation'
+        }
+    }
+}
+
+$StabilityMutationRunnerFile = Join-Path $RepoRoot 'tests\unit\fixics-stability-recommendation-mutations.ps1'
+Assert-FileExists 'tests\unit\fixics-stability-recommendation-mutations.ps1'
+if (Test-Path -LiteralPath $StabilityMutationRunnerFile) {
+    $StabilityMutationRunner = Get-Content -Raw -LiteralPath $StabilityMutationRunnerFile
+    if ($StabilityMutationRunner -match 'Start-Process') {
+        Add-Failure 'Stability mutation runner must avoid Start-Process environment serialization.'
+    }
 }
 
 Assert-Contains $Init 'FIXICS_fnc_hello' 'fn_init.sqf must call FIXICS_fnc_hello.'
@@ -147,6 +516,39 @@ Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DIRECTION_LAUNCH_VELOCITY' 'Str
 Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DIRECTION_NEUTRAL_PULSE' 'Stringtable must define the direction neutral pulse setting title.'
 Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DIRECTION_NEUTRAL_PULSE_TOOLTIP' 'Stringtable must define the direction neutral pulse setting tooltip.'
 Assert-Contains $Stringtable 'STR_FIXICS_SETTING_DRIVER_CONTROLLER_INTERVAL' 'Stringtable must define the driver controller interval setting title.'
+
+@(
+    'STR_FIXICS_SETTING_STABILITY_PRESET',
+    'STR_FIXICS_SETTING_STABILITY_PRESET_TOOLTIP',
+    'STR_FIXICS_SETTING_STABILITY_PRESET_REALISTIC_STABLE',
+    'STR_FIXICS_SETTING_STABILITY_PRESET_RALLY',
+    'STR_FIXICS_SETTING_STABILITY_PRESET_CUSTOM',
+    'STR_FIXICS_SETTING_STABILITY_ASSIST_MODE',
+    'STR_FIXICS_SETTING_STABILITY_ASSIST_MODE_TOOLTIP',
+    'STR_FIXICS_SETTING_STABILITY_ASSIST_OFF',
+    'STR_FIXICS_SETTING_STABILITY_ASSIST_YAW',
+    'STR_FIXICS_SETTING_STABILITY_ASSIST_YAW_LATERAL',
+    'STR_FIXICS_SETTING_STABILITY_ASSIST_COUNTERSTEER',
+    'STR_FIXICS_SETTING_STABILITY_ACTIVATION_SPEED',
+    'STR_FIXICS_SETTING_STABILITY_ACTIVATION_SPEED_TOOLTIP',
+    'STR_FIXICS_SETTING_STABILITY_SLIP_THRESHOLD',
+    'STR_FIXICS_SETTING_STABILITY_SLIP_THRESHOLD_TOOLTIP',
+    'STR_FIXICS_SETTING_STABILITY_YAW_STRENGTH',
+    'STR_FIXICS_SETTING_STABILITY_YAW_STRENGTH_TOOLTIP',
+    'STR_FIXICS_SETTING_STABILITY_LATERAL_STRENGTH',
+    'STR_FIXICS_SETTING_STABILITY_LATERAL_STRENGTH_TOOLTIP',
+    'STR_FIXICS_SETTING_STABILITY_COUNTERSTEER_STRENGTH',
+    'STR_FIXICS_SETTING_STABILITY_COUNTERSTEER_STRENGTH_TOOLTIP',
+    'STR_FIXICS_SETTING_STABILITY_MAXIMUM_CORRECTION',
+    'STR_FIXICS_SETTING_STABILITY_MAXIMUM_CORRECTION_TOOLTIP',
+    'STR_FIXICS_SETTING_STABILITY_DEBUG_LOGGING',
+    'STR_FIXICS_SETTING_STABILITY_DEBUG_LOGGING_TOOLTIP'
+) | ForEach-Object {
+    Assert-Contains $Stringtable ('ID="' + $_ + '"') "Stringtable must define $_."
+}
+Assert-Contains $Stringtable 'server-global' 'Stability descriptions must state that settings are server-global.'
+Assert-Contains $Stringtable 'registered vehicles' 'Stability descriptions must state that only registered vehicles are eligible.'
+Assert-Contains $Stringtable 'Custom values are ignored by fixed presets' 'Stability descriptions must state that fixed presets ignore Custom values.'
 
 $AddonFiles = Get-ChildItem -LiteralPath (Join-Path $RepoRoot 'addons\main') -Recurse -File
 $BaseArmaRefs = $AddonFiles | Select-String -Pattern 'BASEARMA_fnc_' -List
@@ -223,6 +625,79 @@ if (Test-Path -LiteralPath $SettingsFile) {
     Assert-Contains $Settings '"FIXICS_directionNeutralPulseSeconds"' 'Settings registration must define FIXICS_directionNeutralPulseSeconds.'
     Assert-Contains $Settings '"FIXICS_driverControllerInterval"' 'Settings registration must define FIXICS_driverControllerInterval.'
     Assert-Contains $Settings '"LIST"' 'Handbrake input mode must use a CBA list setting.'
+
+    $StabilitySettings = @(
+        @{
+            Variable = 'FIXICS_stabilityPreset'
+            ControlType = 'LIST'
+            NamespaceDefault = '0'
+            Payload = '[[0, 1, 2], [localize "STR_FIXICS_SETTING_STABILITY_PRESET_REALISTIC_STABLE", localize "STR_FIXICS_SETTING_STABILITY_PRESET_RALLY", localize "STR_FIXICS_SETTING_STABILITY_PRESET_CUSTOM"], 0]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_stabilityAssistMode'
+            ControlType = 'LIST'
+            NamespaceDefault = '0'
+            Payload = '[[0, 1, 2, 3], [localize "STR_FIXICS_SETTING_STABILITY_ASSIST_OFF", localize "STR_FIXICS_SETTING_STABILITY_ASSIST_YAW", localize "STR_FIXICS_SETTING_STABILITY_ASSIST_YAW_LATERAL", localize "STR_FIXICS_SETTING_STABILITY_ASSIST_COUNTERSTEER"], 0]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_stabilityActivationSpeedKmh'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '35'
+            Payload = '[10, 160, 35, 0]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_stabilitySlipThreshold'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.12'
+            Payload = '[0.05, 0.8, 0.12, 2]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_stabilityYawStrength'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.22'
+            Payload = '[0, 1, 0.22, 2]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_stabilityLateralStrength'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.12'
+            Payload = '[0, 1, 0.12, 2]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_stabilityCountersteerStrength'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.08'
+            Payload = '[0, 0.5, 0.08, 2]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_stabilityMaximumCorrection'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.12'
+            Payload = '[0.01, 0.5, 0.12, 2]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_stabilityDebugLogging'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'false'
+            Payload = 'false'
+            DefaultIndex = 0
+        }
+    )
+    foreach ($Spec in $StabilitySettings) {
+        Assert-Contains `
+            $Settings `
+            ('missionNamespace setVariable \["' + $Spec.Variable + '", ' + [regex]::Escape($Spec.NamespaceDefault) + ', false\];') `
+            "$($Spec.Variable) must have the approved Task 3 default."
+        Assert-CbaSetting $Settings $Spec
+    }
 }
 
 $MonitorFile = Join-Path $RepoRoot 'addons\main\functions\fn_monitorVehicleAutobrake.sqf'
@@ -369,6 +844,11 @@ if (Test-Path -LiteralPath $DriverControllerFile) {
     Assert-Contains $DriverController 'FIXICS_fnc_setVehicleHandbrake' 'Toggle handbrake mode must use the persistent FIXICS/ACE handbrake.'
     Assert-Contains $DriverController 'FIXICS_fnc_applyABSBraking' 'Service braking must invoke the ABS helper.'
     Assert-Contains $DriverController 'FIXICS_fnc_applySlopeRollback' 'Driver controller must own player slope assist.'
+    Assert-Contains $DriverController 'private _finishUpdate = \{\s*params \["_result"\];\s*\[_vehicle, _deltaTime\] call FIXICS_fnc_applyVehicleStability;\s*_result\s*\};' 'Driver controller must centralize stability application in a finalizer.'
+    Assert-Contains $DriverController 'if \(_transitionTarget != 0\) exitWith \{[\s\S]*?\[true\] call _finishUpdate\s*\};' 'Direction-transition completion must apply stability after longitudinal state work.'
+    Assert-Contains $DriverController 'if \(_isCombinedBrake\) exitWith \{[\s\S]*?\[true\] call _finishUpdate\s*\};' 'Combined service-brake completion must apply stability after ABS/fallback braking.'
+    Assert-Contains $DriverController 'if \(_requestedDirection != 0\) exitWith \{[\s\S]*?FIXICS_fnc_applySlopeRollback;[\s\S]*?\[true\] call _finishUpdate\s*\};' 'Drive/reverse completion must apply stability after slope rollback.'
+    Assert-Contains $DriverController 'if \(\[_vehicle\] call FIXICS_fnc_shouldVehicleRoll\) then \{[\s\S]*?FIXICS_fnc_applySlopeRollback;[\s\S]*?\};[\s\S]*?\[true\] call _finishUpdate\s*$' 'Coast completion must apply stability after slope/coast longitudinal handling.'
     Assert-Contains $DriverController 'FIXICS_directionChangeThresholdKmh' 'Driver controller must honor direction change threshold.'
     Assert-Contains $DriverController 'FIXICS_directionLaunchVelocity' 'Driver controller must honor direction launch velocity.'
     Assert-Contains $DriverController 'FIXICS_directionNeutralPulseSeconds' 'Driver controller must honor the neutral pulse duration.'
@@ -399,6 +879,24 @@ if (Test-Path -LiteralPath $DriverControllerFile) {
     ).Count
     if ($ServiceBrakeEngineBrakeCount -lt 2) {
         Add-Failure 'All service-brake paths must keep normal engine braking enabled.'
+    }
+    $FirstStabilityInvocation = $DriverController.IndexOf('call _finishUpdate')
+    if ($FirstStabilityInvocation -lt 0) {
+        Add-Failure 'Driver controller must invoke the stability finalizer from grounded non-handbrake completion paths.'
+    } else {
+        $InvalidVehicleExit = $DriverController.IndexOf('driver _vehicle != player')
+        $AirborneExit = $DriverController.IndexOf('if (!isTouchingGround _vehicle) exitWith')
+        $HandbrakeExit = $DriverController.IndexOf('if (_persistentHandbrake || {_temporaryHandbrake}) exitWith')
+        if (
+            $InvalidVehicleExit -lt 0 -or
+            $AirborneExit -lt 0 -or
+            $HandbrakeExit -lt 0 -or
+            $FirstStabilityInvocation -le $InvalidVehicleExit -or
+            $FirstStabilityInvocation -le $AirborneExit -or
+            $FirstStabilityInvocation -le $HandbrakeExit
+        ) {
+            Add-Failure 'Stability finalizer must not be invoked by invalid-vehicle, airborne, or handbrake exits.'
+        }
     }
     if ($DriverController -match 'if \(_requestedDirection != 0\) exitWith \{[\s\S]*?_modelVelocity set \[1,\s*_requestedDirection \* _launchVelocity\]') {
         Add-Failure 'Ordinary drive/reverse input must not inject launch velocity outside the neutral handoff.'

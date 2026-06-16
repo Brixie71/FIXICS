@@ -44,6 +44,9 @@ class CfgFunctions
             class startSteeringDiagnostics {};
             class getNativeSlopeControl {};
             class getNativeDriverAssist {};
+            class getVehicleStabilityProfile {};
+            class getVehicleStabilityRecommendation {};
+            class applyVehicleStability {};
         };
     };
 };

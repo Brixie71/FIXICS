@@ -842,6 +842,11 @@ if (Test-Path -LiteralPath $DriverControllerFile) {
     Assert-Contains $DriverController 'FIXICS_fnc_setVehicleHandbrake' 'Toggle handbrake mode must use the persistent FIXICS/ACE handbrake.'
     Assert-Contains $DriverController 'FIXICS_fnc_applyABSBraking' 'Service braking must invoke the ABS helper.'
     Assert-Contains $DriverController 'FIXICS_fnc_applySlopeRollback' 'Driver controller must own player slope assist.'
+    Assert-Contains $DriverController 'private _finishUpdate = \{\s*params \["_result"\];\s*\[_vehicle, _deltaTime\] call FIXICS_fnc_applyVehicleStability;\s*_result\s*\};' 'Driver controller must centralize stability application in a finalizer.'
+    Assert-Contains $DriverController 'if \(_transitionTarget != 0\) exitWith \{[\s\S]*?\[true\] call _finishUpdate\s*\};' 'Direction-transition completion must apply stability after longitudinal state work.'
+    Assert-Contains $DriverController 'if \(_isCombinedBrake\) exitWith \{[\s\S]*?\[true\] call _finishUpdate\s*\};' 'Combined service-brake completion must apply stability after ABS/fallback braking.'
+    Assert-Contains $DriverController 'if \(_requestedDirection != 0\) exitWith \{[\s\S]*?FIXICS_fnc_applySlopeRollback;[\s\S]*?\[true\] call _finishUpdate\s*\};' 'Drive/reverse completion must apply stability after slope rollback.'
+    Assert-Contains $DriverController 'if \(\[_vehicle\] call FIXICS_fnc_shouldVehicleRoll\) then \{[\s\S]*?FIXICS_fnc_applySlopeRollback;[\s\S]*?\};[\s\S]*?\[true\] call _finishUpdate\s*$' 'Coast completion must apply stability after slope/coast longitudinal handling.'
     Assert-Contains $DriverController 'FIXICS_directionChangeThresholdKmh' 'Driver controller must honor direction change threshold.'
     Assert-Contains $DriverController 'FIXICS_directionLaunchVelocity' 'Driver controller must honor direction launch velocity.'
     Assert-Contains $DriverController 'FIXICS_directionNeutralPulseSeconds' 'Driver controller must honor the neutral pulse duration.'
@@ -872,6 +877,24 @@ if (Test-Path -LiteralPath $DriverControllerFile) {
     ).Count
     if ($ServiceBrakeEngineBrakeCount -lt 2) {
         Add-Failure 'All service-brake paths must keep normal engine braking enabled.'
+    }
+    $FirstStabilityInvocation = $DriverController.IndexOf('call _finishUpdate')
+    if ($FirstStabilityInvocation -lt 0) {
+        Add-Failure 'Driver controller must invoke the stability finalizer from grounded non-handbrake completion paths.'
+    } else {
+        $InvalidVehicleExit = $DriverController.IndexOf('driver _vehicle != player')
+        $AirborneExit = $DriverController.IndexOf('if (!isTouchingGround _vehicle) exitWith')
+        $HandbrakeExit = $DriverController.IndexOf('if (_persistentHandbrake || {_temporaryHandbrake}) exitWith')
+        if (
+            $InvalidVehicleExit -lt 0 -or
+            $AirborneExit -lt 0 -or
+            $HandbrakeExit -lt 0 -or
+            $FirstStabilityInvocation -le $InvalidVehicleExit -or
+            $FirstStabilityInvocation -le $AirborneExit -or
+            $FirstStabilityInvocation -le $HandbrakeExit
+        ) {
+            Add-Failure 'Stability finalizer must not be invoked by invalid-vehicle, airborne, or handbrake exits.'
+        }
     }
     if ($DriverController -match 'if \(_requestedDirection != 0\) exitWith \{[\s\S]*?_modelVelocity set \[1,\s*_requestedDirection \* _launchVelocity\]') {
         Add-Failure 'Ordinary drive/reverse input must not inject launch velocity outside the neutral handoff.'

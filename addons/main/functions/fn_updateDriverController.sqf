@@ -140,6 +140,13 @@ private _setState = {
     _targetVehicle setVariable ["FIXICS_driverState", _state, false];
 };
 
+private _finishUpdate = {
+    params ["_result"];
+
+    [_vehicle, _deltaTime] call FIXICS_fnc_applyVehicleStability;
+    _result
+};
+
 private _handbrakeInput = (inputAction "CarHandBrake") > 0;
 private _handbrakeInputWasDown = missionNamespace getVariable ["FIXICS_handbrakeInputWasDown", false];
 private _handbrakeInputMode = missionNamespace getVariable ["FIXICS_handbrakeInputMode", 0];
@@ -348,7 +355,7 @@ if (_transitionTarget != 0) exitWith {
         };
     };
 
-    true
+    [true] call _finishUpdate
 };
 
 if (_isCombinedBrake) exitWith {
@@ -372,7 +379,7 @@ if (_isCombinedBrake) exitWith {
         _vehicle setVelocityModelSpace _modelVelocity;
     };
 
-    true
+    [true] call _finishUpdate
 };
 
 if (_requestedDirection != 0) exitWith {
@@ -381,7 +388,7 @@ if (_requestedDirection != 0) exitWith {
     _vehicle disableBrakes true;
 
     [_vehicle, _deltaTime] call FIXICS_fnc_applySlopeRollback;
-    true
+    [true] call _finishUpdate
 };
 
 [_vehicle, "COAST"] call _setState;
@@ -392,4 +399,4 @@ if ([_vehicle] call FIXICS_fnc_shouldVehicleRoll) then {
     _vehicle disableBrakes false;
 };
 
-true
+[true] call _finishUpdate

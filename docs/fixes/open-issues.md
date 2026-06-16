@@ -48,4 +48,21 @@ The first investigation should therefore compare the affected vehicle classes' i
 
 Approved research artifact: `docs/superpowers/specs/2026-06-15-adaptive-player-steering-design.md`.
 
+#### Vehicle Stability Assistance Evidence Matrix
+
+SQA manual validation is required for `EMP_Polaris_DAGOR` before ISSUE-001 can be marked resolved. Test each speed and surface combination with Off, Yaw damping, Yaw + lateral damping, and Countersteering assistance modes under both Realistic Stable and Rally presets.
+
+| Speed | Paved | Dirt | Grass |
+|---|---|---|---|
+| 30 km/h | Pending SQA | Pending SQA | Pending SQA |
+| 60 km/h | Pending SQA | Pending SQA | Pending SQA |
+| 90 km/h | Pending SQA | Pending SQA | Pending SQA |
+| 120 km/h | Pending SQA | Pending SQA | Pending SQA |
+
+For each run, record body roll, rollover tendency, lateral slip, recovery behavior, braking behavior, handbrake behavior, and Drive/Reverse transition behavior. Automated checks only validate script and configuration contracts; they do not prove in-game rollover or controlled sliding behavior.
+
+#### Stability Assistance Boundary
+
+The first release applies only bounded lateral damping through the guarded local stability controller. Direct yaw/countersteering mutation remains a diagnostic recommendation until SQA provides in-game evidence that it is needed and safe. Passive config changes, including `PlayerSteeringCoefficients`, anti-roll, tire, or inherited vehicle patching, remain pending SQA evidence and a separate approved config plan.
+
 Resolved Phase 1 milestones are recorded in `docs/fixes/fix-log.md`. Active approximations are recorded in `docs/fixes/workaround-registry.md`.

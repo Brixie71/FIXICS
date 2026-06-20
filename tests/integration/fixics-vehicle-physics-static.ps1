@@ -118,6 +118,8 @@ if (Test-Path -LiteralPath $StabilityProfileFile) {
     $StabilityProfile = Get-Content -Raw -LiteralPath $StabilityProfileFile
     Assert-Contains $StabilityProfile '"EMP_Polaris_DAGOR"' 'Compatibility registry must contain the approved DAGOR class.'
     Assert-Contains $StabilityProfile '"B_LSV_01_unarmed_F"' 'Compatibility registry must contain the vanilla LSV class used for SQA telemetry.'
+    Assert-Contains $StabilityProfile '"LOP_IA_Offroad"' 'Compatibility registry must contain the LOP IA Offroad class used for SQA telemetry.'
+    Assert-Contains $StabilityProfile '"B_G_Offroad_01_F"' 'Compatibility registry must contain the vanilla Offroad base class observed in SQA telemetry.'
     Assert-Contains $StabilityProfile '"REALISTIC_STABLE"' 'Profile resolver must support the realistic preset.'
     Assert-Contains $StabilityProfile '"RALLY"' 'Profile resolver must support the rally preset.'
     Assert-Contains $StabilityProfile '"CUSTOM"' 'Profile resolver must support the custom preset.'

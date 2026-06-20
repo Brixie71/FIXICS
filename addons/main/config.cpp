@@ -41,8 +41,13 @@ class CfgFunctions
             class registerVehicleControls {};
             class updateDriverController {};
             class logVehicleHandlingConfig {};
+            class startSteeringDiagnostics {};
             class getNativeSlopeControl {};
             class getNativeDriverAssist {};
+            class getVehicleStabilityProfile {};
+            class getVehicleStabilityRecommendation {};
+            class getRollStabilityRecommendation {};
+            class applyVehicleStability {};
         };
     };
 };

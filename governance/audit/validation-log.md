@@ -4,6 +4,26 @@ Record validation runs that matter for implementation, review, or release decisi
 
 ## Entries
 
+### 2026-06-20 - Vehicle Behavior Evidence Registry
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: verified Evidence Registry files, telemetry schema fields, support status values, behavior classifications, recommended next actions, and registry boundary wording.
+- Manual coverage: not run.
+- Notes: documentation-only registry implementation. No SQF gameplay source changed.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: confirmed existing vehicle physics static and mutation checks still pass after registry documentation changes.
+- Manual coverage: not run.
+- Notes: registry does not claim gameplay behavior improvements.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\check.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT/tool wrapper checks passed after registry documentation changes.
+- Manual coverage: not run.
+- Notes: no build artifact was produced for this documentation-only task.
+
 ### 2026-06-06 - Baseline before Codex operating layer
 
 - Command: `hemtt check`

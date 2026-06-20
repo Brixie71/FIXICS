@@ -24,12 +24,24 @@ Current Phase 1 systems:
 - Reverse/Drive neutral handoff.
 - Optional native slope-control bridge, disabled by default.
 - Optional Native Driver Assist v2 advisory math for ABS and direction transitions, disabled by default.
+- Vehicle Stability Assistance for the approved `EMP_Polaris_DAGOR`, `B_LSV_01_unarmed_F`, `LOP_IA_Offroad`, and `B_G_Offroad_01_F` classes, applying bounded lateral damping only through the local driver controller.
+- Roll Stability Assist, server-global and enabled by default, applying bounded model-space vertical damping for registered vehicles and awaiting SQA manual validation on registered LSV/Offroad classes.
+- Roll Stability presets are available as Realistic Stable, Offroad Assist, Aggressive SQA, and Custom; Aggressive SQA preserves SQA's max-tested rollover-assist values.
 
 ## Last Decision
 
 - Native Driver Assist v2 was accepted by SQA on 2026-06-12 after high-speed braking and moderate-turn testing.
-- A separate high-speed sharp-turn steering lock issue remains open.
-- Feature branch `native-driver-assist-v2` is approved for integration into `main`.
+- ISSUE-001 steering research is complete and a bounded continuous diagnostic sampler is implemented.
+- SQA must run `FIXICS_fnc_startSteeringDiagnostics` for keyboard and analog high-speed sharp turns before steering coefficients are changed.
+- Vehicle Stability Assistance implementation was approved by SQA for `EMP_Polaris_DAGOR`.
+- The first release boundary is bounded lateral damping only; direct yaw/countersteering mutation and passive config changes remain pending SQA evidence.
+- ISSUE-001 remains open until SQA completes the manual `EMP_Polaris_DAGOR` matrix across 30, 60, 90, and 120 km/h on paved, dirt, and grass surfaces.
+- Roll Stability Assist was implemented as a separate vertical model-space damping layer after SQA telemetry showed mode 2 reduced yaw/pitch but did not prevent rollovers.
+- Vehicle handling telemetry was expanded on 2026-06-20 through `FIXICS_fnc_logVehicleHandlingConfig` to capture drive/reverse/brake inputs, world/model velocity, world/ASL position, heading/yaw rate, pitch/bank/rates, vectors, terrain normal, ground contact, wheel hitpoint damage proxy data, and relevant FIXICS state values.
+- Stability compatibility was expanded on 2026-06-20 to include `B_LSV_01_unarmed_F` after SQA telemetry showed the controller was exiting unsupported for that vanilla LSV.
+- Stability compatibility was expanded on 2026-06-20 to include exact Offroad classes `LOP_IA_Offroad` and `B_G_Offroad_01_F` after SQA telemetry showed those classes were used for rollover validation.
+- Roll Stability preset selection was added on 2026-06-20 after SQA confirmed maxed settings improved rollover assist on the LSV/buggy test case.
+- Vehicle Behavior Evidence Registry architecture was approved on 2026-06-20. The first implementation is read-only documentation and static validation; Runtime Assist coordination and Config Research remain future designs.
 
 ## Constraints
 
@@ -37,6 +49,7 @@ Current Phase 1 systems:
 - Multiplayer vehicle authority is deferred.
 - Broad config patches and additional native binaries require explicit SQA approval.
 - Generated output and reports are ignored and not edited by hand.
+- Do not mark ISSUE-001 resolved until SQA verifies rollover behavior and controlled sliding in-game.
 
 ## Required Checks
 

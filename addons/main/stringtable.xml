@@ -121,6 +121,60 @@
         <Key ID="STR_FIXICS_SETTING_NATIVE_SLOPE_CONTROL_TOOLTIP">
             <Original>Uses the optional FIXICSPhysics native extension for slope rollback recommendations. Leave disabled unless the extension binary is installed.</Original>
         </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_ACTIVATION_BANK">
+            <Original>Roll activation bank</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_ACTIVATION_BANK_TOOLTIP">
+            <Original>Server-global bank angle in degrees before roll stability can add vertical correction. This targets roll, not steering.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_ACTIVATION_RATE">
+            <Original>Roll activation rate</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_ACTIVATION_RATE_TOOLTIP">
+            <Original>Server-global bank-rate threshold in degrees per second before roll stability reacts to fast roll changes.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_AIRBORNE_GRACE">
+            <Original>Roll airborne grace</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_AIRBORNE_GRACE_TOOLTIP">
+            <Original>Server-global time in seconds after losing ground contact where roll correction may continue briefly.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_MAXIMUM_CORRECTION">
+            <Original>Roll maximum correction</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_MAXIMUM_CORRECTION_TOOLTIP">
+            <Original>Server-global upper bound for each roll stability vertical correction per update.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_PRESET">
+            <Original>Roll stability preset</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_PRESET_AGGRESSIVE_SQA">
+            <Original>Aggressive SQA</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_PRESET_CUSTOM">
+            <Original>Custom</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_PRESET_OFFROAD_ASSIST">
+            <Original>Offroad Assist</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_PRESET_REALISTIC_STABLE">
+            <Original>Realistic Stable</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_PRESET_TOOLTIP">
+            <Original>Server-global roll tuning profile. Realistic Stable keeps conservative defaults, Offroad Assist is stronger, Aggressive SQA uses the max-tested rollover protection values, and Custom uses the roll sliders below.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_STABILITY_ENABLED">
+            <Original>Enable roll stability</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_STABILITY_ENABLED_TOOLTIP">
+            <Original>Server-global roll and bank assist for eligible vehicles. It does not steer the vehicle.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_STRENGTH">
+            <Original>Roll stability strength</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_STRENGTH_TOOLTIP">
+            <Original>Server-global vertical correction strength for roll and bank recovery. Higher values intervene harder.</Original>
+        </Key>
         <Key ID="STR_FIXICS_SETTING_SLOPE_COAST_BREAKAWAY">
             <Original>Coast breakaway velocity</Original>
         </Key>
@@ -156,6 +210,81 @@
         </Key>
         <Key ID="STR_FIXICS_SETTING_SLOPE_ROLLBACK_MAX_SPEED_TOOLTIP">
             <Original>Maximum assisted downhill coasting speed in meters per second.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_ACTIVATION_SPEED">
+            <Original>Custom activation speed</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_ACTIVATION_SPEED_TOOLTIP">
+            <Original>Server-global Custom speed in km/h before stability assistance may activate. Higher values leave low-speed sliding untouched. Custom values are ignored by fixed presets.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_ASSIST_COUNTERSTEER">
+            <Original>Countersteering</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_ASSIST_MODE">
+            <Original>Assistance mode</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_ASSIST_MODE_TOOLTIP">
+            <Original>Server-global assistance mode for registered vehicles. Off uses passive handling only; stronger modes add bounded yaw, lateral, or countersteering recommendations.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_ASSIST_OFF">
+            <Original>Off</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_ASSIST_YAW">
+            <Original>Yaw damping</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_ASSIST_YAW_LATERAL">
+            <Original>Yaw + lateral damping</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_COUNTERSTEER_STRENGTH">
+            <Original>Custom countersteer strength</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_COUNTERSTEER_STRENGTH_TOOLTIP">
+            <Original>Server-global Custom countersteering recommendation strength. Higher values react harder to spin, but can fight driver intent. Custom values are ignored by fixed presets.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_DEBUG_LOGGING">
+            <Original>Stability debug logging</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_DEBUG_LOGGING_TOOLTIP">
+            <Original>Server-global RPT diagnostics for registered vehicle stability assistance, including mode, slip, yaw, and bounded correction evidence.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_LATERAL_STRENGTH">
+            <Original>Custom lateral strength</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_LATERAL_STRENGTH_TOOLTIP">
+            <Original>Server-global Custom lateral velocity damping strength. Higher values reduce side-slip faster; too much can feel artificial. Custom values are ignored by fixed presets.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_MAXIMUM_CORRECTION">
+            <Original>Custom maximum correction</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_MAXIMUM_CORRECTION_TOOLTIP">
+            <Original>Server-global Custom upper bound for each stability correction per update. Lower values are smoother; higher values intervene more sharply. Custom values are ignored by fixed presets.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_PRESET">
+            <Original>Stability preset</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_PRESET_CUSTOM">
+            <Original>Custom</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_PRESET_RALLY">
+            <Original>Rally</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_PRESET_REALISTIC_STABLE">
+            <Original>Realistic Stable</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_PRESET_TOOLTIP">
+            <Original>Server-global stability profile. Realistic Stable favors rollover control, Rally allows more slip, and Custom uses the sliders below. Only registered vehicles are eligible.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_SLIP_THRESHOLD">
+            <Original>Custom slip threshold</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_SLIP_THRESHOLD_TOOLTIP">
+            <Original>Server-global Custom lateral slip ratio required before assistance activates. Higher values allow wider slides before correction. Custom values are ignored by fixed presets.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_YAW_STRENGTH">
+            <Original>Custom yaw strength</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_STABILITY_YAW_STRENGTH_TOOLTIP">
+            <Original>Server-global Custom yaw damping strength. Higher values reduce rotation faster during oversteer; too much may flatten natural slides. Custom values are ignored by fixed presets.</Original>
         </Key>
         <Key ID="STR_FIXICS_SETTING_STATIONARY_BRAKE_BYPASS">
             <Original>Stationary brake bypass speed</Original>

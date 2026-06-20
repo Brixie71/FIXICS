@@ -41,6 +41,22 @@ missionNamespace setVariable ["FIXICS_directionChangeThresholdKmh", 2, false];
 missionNamespace setVariable ["FIXICS_directionLaunchVelocity", 0.35, false];
 missionNamespace setVariable ["FIXICS_directionNeutralPulseSeconds", 0.08, false];
 missionNamespace setVariable ["FIXICS_driverControllerInterval", 0.03, false];
+missionNamespace setVariable ["FIXICS_stabilityPreset", 0, false];
+missionNamespace setVariable ["FIXICS_stabilityAssistMode", 0, false];
+missionNamespace setVariable ["FIXICS_stabilityActivationSpeedKmh", 35, false];
+missionNamespace setVariable ["FIXICS_stabilitySlipThreshold", 0.12, false];
+missionNamespace setVariable ["FIXICS_stabilityYawStrength", 0.22, false];
+missionNamespace setVariable ["FIXICS_stabilityLateralStrength", 0.12, false];
+missionNamespace setVariable ["FIXICS_stabilityCountersteerStrength", 0.08, false];
+missionNamespace setVariable ["FIXICS_stabilityMaximumCorrection", 0.12, false];
+missionNamespace setVariable ["FIXICS_rollStabilityPreset", 0, false];
+missionNamespace setVariable ["FIXICS_rollStabilityEnabled", true, false];
+missionNamespace setVariable ["FIXICS_rollActivationBankDeg", 18, false];
+missionNamespace setVariable ["FIXICS_rollActivationRateDeg", 45, false];
+missionNamespace setVariable ["FIXICS_rollStrength", 0.08, false];
+missionNamespace setVariable ["FIXICS_rollMaximumCorrection", 0.08, false];
+missionNamespace setVariable ["FIXICS_rollAirborneGraceSeconds", 0.35, false];
+missionNamespace setVariable ["FIXICS_stabilityDebugLogging", false, false];
 
 [
     "FIXICS_disableIdleAutobrake",
@@ -326,6 +342,224 @@ missionNamespace setVariable ["FIXICS_driverControllerInterval", 0.03, false];
     ],
     ["FIXICS", "Driver Controller"],
     [0.01, 0.1, 0.03, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_stabilityPreset",
+    "LIST",
+    [
+        localize "STR_FIXICS_SETTING_STABILITY_PRESET",
+        localize "STR_FIXICS_SETTING_STABILITY_PRESET_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [
+        [0, 1, 2],
+        [
+            localize "STR_FIXICS_SETTING_STABILITY_PRESET_REALISTIC_STABLE",
+            localize "STR_FIXICS_SETTING_STABILITY_PRESET_RALLY",
+            localize "STR_FIXICS_SETTING_STABILITY_PRESET_CUSTOM"
+        ],
+        0
+    ],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_stabilityAssistMode",
+    "LIST",
+    [
+        localize "STR_FIXICS_SETTING_STABILITY_ASSIST_MODE",
+        localize "STR_FIXICS_SETTING_STABILITY_ASSIST_MODE_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [
+        [0, 1, 2, 3],
+        [
+            localize "STR_FIXICS_SETTING_STABILITY_ASSIST_OFF",
+            localize "STR_FIXICS_SETTING_STABILITY_ASSIST_YAW",
+            localize "STR_FIXICS_SETTING_STABILITY_ASSIST_YAW_LATERAL",
+            localize "STR_FIXICS_SETTING_STABILITY_ASSIST_COUNTERSTEER"
+        ],
+        0
+    ],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_stabilityActivationSpeedKmh",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_STABILITY_ACTIVATION_SPEED",
+        localize "STR_FIXICS_SETTING_STABILITY_ACTIVATION_SPEED_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [10, 160, 35, 0],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_stabilitySlipThreshold",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_STABILITY_SLIP_THRESHOLD",
+        localize "STR_FIXICS_SETTING_STABILITY_SLIP_THRESHOLD_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [0.05, 0.8, 0.12, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_stabilityYawStrength",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_STABILITY_YAW_STRENGTH",
+        localize "STR_FIXICS_SETTING_STABILITY_YAW_STRENGTH_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [0, 1, 0.22, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_stabilityLateralStrength",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_STABILITY_LATERAL_STRENGTH",
+        localize "STR_FIXICS_SETTING_STABILITY_LATERAL_STRENGTH_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [0, 1, 0.12, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_stabilityCountersteerStrength",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_STABILITY_COUNTERSTEER_STRENGTH",
+        localize "STR_FIXICS_SETTING_STABILITY_COUNTERSTEER_STRENGTH_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [0, 0.5, 0.08, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_stabilityMaximumCorrection",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_STABILITY_MAXIMUM_CORRECTION",
+        localize "STR_FIXICS_SETTING_STABILITY_MAXIMUM_CORRECTION_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [0.01, 0.5, 0.12, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_rollStabilityPreset",
+    "LIST",
+    [
+        localize "STR_FIXICS_SETTING_ROLL_PRESET",
+        localize "STR_FIXICS_SETTING_ROLL_PRESET_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [
+        [0, 1, 2, 3],
+        [
+            localize "STR_FIXICS_SETTING_ROLL_PRESET_REALISTIC_STABLE",
+            localize "STR_FIXICS_SETTING_ROLL_PRESET_OFFROAD_ASSIST",
+            localize "STR_FIXICS_SETTING_ROLL_PRESET_AGGRESSIVE_SQA",
+            localize "STR_FIXICS_SETTING_ROLL_PRESET_CUSTOM"
+        ],
+        0
+    ],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_rollStabilityEnabled",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_ROLL_STABILITY_ENABLED",
+        localize "STR_FIXICS_SETTING_ROLL_STABILITY_ENABLED_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    true,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_rollActivationBankDeg",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_ROLL_ACTIVATION_BANK",
+        localize "STR_FIXICS_SETTING_ROLL_ACTIVATION_BANK_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [5, 60, 18, 0],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_rollActivationRateDeg",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_ROLL_ACTIVATION_RATE",
+        localize "STR_FIXICS_SETTING_ROLL_ACTIVATION_RATE_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [5, 240, 45, 0],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_rollStrength",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_ROLL_STRENGTH",
+        localize "STR_FIXICS_SETTING_ROLL_STRENGTH_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [0, 0.5, 0.08, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_rollMaximumCorrection",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_ROLL_MAXIMUM_CORRECTION",
+        localize "STR_FIXICS_SETTING_ROLL_MAXIMUM_CORRECTION_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [0.01, 0.4, 0.08, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_rollAirborneGraceSeconds",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_ROLL_AIRBORNE_GRACE",
+        localize "STR_FIXICS_SETTING_ROLL_AIRBORNE_GRACE_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [0, 1, 0.35, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_stabilityDebugLogging",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_STABILITY_DEBUG_LOGGING",
+        localize "STR_FIXICS_SETTING_STABILITY_DEBUG_LOGGING_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    false,
     1
 ] call CBA_fnc_addSetting;
 

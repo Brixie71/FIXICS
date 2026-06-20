@@ -50,6 +50,21 @@ private _clearYawSample = {
     ];
 };
 
+private _clearYawOnlySample = {
+    params ["_sampleVehicle"];
+
+    _sampleVehicle setVariable [
+        "FIXICS_stabilityPreviousHeading",
+        nil,
+        false
+    ];
+    _sampleVehicle setVariable [
+        "FIXICS_stabilityPreviousTime",
+        nil,
+        false
+    ];
+};
+
 private _clearRollSample = {
     params ["_sampleVehicle"];
 
@@ -116,27 +131,12 @@ if (!_isGrounded && {!_withinRollGrace}) exitWith {
     [_vehicle] call _clearYawSample;
     false
 };
-
-private _heading = getDir _vehicle;
-private _previousHeading = _vehicle getVariable [
-    "FIXICS_stabilityPreviousHeading",
-    _heading
-];
-private _previousTime = _vehicle getVariable [
-    "FIXICS_stabilityPreviousTime",
-    _now
-];
-
-if (!finite _deltaTime || {_deltaTime <= 0}) then {
-    _deltaTime = (_now - _previousTime) max 0.001;
+if (!_isGrounded) then {
+    [_vehicle] call _clearYawOnlySample;
 };
 
-_vehicle setVariable ["FIXICS_stabilityPreviousHeading", _heading, false];
-_vehicle setVariable ["FIXICS_stabilityPreviousTime", _now, false];
-
-private _headingDelta = ((_heading - _previousHeading + 540) mod 360) - 180;
-private _yawRate = _headingDelta / (_deltaTime max 0.001);
-private _steeringInput = (((inputAction "CarRight") - (inputAction "CarLeft")) / 3) max -1 min 1;
+private _diagnosticYawRate = 0;
+private _steeringInput = 0;
 
 private _modeIndex = missionNamespace getVariable [
     "FIXICS_stabilityAssistMode",
@@ -162,6 +162,28 @@ private _recommendedMode = _mode;
 private _lateralApplied = false;
 
 if (_isGrounded) then {
+    private _heading = getDir _vehicle;
+    private _previousHeading = _vehicle getVariable [
+        "FIXICS_stabilityPreviousHeading",
+        _heading
+    ];
+    private _previousTime = _vehicle getVariable [
+        "FIXICS_stabilityPreviousTime",
+        _now
+    ];
+
+    if (!finite _deltaTime || {_deltaTime <= 0}) then {
+        _deltaTime = (_now - _previousTime) max 0.001;
+    };
+
+    _vehicle setVariable ["FIXICS_stabilityPreviousHeading", _heading, false];
+    _vehicle setVariable ["FIXICS_stabilityPreviousTime", _now, false];
+
+    private _headingDelta = ((_heading - _previousHeading + 540) mod 360) - 180;
+    private _yawRate = _headingDelta / (_deltaTime max 0.001);
+    _diagnosticYawRate = _yawRate;
+    _steeringInput = (((inputAction "CarRight") - (inputAction "CarLeft")) / 3) max -1 min 1;
+
     private _recommendation = [
         _mode,
         _longitudinal,
@@ -275,7 +297,7 @@ if (missionNamespace getVariable ["FIXICS_stabilityDebugLogging", false]) then {
         _recommendedMode,
         (abs _longitudinal) * 3.6,
         _slipRatio,
-        _yawRate,
+        _diagnosticYawRate,
         _lateral,
         _actualLateral,
         _longitudinal,

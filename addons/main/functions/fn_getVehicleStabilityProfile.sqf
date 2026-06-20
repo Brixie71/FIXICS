@@ -12,7 +12,7 @@ if (isNull _vehicle) exitWith {
     _unsupportedProfile
 };
 
-private _supportedClasses = ["EMP_Polaris_DAGOR"];
+private _supportedClasses = ["EMP_Polaris_DAGOR", "B_LSV_01_unarmed_F"];
 if !((typeOf _vehicle) in _supportedClasses) exitWith {
     _unsupportedProfile
 };

@@ -172,6 +172,8 @@ Assert-Contains $TelemetryExporter 'rpt-patterns\.ps1' 'Vehicle telemetry export
 Assert-Contains $RptParser 'FIXICS' 'RPT parser must filter FIXICS output.'
 Assert-Contains $RptWatcher 'FIXICS' 'RPT watcher must filter FIXICS output.'
 Assert-Contains $TelemetryExporter 'Vehicle handling sample' 'Vehicle telemetry exporter must extract handling samples.'
+Assert-Contains $TelemetryExporter '\[FIXICS\\\]\\\[Stability\\\]' 'Vehicle telemetry exporter must extract stability debug lines.'
+Assert-Contains $TelemetryExporter '\[FIXICS\\\]\\\[RollStability\\\]' 'Vehicle telemetry exporter must extract roll stability debug lines.'
 Assert-Contains $TelemetryExporter 'diagnostics' 'Vehicle telemetry exporter must write to the local diagnostics directory by default.'
 
 if ($Failures.Count -gt 0) {

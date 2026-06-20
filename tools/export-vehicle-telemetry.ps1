@@ -51,7 +51,9 @@ try {
 
         $isSample = $line -match '\[FIXICS\] Vehicle handling sample:'
         $isEvidence = $IncludeEvidenceHeader -and $line -match '\[FIXICS\] Vehicle handling evidence:'
-        if ($isSample -or $isEvidence) {
+        $isStability = $line -match '\[FIXICS\]\[Stability\]'
+        $isRollStability = $line -match '\[FIXICS\]\[RollStability\]'
+        if ($isSample -or $isEvidence -or $isStability -or $isRollStability) {
             $telemetry.Add("[$lineNumber] $line")
         }
     }

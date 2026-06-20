@@ -36,6 +36,7 @@ Current Phase 1 systems:
 - The first release boundary is bounded lateral damping only; direct yaw/countersteering mutation and passive config changes remain pending SQA evidence.
 - ISSUE-001 remains open until SQA completes the manual `EMP_Polaris_DAGOR` matrix across 30, 60, 90, and 120 km/h on paved, dirt, and grass surfaces.
 - Roll Stability Assist was implemented as a separate vertical model-space damping layer after SQA telemetry showed mode 2 reduced yaw/pitch but did not prevent rollovers.
+- Vehicle handling telemetry was expanded on 2026-06-20 through `FIXICS_fnc_logVehicleHandlingConfig` to capture drive/reverse/brake inputs, world/model velocity, world/ASL position, heading/yaw rate, pitch/bank/rates, vectors, terrain normal, ground contact, wheel hitpoint damage proxy data, and relevant FIXICS state values.
 
 ## Constraints
 

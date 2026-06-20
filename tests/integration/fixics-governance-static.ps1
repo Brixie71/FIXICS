@@ -51,6 +51,7 @@ $CanonicalFiles = @(
     'tools\rpt-patterns.ps1',
     'tools\rpt-parser.ps1',
     'tools\watch-rpt.ps1',
+    'tools\export-vehicle-telemetry.ps1',
     'tools\launch-eden.ps1'
 )
 $CanonicalFiles | ForEach-Object { Assert-FileExists $_ }
@@ -95,6 +96,7 @@ foreach ($broadPattern in @(
 }
 Assert-Contains $Gitignore '(?m)^\.hemttout/$' '.hemttout must remain ignored.'
 Assert-Contains $Gitignore '(?m)^evals/reports/$' 'Generated evaluation reports must be ignored.'
+Assert-Contains $Gitignore '(?m)^diagnostics/$' 'Generated telemetry exports must be ignored.'
 Assert-Contains $Gitignore '(?m)^\*\.biprivatekey$' 'Private signing keys must remain ignored.'
 
 $Codex = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot 'CODEX.md')
@@ -163,10 +165,14 @@ foreach ($relativePath in $YamlFiles) {
 
 $RptParser = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot 'tools\rpt-parser.ps1')
 $RptWatcher = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot 'tools\watch-rpt.ps1')
+$TelemetryExporter = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot 'tools\export-vehicle-telemetry.ps1')
 Assert-Contains $RptParser 'rpt-patterns\.ps1' 'RPT parser must load shared patterns.'
 Assert-Contains $RptWatcher 'rpt-patterns\.ps1' 'RPT watcher must load shared patterns.'
+Assert-Contains $TelemetryExporter 'rpt-patterns\.ps1' 'Vehicle telemetry exporter must load shared patterns.'
 Assert-Contains $RptParser 'FIXICS' 'RPT parser must filter FIXICS output.'
 Assert-Contains $RptWatcher 'FIXICS' 'RPT watcher must filter FIXICS output.'
+Assert-Contains $TelemetryExporter 'Vehicle handling sample' 'Vehicle telemetry exporter must extract handling samples.'
+Assert-Contains $TelemetryExporter 'diagnostics' 'Vehicle telemetry exporter must write to the local diagnostics directory by default.'
 
 if ($Failures.Count -gt 0) {
     Write-Host 'FIXICS governance static test failed:'

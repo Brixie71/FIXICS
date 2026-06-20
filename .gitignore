@@ -16,6 +16,7 @@
 .hemtt/local
 releases/
 evals/reports/
+diagnostics/
 native/fixics_physics/build/
 FIXICSPhysics_x64.pdb
 

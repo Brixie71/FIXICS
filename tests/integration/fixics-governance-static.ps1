@@ -45,6 +45,11 @@ $CanonicalFiles = @(
     'docs\fixes\fix-log.md',
     'docs\fixes\open-issues.md',
     'docs\fixes\workaround-registry.md',
+    'docs\vehicle-behavior\README.md',
+    'docs\vehicle-behavior\telemetry-snapshot-schema.md',
+    'docs\vehicle-behavior\vehicle-behavior-profiles.md',
+    'docs\vehicle-behavior\behavior-classifications.md',
+    'docs\vehicle-behavior\sqa-evidence-matrix.md',
     'docs\reference\physx-command-ref.md',
     'docs\reference\vehicle-config-ref.md',
     'docs\reference\known-engine-limits.md',
@@ -124,6 +129,98 @@ $ReferenceSources = @(
 foreach ($relativePath in $ReferenceSources) {
     $content = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot $relativePath)
     Assert-Contains $content 'https://community\.bohemia\.net/wiki/' "$relativePath must cite Bohemia primary documentation."
+}
+
+$VehicleBehaviorReadmePath = Join-Path $RepoRoot 'docs\vehicle-behavior\README.md'
+$TelemetrySchemaPath = Join-Path $RepoRoot 'docs\vehicle-behavior\telemetry-snapshot-schema.md'
+$VehicleProfilesPath = Join-Path $RepoRoot 'docs\vehicle-behavior\vehicle-behavior-profiles.md'
+$BehaviorClassificationsPath = Join-Path $RepoRoot 'docs\vehicle-behavior\behavior-classifications.md'
+$SqaEvidenceMatrixPath = Join-Path $RepoRoot 'docs\vehicle-behavior\sqa-evidence-matrix.md'
+
+if (Test-Path -LiteralPath $VehicleBehaviorReadmePath) {
+    $VehicleBehaviorReadme = Get-Content -Raw -LiteralPath $VehicleBehaviorReadmePath
+    Assert-Contains $VehicleBehaviorReadme 'read-only Evidence Registry' 'Vehicle behavior README must define the read-only Evidence Registry boundary.'
+    Assert-Contains $VehicleBehaviorReadme 'No gameplay behavior changes' 'Vehicle behavior README must prohibit gameplay behavior changes.'
+    Assert-Contains $VehicleBehaviorReadme 'Runtime Assist' 'Vehicle behavior README must state Runtime Assist depends on registry evidence.'
+    Assert-Contains $VehicleBehaviorReadme 'Config Research' 'Vehicle behavior README must state Config Research depends on registry evidence.'
+}
+
+if (Test-Path -LiteralPath $TelemetrySchemaPath) {
+    $TelemetrySchema = Get-Content -Raw -LiteralPath $TelemetrySchemaPath
+    @(
+        'sampleIndex',
+        'vehicleClass',
+        'supportStatus',
+        'driverState',
+        'inputState',
+        'activeSettings',
+        'worldVelocity',
+        'modelVelocity',
+        'speedKmh',
+        'position',
+        'headingDeg',
+        'yawRateDegPerSecond',
+        'pitchDeg',
+        'bankDeg',
+        'pitchRateDegPerSecond',
+        'bankRateDegPerSecond',
+        'terrainNormal',
+        'slopeEvidence',
+        'isTouchingGround',
+        'wheelHitpointEvidence'
+    ) | ForEach-Object {
+        Assert-Contains $TelemetrySchema $_ "Telemetry snapshot schema must define $_."
+    }
+}
+
+if (Test-Path -LiteralPath $VehicleProfilesPath) {
+    $VehicleProfiles = Get-Content -Raw -LiteralPath $VehicleProfilesPath
+    @(
+        'observed-only',
+        'telemetry-supported',
+        'runtime-assist-supported',
+        'config-experiment-candidate'
+    ) | ForEach-Object {
+        Assert-Contains $VehicleProfiles $_ "Vehicle behavior profiles must define support status $_."
+    }
+    Assert-Contains $VehicleProfiles 'EMP_Polaris_DAGOR' 'Vehicle behavior profiles must include the approved DAGOR class.'
+    Assert-Contains $VehicleProfiles 'B_LSV_01_unarmed_F' 'Vehicle behavior profiles must include the tested vanilla LSV class.'
+    Assert-Contains $VehicleProfiles 'LOP_IA_Offroad' 'Vehicle behavior profiles must include the tested LOP IA Offroad class.'
+    Assert-Contains $VehicleProfiles 'B_G_Offroad_01_F' 'Vehicle behavior profiles must include the tested vanilla Offroad class.'
+}
+
+if (Test-Path -LiteralPath $BehaviorClassificationsPath) {
+    $BehaviorClassifications = Get-Content -Raw -LiteralPath $BehaviorClassificationsPath
+    @(
+        'input-limitation',
+        'understeer',
+        'oversteer',
+        'rollover-risk',
+        'braking-instability',
+        'slope-autobrake',
+        'direction-transition',
+        'terrain-interaction'
+    ) | ForEach-Object {
+        Assert-Contains $BehaviorClassifications $_ "Behavior classifications must define $_."
+    }
+    Assert-Contains $BehaviorClassifications 'SQA approval' 'New behavior classifications must require SQA approval.'
+}
+
+if (Test-Path -LiteralPath $SqaEvidenceMatrixPath) {
+    $SqaEvidenceMatrix = Get-Content -Raw -LiteralPath $SqaEvidenceMatrixPath
+    @(
+        'telemetry log path',
+        'observed behavior',
+        'classification',
+        'recommended next action',
+        'collect-more-telemetry',
+        'runtime-assist-tuning',
+        'config-research',
+        'no-change',
+        'blocked'
+    ) | ForEach-Object {
+        Assert-Contains $SqaEvidenceMatrix $_ "SQA evidence matrix must define $_."
+    }
 }
 
 $PhysxReference = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot 'docs\reference\physx-command-ref.md')

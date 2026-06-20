@@ -20,6 +20,11 @@ try {
         exit $LASTEXITCODE
     }
 
+    & powershell -ExecutionPolicy Bypass -File tests\unit\fixics-roll-stability-recommendation.ps1
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
     & powershell -ExecutionPolicy Bypass -File tests\unit\fixics-stability-recommendation-mutations.ps1
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE

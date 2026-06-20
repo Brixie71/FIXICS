@@ -378,6 +378,18 @@ if (Test-Path -LiteralPath $StabilityControllerFile) {
                 Message = 'Stability controller must track recent ground contact for roll grace.'
             },
             @{
+                Pattern = 'FIXICS_rollStabilityPreset'
+                Message = 'Stability controller must read the roll stability preset before building roll settings.'
+            },
+            @{
+                Pattern = '"AGGRESSIVE_SQA"[\s\S]*?\[5,\s*240,\s*0\.5,\s*0\.4,\s*1\]'
+                Message = 'Stability controller must provide the SQA max-tested roll preset values.'
+            },
+            @{
+                Pattern = '"CUSTOM"[\s\S]*?FIXICS_rollActivationBankDeg[\s\S]*?FIXICS_rollActivationRateDeg[\s\S]*?FIXICS_rollStrength[\s\S]*?FIXICS_rollMaximumCorrection[\s\S]*?FIXICS_rollAirborneGraceSeconds'
+                Message = 'Custom roll preset must use the existing roll sliders.'
+            },
+            @{
                 Pattern = 'FIXICS_rollPreviousBank'
                 Message = 'Stability controller must store prior bank for bank-rate calculation.'
             },
@@ -826,6 +838,13 @@ if (Test-Path -LiteralPath $SettingsFile) {
 
     $RollStabilitySettings = @(
         @{
+            Variable = 'FIXICS_rollStabilityPreset'
+            ControlType = 'LIST'
+            NamespaceDefault = '0'
+            Payload = '[[0, 1, 2, 3], [localize "STR_FIXICS_SETTING_ROLL_PRESET_REALISTIC_STABLE", localize "STR_FIXICS_SETTING_ROLL_PRESET_OFFROAD_ASSIST", localize "STR_FIXICS_SETTING_ROLL_PRESET_AGGRESSIVE_SQA", localize "STR_FIXICS_SETTING_ROLL_PRESET_CUSTOM"], 0]'
+            DefaultIndex = 2
+        },
+        @{
             Variable = 'FIXICS_rollStabilityEnabled'
             ControlType = 'CHECKBOX'
             NamespaceDefault = 'true'
@@ -875,6 +894,10 @@ if (Test-Path -LiteralPath $SettingsFile) {
             "$($Spec.Variable) must have the approved roll stability default."
         Assert-CbaSetting $Settings $Spec
     }
+
+    Assert-Contains $Stringtable 'STR_FIXICS_SETTING_ROLL_PRESET_AGGRESSIVE_SQA' 'Stringtable must expose the Aggressive SQA roll preset label.'
+    Assert-Contains $Stringtable 'STR_FIXICS_SETTING_ROLL_PRESET_OFFROAD_ASSIST' 'Stringtable must expose the Offroad Assist roll preset label.'
+    Assert-Contains $Stringtable 'STR_FIXICS_SETTING_ROLL_PRESET_CUSTOM' 'Stringtable must expose the Custom roll preset label.'
 }
 
 $MonitorFile = Join-Path $RepoRoot 'addons\main\functions\fn_monitorVehicleAutobrake.sqf'

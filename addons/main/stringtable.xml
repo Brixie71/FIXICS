@@ -145,6 +145,24 @@
         <Key ID="STR_FIXICS_SETTING_ROLL_MAXIMUM_CORRECTION_TOOLTIP">
             <Original>Server-global upper bound for each roll stability vertical correction per update.</Original>
         </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_PRESET">
+            <Original>Roll stability preset</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_PRESET_AGGRESSIVE_SQA">
+            <Original>Aggressive SQA</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_PRESET_CUSTOM">
+            <Original>Custom</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_PRESET_OFFROAD_ASSIST">
+            <Original>Offroad Assist</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_PRESET_REALISTIC_STABLE">
+            <Original>Realistic Stable</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_PRESET_TOOLTIP">
+            <Original>Server-global roll tuning profile. Realistic Stable keeps conservative defaults, Offroad Assist is stronger, Aggressive SQA uses the max-tested rollover protection values, and Custom uses the roll sliders below.</Original>
+        </Key>
         <Key ID="STR_FIXICS_SETTING_ROLL_STABILITY_ENABLED">
             <Original>Enable roll stability</Original>
         </Key>

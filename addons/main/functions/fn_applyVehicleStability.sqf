@@ -110,6 +110,48 @@ private _rollAirborneGraceSeconds = missionNamespace getVariable [
     "FIXICS_rollAirborneGraceSeconds",
     0.35
 ];
+
+private _rollPresetIndex = missionNamespace getVariable [
+    "FIXICS_rollStabilityPreset",
+    0
+];
+private _rollPreset = [
+    "REALISTIC_STABLE",
+    "OFFROAD_ASSIST",
+    "AGGRESSIVE_SQA",
+    "CUSTOM"
+] param [
+    _rollPresetIndex,
+    "REALISTIC_STABLE"
+];
+private _rollPresetSettings = switch (_rollPreset) do {
+    case "OFFROAD_ASSIST": {
+        [8, 120, 0.28, 0.22, 0.65]
+    };
+    case "AGGRESSIVE_SQA": {
+        [5, 240, 0.5, 0.4, 1]
+    };
+    case "CUSTOM": {
+        [
+            missionNamespace getVariable ["FIXICS_rollActivationBankDeg", 18],
+            missionNamespace getVariable ["FIXICS_rollActivationRateDeg", 45],
+            missionNamespace getVariable ["FIXICS_rollStrength", 0.08],
+            missionNamespace getVariable ["FIXICS_rollMaximumCorrection", 0.08],
+            missionNamespace getVariable ["FIXICS_rollAirborneGraceSeconds", 0.35]
+        ]
+    };
+    default {
+        [18, 45, 0.08, 0.08, 0.35]
+    };
+};
+_rollPresetSettings params [
+    ["_rollActivationBankDeg", 18, [0]],
+    ["_rollActivationRateDeg", 45, [0]],
+    ["_rollStrength", 0.08, [0]],
+    ["_rollMaximumCorrection", 0.08, [0]],
+    ["_rollPresetAirborneGraceSeconds", 0.35, [0]]
+];
+_rollAirborneGraceSeconds = _rollPresetAirborneGraceSeconds;
 _rollAirborneGraceSeconds = (_rollAirborneGraceSeconds max 0) min 1;
 private _lastGroundedAt = _vehicle getVariable [
     "FIXICS_rollLastGroundedAt",
@@ -243,10 +285,10 @@ if (!_rollEligible) then {
     _vehicle setVariable ["FIXICS_rollPreviousTime", _now, false];
 
     private _rollSettings = [
-        missionNamespace getVariable ["FIXICS_rollActivationBankDeg", 18],
-        missionNamespace getVariable ["FIXICS_rollActivationRateDeg", 45],
-        missionNamespace getVariable ["FIXICS_rollStrength", 0.08],
-        missionNamespace getVariable ["FIXICS_rollMaximumCorrection", 0.08]
+        _rollActivationBankDeg,
+        _rollActivationRateDeg,
+        _rollStrength,
+        _rollMaximumCorrection
     ];
     private _rollRecommendation = [
         _vertical,

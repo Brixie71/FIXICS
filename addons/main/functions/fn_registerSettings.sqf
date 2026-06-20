@@ -49,6 +49,7 @@ missionNamespace setVariable ["FIXICS_stabilityYawStrength", 0.22, false];
 missionNamespace setVariable ["FIXICS_stabilityLateralStrength", 0.12, false];
 missionNamespace setVariable ["FIXICS_stabilityCountersteerStrength", 0.08, false];
 missionNamespace setVariable ["FIXICS_stabilityMaximumCorrection", 0.12, false];
+missionNamespace setVariable ["FIXICS_rollStabilityPreset", 0, false];
 missionNamespace setVariable ["FIXICS_rollStabilityEnabled", true, false];
 missionNamespace setVariable ["FIXICS_rollActivationBankDeg", 18, false];
 missionNamespace setVariable ["FIXICS_rollActivationRateDeg", 45, false];
@@ -454,6 +455,27 @@ missionNamespace setVariable ["FIXICS_stabilityDebugLogging", false, false];
     ],
     ["FIXICS", "Vehicle Stability"],
     [0.01, 0.5, 0.12, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_rollStabilityPreset",
+    "LIST",
+    [
+        localize "STR_FIXICS_SETTING_ROLL_PRESET",
+        localize "STR_FIXICS_SETTING_ROLL_PRESET_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [
+        [0, 1, 2, 3],
+        [
+            localize "STR_FIXICS_SETTING_ROLL_PRESET_REALISTIC_STABLE",
+            localize "STR_FIXICS_SETTING_ROLL_PRESET_OFFROAD_ASSIST",
+            localize "STR_FIXICS_SETTING_ROLL_PRESET_AGGRESSIVE_SQA",
+            localize "STR_FIXICS_SETTING_ROLL_PRESET_CUSTOM"
+        ],
+        0
+    ],
     1
 ] call CBA_fnc_addSetting;
 

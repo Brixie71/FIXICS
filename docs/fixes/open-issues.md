@@ -38,7 +38,7 @@ Phase 1 cannot close while any `HIGH` or `CRITICAL` `ground-vehicle` issue is op
 
 At high speed, a sharp steering input can appear to lock the steering response while the vehicle continues forward and oversteers. SQA described moderate rally-style turns as acceptable, with the problem appearing on sharper left or right turns.
 
-This issue is not currently attributed to ABS braking or Native Driver Assist v2. Root-cause research and a separate approved design are required before implementation.
+This issue is not currently attributed to ABS braking or Native Driver Assist v2. Vehicle Stability Assistance and Roll Stability Assist are active mitigations, but ISSUE-001 remains open until SQA completes the evidence matrix and confirms the remaining steering/rollover behavior is acceptable.
 
 #### Research Direction
 
@@ -84,8 +84,10 @@ SQA manual validation is required for `EMP_Polaris_DAGOR` before ISSUE-001 can b
 
 For each run, record body roll, rollover tendency, lateral slip, recovery behavior, braking behavior, handbrake behavior, and Drive/Reverse transition behavior. Automated checks only validate script and configuration contracts; they do not prove in-game rollover or controlled sliding behavior.
 
-#### Stability Assistance Boundary
+#### Stability And Roll Assistance Boundary
 
-The first release applies only bounded lateral damping through the guarded local stability controller. Direct yaw/countersteering mutation remains a diagnostic recommendation until SQA provides in-game evidence that it is needed and safe. Passive config changes, including `PlayerSteeringCoefficients`, anti-roll, tire, or inherited vehicle patching, remain pending SQA evidence and a separate approved config plan.
+The first Vehicle Stability Assistance release applies bounded lateral damping through the guarded local stability controller. Roll Stability Assist is a separate layer that applies bounded model-space vertical damping when bank angle and roll rate exceed configured limits. Direct yaw/countersteering mutation remains a diagnostic recommendation until SQA provides in-game evidence that it is needed and safe. Passive config changes, including `PlayerSteeringCoefficients`, anti-roll, tire, suspension, center of mass, or inherited vehicle patching, remain pending SQA evidence and a separate approved config plan.
+
+SQA confirmed that aggressive Roll Stability Assist tuning improves rollover behavior on the LSV/buggy test case. The remaining research target is realistic stable handling with controlled sliding across terrain, vehicle classes, and speed bands.
 
 Resolved Phase 1 milestones are recorded in `docs/fixes/fix-log.md`. Active approximations are recorded in `docs/fixes/workaround-registry.md`.

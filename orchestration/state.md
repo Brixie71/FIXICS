@@ -42,6 +42,7 @@ Current Phase 1 systems:
 - Stability compatibility was expanded on 2026-06-20 to include exact Offroad classes `LOP_IA_Offroad` and `B_G_Offroad_01_F` after SQA telemetry showed those classes were used for rollover validation.
 - Roll Stability preset selection was added on 2026-06-20 after SQA confirmed maxed settings improved rollover assist on the LSV/buggy test case.
 - Vehicle Behavior Evidence Registry architecture was approved on 2026-06-20. The first implementation is read-only documentation and static validation; Runtime Assist coordination and Config Research remain future designs.
+- Documentation cleanup/alignment was approved on 2026-06-20 to bring README, fix memory, workaround records, open issues, validation notes, and project state into sync with the implemented Phase 1 vehicle systems.
 
 ## Constraints
 

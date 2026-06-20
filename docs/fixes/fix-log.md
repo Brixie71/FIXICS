@@ -47,6 +47,82 @@ WA-[number] or N/A.
 
 ## Log
 
+### FIX-007 - Roll Stability Assist and tuning presets
+
+- **Date**          : 2026-06-20
+- **Phase**         : Phase 1 - Ground Vehicle Physics
+- **Failure class** : rollover or stability anomaly
+- **Function(s)**   : `FIXICS_fnc_updateDriverController`, `FIXICS_fnc_logVehicleHandlingConfig`
+- **Files changed** :
+  - `addons/main/functions/fn_updateDriverController.sqf`
+  - `addons/main/functions/fn_registerSettings.sqf`
+  - `addons/main/functions/fn_logVehicleHandlingConfig.sqf`
+  - `addons/main/stringtable.xml`
+- **Bug reported by**: SQA, 2026-06-20
+- **Resolution type**: Workaround
+
+#### Root Cause
+Vehicle Stability Assistance reduced yaw and lateral instability, but SQA telemetry and manual testing still showed rollover during high-speed sharp steering, especially with LSV/buggy-style vehicles.
+
+#### Fix Summary
+Added a separate roll-stability layer that applies bounded model-space vertical damping when bank angle and roll rate exceed configured limits. Added server-global settings and presets, including Realistic Stable, Offroad Assist, Aggressive SQA, and Custom. Aggressive SQA preserves the max-tested values SQA confirmed improved rollover assistance.
+
+#### Outcome
+SQA reported that Roll Over Assist works when tuned aggressively and confirmed the current implementation as a good starting point for later tire, suspension, anti-roll, terrain, and vehicle-mass research.
+
+#### Workaround Registry Entry
+WA-004
+
+#### Verification
+- `hemtt check`  : pass
+- Static checks  : pass
+- VR test date   : 2026-06-20
+- VR result      : partial
+- VR notes       : SQA verified improved rollover assistance with aggressive settings. Further moose-test, terrain, and vehicle-class tuning remains open.
+
+#### SQA Sign-Off
+- Approved by : SQA
+- Date        : 2026-06-20
+- Notes       : Max-tested settings: Activation Bank 5, Roll Activation Rate 240, Roll Stability Strength 0.50, Maximum Roll Correction 0.40, Roll Airborne Grace 1.00.
+
+### FIX-006 - Vehicle Stability Assistance and telemetry expansion
+
+- **Date**          : 2026-06-20
+- **Phase**         : Phase 1 - Ground Vehicle Physics
+- **Failure class** : steering, oversteer, or stability anomaly
+- **Function(s)**   : `FIXICS_fnc_updateDriverController`, `FIXICS_fnc_logVehicleHandlingConfig`
+- **Files changed** :
+  - `addons/main/functions/fn_updateDriverController.sqf`
+  - `addons/main/functions/fn_registerSettings.sqf`
+  - `addons/main/functions/fn_logVehicleHandlingConfig.sqf`
+  - `addons/main/stringtable.xml`
+- **Bug reported by**: SQA, 2026-06-12
+- **Resolution type**: Workaround
+
+#### Root Cause
+High-speed sharp-turn testing showed steering lock, oversteer, and rollover symptoms that were not caused by ABS braking. The project needed telemetry and a bounded first-release stability layer before considering steering coefficients, tire grip, suspension, or anti-roll config changes.
+
+#### Fix Summary
+Added Vehicle Stability Assistance for approved vehicle classes with bounded lateral damping through the local driver controller. Expanded vehicle telemetry to record inputs, velocities, position, heading/yaw, pitch/bank/rates, terrain normal, ground contact, wheel hitpoint evidence, and relevant FIXICS state values.
+
+#### Outcome
+SQA confirmed the stability assist can produce controlled sliding feel, while rollover required the separate roll-stability layer recorded in FIX-007.
+
+#### Workaround Registry Entry
+WA-003
+
+#### Verification
+- `hemtt check`  : pass
+- Static checks  : pass
+- VR test date   : 2026-06-20
+- VR result      : partial
+- VR notes       : SQA telemetry confirmed supported/unsupported class behavior and guided expansion to LSV and Offroad classes.
+
+#### SQA Sign-Off
+- Approved by : SQA
+- Date        : 2026-06-20
+- Notes       : First-release scope remains bounded lateral damping; direct yaw/countersteering mutation and passive config changes need separate approval.
+
 ### FIX-005 - Native Driver Assist v2
 
 - **Date**          : 2026-06-12

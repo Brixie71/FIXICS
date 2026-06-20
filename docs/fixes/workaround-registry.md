@@ -14,6 +14,66 @@ This file records active scripted FIXICS workarounds where Arma 3 does not expos
 
 ## Active Workarounds
 
+### WA-004 - Roll stability assist
+
+- **Functions**         : `FIXICS_fnc_updateDriverController`, `FIXICS_fnc_logVehicleHandlingConfig`
+- **Fix log entries**   : FIX-007
+- **Engine limit**      : EL-004 - Suspension config is not a runtime SQF control surface
+- **Failure class**     : rollover or stability anomaly
+- **Phase**             : Phase 1
+- **Approved**          : 2026-06-20, SQA
+- **VR verified**       : 2026-06-20, partial
+
+#### What it does
+Roll Stability Assist watches bank angle, roll rate, ground contact, and configured limits, then applies bounded model-space vertical damping for registered vehicle classes. Presets expose Realistic Stable, Offroad Assist, Aggressive SQA, and Custom tuning without changing SQF.
+
+#### What it achieves
+The assist reduces rollover tendency during sharp high-speed steering while preserving room for controlled sliding and vehicle-class tuning.
+
+| Metric | Before | After | Ideal | Gap |
+|---|---|---|---|---|
+| High-speed rollover recovery | Vehicle could continue into rollover | Bounded assist can reduce rollover with aggressive tuning | Class-specific suspension, tire, anti-roll, and COM model | Still an SQF velocity-layer approximation |
+| Tuning workflow | Manual slider changes only | Presets plus custom tuning | Evidence-based per-class handling profile | Needs more SQA matrix coverage |
+
+#### Remaining gap
+The workaround does not change tire friction, suspension geometry, anti-roll bars, center of mass, or PhysX contact behavior. It cannot guarantee rollover prevention under every steering, terrain, and vehicle-class condition.
+
+#### Removal condition
+Remove or redesign this workaround if a documented runtime or narrow config-backed control surface can model suspension, anti-roll, tire grip, and center of mass more accurately for the affected classes.
+
+#### Review triggers
+Review before adding class-specific suspension, tire, anti-roll, or center-of-mass config patches. Review again before multiplayer authority work or before expanding supported vehicle classes.
+
+### WA-003 - Vehicle stability assistance and telemetry diagnostics
+
+- **Functions**         : `FIXICS_fnc_updateDriverController`, `FIXICS_fnc_logVehicleHandlingConfig`
+- **Fix log entries**   : FIX-006
+- **Engine limit**      : EL-002 - No documented runtime per-wheel friction setter
+- **Failure class**     : steering, oversteer, or stability anomaly
+- **Phase**             : Phase 1
+- **Approved**          : 2026-06-20, SQA
+- **VR verified**       : 2026-06-20, partial
+
+#### What it does
+Vehicle Stability Assistance applies bounded lateral damping for approved vehicle classes through the local driver controller. The telemetry path records driver inputs, speed, velocity, orientation, terrain, ground contact, wheel hitpoint data, and relevant FIXICS state values so SQA can compare behavior across vehicles and settings.
+
+#### What it achieves
+The first-release scope gives SQA a controllable stability layer and evidence stream without changing broad vehicle config or hidden engine steering behavior.
+
+| Metric | Before | After | Ideal | Gap |
+|---|---|---|---|---|
+| Stability evidence | RPT and feel-based reports only | Continuous telemetry and class evidence | Full wheel slip and tire force telemetry | Arma does not expose per-wheel friction/slip state through SQF |
+| High-speed slide control | Unbounded oversteer reports | Bounded lateral damping for supported classes | Full ESC/traction-control model | Direct yaw/countersteering and tire tuning remain unapproved |
+
+#### Remaining gap
+The workaround does not directly alter steering coefficients, tire grip, suspension, or anti-roll config. It also cannot observe true per-wheel slip or brake pressure.
+
+#### Removal condition
+Remove or redesign this workaround if Arma exposes documented runtime per-wheel slip/friction control or if a narrow, SQA-approved config profile replaces the need for velocity-layer damping.
+
+#### Review triggers
+Review before adding steering coefficient patches, tire grip changes, countersteering mutation, additional vehicle classes, or multiplayer authority.
+
 ### WA-002 - Local driver-state braking and direction controller
 
 - **Functions**         : `FIXICS_fnc_getDriverInputIntent`, `FIXICS_fnc_updateDriverController`, `FIXICS_fnc_applyABSBraking`

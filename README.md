@@ -47,6 +47,8 @@ All public functions use the `FIXICS_fnc_*` prefix. All runtime namespace keys u
 | FIX-003 | ABS braking and driver-state controller | ✅ SQA verified |
 | FIX-004 | Reverse-to-Drive input and model-space braking correction | ✅ SQA verified |
 | FIX-005 | Native Driver Assist v2 | ✅ SQA verified |
+| FIX-006 | Vehicle Stability Assistance | ✅ SQA verified for initial lateral damping scope |
+| FIX-007 | Roll Stability Assist and presets | ✅ SQA verified for aggressive SQA tuning |
 
 ### What Phase 1 changes
 
@@ -61,6 +63,15 @@ Opposite direction input no longer waits for the vehicle to fully coast to zero.
 
 **Driver-state controller**
 A fast per-frame CBA controller replaces slow implicit player-driving behavior with explicit Drive, Service Brake, Reverse, Coast, and Handbrake states.
+
+**Vehicle Stability Assistance**
+Approved vehicle classes can use bounded stability assistance through the local driver controller. The current first-release scope applies lateral damping only; direct yaw/countersteering mutation and passive config-class steering or tire changes remain research items until SQA evidence supports them.
+
+**Roll Stability Assist**
+Registered vehicles can use a separate roll-stability layer that applies bounded model-space vertical damping when bank angle and roll rate exceed configured limits. Presets are available for Realistic Stable, Offroad Assist, Aggressive SQA, and Custom tuning.
+
+**Telemetry diagnostics**
+Vehicle handling telemetry can record inputs, velocity, position, heading, yaw rate, pitch, bank, pitch/bank rates, terrain normal, ground contact, wheel hitpoint data, and active FIXICS state values for SQA physics research.
 
 ---
 
@@ -160,6 +171,26 @@ All FIXICS settings are available in-game under **Options → Addon Options → 
 | `FIXICS_directionNeutralPulseSeconds` | `0.08` | — | seconds |
 | `FIXICS_driverControllerInterval` | `0.03` | — | seconds |
 
+### Vehicle Stability Assistance
+
+| Setting | Default | Notes |
+|---|---|---|
+| Vehicle stability assistance | enabled | Server-global option for approved vehicle classes |
+| Stability mode | Yaw + lateral damping | Available modes include Yaw Damping, Yaw + Lateral Damping, and Countersteering |
+| Stability preset | Realistic Stable | Presets support player tuning without editing SQF |
+
+### Roll Stability Assist
+
+| Setting | Default | Notes |
+|---|---|---|
+| Roll Stability Assist | enabled | Server-global option for registered vehicle classes |
+| Roll Stability preset | Realistic Stable | Options include Realistic Stable, Offroad Assist, Aggressive SQA, and Custom |
+| Activation bank | preset controlled | Aggressive SQA uses SQA's max-tested rollover-assist value |
+| Roll activation rate | preset controlled | Higher values delay correction until stronger roll-rate evidence appears |
+| Roll stability strength | preset controlled | Controls bounded correction strength |
+| Maximum roll correction | preset controlled | Caps the per-update correction |
+| Roll airborne grace | preset controlled | Allows brief correction continuity through short contact loss |
+
 ---
 
 ## Known Limitations
@@ -194,6 +225,7 @@ Active workarounds: [`docs/fixes/workaround-registry.md`](docs/fixes/workaround-
 | `FIXICS_fnc_applyHandbrakeLock` | Enforces persistent ACE handbrake lock |
 | `FIXICS_fnc_applyABSBraking` | Applies ABS-like longitudinal braking correction |
 | `FIXICS_fnc_getDriverInputIntent` | Reads and normalises current driver input state |
+| `FIXICS_fnc_logVehicleHandlingConfig` | Records vehicle handling and telemetry diagnostics |
 
 ---
 
@@ -282,8 +314,3 @@ Please include:
 ## License
 
 FIXICS is released under the [Arma Public License Share Alike (APL-SA)](https://www.bohemia.net/community/licenses/arma-public-license-share-alike).
-EOF
-echo "done"
-Done
-
-codex resume 019e9d88-2ef8-7e50-a50d-f407b4a02611

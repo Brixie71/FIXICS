@@ -24,6 +24,32 @@ Record validation runs that matter for implementation, review, or release decisi
 - Manual coverage: not run.
 - Notes: no build artifact was produced for this documentation-only task.
 
+### 2026-06-20 - Documentation cleanup and alignment
+
+- Command: documentation review
+- Result: completed
+- Automated coverage: aligned README, fix log, workaround registry, open issues, and project state with the current ABS, driver controller, native advisory, telemetry, vehicle stability, and roll stability state.
+- Manual coverage: not run.
+- Notes: documentation-only pass. No addon source, native source, config, or generated build output changed.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: confirmed governance static contracts still pass after documentation alignment.
+- Manual coverage: not run.
+- Notes: documentation-only validation.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: confirmed vehicle physics static contracts and mutation checks still pass after documentation alignment.
+- Manual coverage: not run.
+- Notes: no addon source changed.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\check.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT loaded FIXICS 1.0.0.1, rapified 2 addon configs, compiled 22 SQF files, checked 1 stringtable, and passed stability/roll recommendation tests.
+- Manual coverage: not run.
+- Notes: no build artifact was produced in this documentation-only pass.
+
 ### 2026-06-06 - Baseline before Codex operating layer
 
 - Command: `hemtt check`

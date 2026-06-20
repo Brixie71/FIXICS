@@ -71,6 +71,8 @@ Both functions are read-only.
 
 #### Vehicle Stability Assistance Evidence Matrix
 
+The canonical evidence format now lives in `docs/vehicle-behavior/sqa-evidence-matrix.md`. Keep the table below as the issue-specific acceptance matrix, but record reusable telemetry evidence and recommended next actions in the Evidence Registry.
+
 SQA manual validation is required for `EMP_Polaris_DAGOR` before ISSUE-001 can be marked resolved. Test each speed and surface combination with Off, Yaw damping, Yaw + lateral damping, and Countersteering assistance modes under both Realistic Stable and Rally presets.
 
 | Speed | Paved | Dirt | Grass |

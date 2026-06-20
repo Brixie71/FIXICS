@@ -28,13 +28,16 @@ params [
     ["_settings", [], [[]]]
 ];
 
+if (!finite _verticalSpeed) exitWith {
+    [false, 0, 0, 0]
+};
+
 if (
-    !finite _verticalSpeed
-    || {!finite _bankDeg}
+    !finite _bankDeg
     || {!finite _bankRateDeg}
     || {!finite _deltaTime}
 ) exitWith {
-    [false, 0, 0, 0]
+    [false, _verticalSpeed, 0, 0]
 };
 
 if ((count _settings) < 4) exitWith {

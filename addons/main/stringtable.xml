@@ -121,6 +121,42 @@
         <Key ID="STR_FIXICS_SETTING_NATIVE_SLOPE_CONTROL_TOOLTIP">
             <Original>Uses the optional FIXICSPhysics native extension for slope rollback recommendations. Leave disabled unless the extension binary is installed.</Original>
         </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_ACTIVATION_BANK">
+            <Original>Roll activation bank</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_ACTIVATION_BANK_TOOLTIP">
+            <Original>Server-global bank angle in degrees before roll stability can add vertical correction. This targets roll, not steering.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_ACTIVATION_RATE">
+            <Original>Roll activation rate</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_ACTIVATION_RATE_TOOLTIP">
+            <Original>Server-global bank-rate threshold in degrees per second before roll stability reacts to fast roll changes.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_AIRBORNE_GRACE">
+            <Original>Roll airborne grace</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_AIRBORNE_GRACE_TOOLTIP">
+            <Original>Server-global time in seconds after ground contact where roll correction may continue briefly.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_MAXIMUM_CORRECTION">
+            <Original>Roll maximum correction</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_MAXIMUM_CORRECTION_TOOLTIP">
+            <Original>Server-global upper bound for each roll stability vertical correction per update.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_STABILITY_ENABLED">
+            <Original>Enable roll stability</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_STABILITY_ENABLED_TOOLTIP">
+            <Original>Server-global roll and bank assist for eligible vehicles. It does not steer the vehicle.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_STRENGTH">
+            <Original>Roll stability strength</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLL_STRENGTH_TOOLTIP">
+            <Original>Server-global vertical correction strength for roll and bank recovery. Higher values intervene harder.</Original>
+        </Key>
         <Key ID="STR_FIXICS_SETTING_SLOPE_COAST_BREAKAWAY">
             <Original>Coast breakaway velocity</Original>
         </Key>

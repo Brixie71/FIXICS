@@ -137,7 +137,7 @@
             <Original>Roll airborne grace</Original>
         </Key>
         <Key ID="STR_FIXICS_SETTING_ROLL_AIRBORNE_GRACE_TOOLTIP">
-            <Original>Server-global time in seconds after ground contact where roll correction may continue briefly.</Original>
+            <Original>Server-global time in seconds after losing ground contact where roll correction may continue briefly.</Original>
         </Key>
         <Key ID="STR_FIXICS_SETTING_ROLL_MAXIMUM_CORRECTION">
             <Original>Roll maximum correction</Original>

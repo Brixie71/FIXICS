@@ -25,6 +25,7 @@ Current Phase 1 systems:
 - Optional native slope-control bridge, disabled by default.
 - Optional Native Driver Assist v2 advisory math for ABS and direction transitions, disabled by default.
 - Vehicle Stability Assistance for the approved `EMP_Polaris_DAGOR` class, applying bounded lateral damping only through the local driver controller.
+- Roll Stability Assist, server-global and enabled by default, applying bounded model-space vertical damping for registered vehicles and awaiting SQA manual validation.
 
 ## Last Decision
 
@@ -34,6 +35,7 @@ Current Phase 1 systems:
 - Vehicle Stability Assistance implementation was approved by SQA for `EMP_Polaris_DAGOR`.
 - The first release boundary is bounded lateral damping only; direct yaw/countersteering mutation and passive config changes remain pending SQA evidence.
 - ISSUE-001 remains open until SQA completes the manual `EMP_Polaris_DAGOR` matrix across 30, 60, 90, and 120 km/h on paved, dirt, and grass surfaces.
+- Roll Stability Assist was implemented as a separate vertical model-space damping layer after SQA telemetry showed mode 2 reduced yaw/pitch but did not prevent rollovers.
 
 ## Constraints
 

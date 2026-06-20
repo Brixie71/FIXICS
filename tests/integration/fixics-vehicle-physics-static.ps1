@@ -465,10 +465,22 @@ if (Test-Path -LiteralPath $StabilityControllerFile) {
                 $ContractFailures.Add("Stability controller must not pass vector literal variable $($Assignment.Groups['Variable'].Value) to setVelocityModelSpace.")
             }
         }
-        $UsesVelocityForModelSpaceMutation = $Content -match 'setVelocityModelSpace\s+_velocity\b'
-        $VelocityComesFromModelSpace = $Content -match '(?m)^\s*(?:private\s+)?_velocity\b\s*=\s*velocityModelSpace\s+_vehicle\b'
-        if ($UsesVelocityForModelSpaceMutation -and (-not $VelocityComesFromModelSpace)) {
-            $ContractFailures.Add('Stability controller model-space mutation variable must come from velocityModelSpace _vehicle.')
+        $ModelSpaceMutationAssignments = [regex]::Matches(
+            $Content,
+            'setVelocityModelSpace\s+(?<Operand>_[A-Za-z][A-Za-z0-9_]*)\b'
+        )
+        foreach ($Mutation in $ModelSpaceMutationAssignments) {
+            $Operand = $Mutation.Groups['Operand'].Value
+            $OperandAssignments = [regex]::Matches(
+                $Content,
+                '(?m)^\s*(?:private\s+)?' + [regex]::Escape($Operand) + '\s*=\s*(?<Source>[^\r\n;]+)'
+            ) | Where-Object {
+                $_.Index -lt $Mutation.Index
+            }
+            $LastAssignment = $OperandAssignments | Select-Object -Last 1
+            if ($null -eq $LastAssignment -or $LastAssignment.Groups['Source'].Value -notmatch '^velocityModelSpace\s+_vehicle\b') {
+                $ContractFailures.Add("Stability controller model-space mutation variable $Operand must come from velocityModelSpace _vehicle.")
+            }
         }
 
         $VerticalAfterIndex = $Content.LastIndexOf('verticalAfter=')
@@ -484,6 +496,11 @@ if (Test-Path -LiteralPath $StabilityControllerFile) {
                 if ($DiagnosticsSpan -notmatch 'velocityModelSpace\s+_vehicle') {
                     $ContractFailures.Add('Roll diagnostics must resample model-space vertical velocity after the final relevant mutation.')
                 }
+            }
+
+            $VelocityMutationAfterVerticalAfter = $Content.IndexOf('setVelocityModelSpace', $VerticalAfterIndex)
+            if ($VelocityMutationAfterVerticalAfter -ge 0) {
+                $ContractFailures.Add('Roll diagnostics must occur after the final model-space velocity mutation.')
             }
         }
         if ($Content -match 'FIXICS_fnc_(?:applyABSBraking|applySlopeRollback|applyHandbrakeLock)|disableBrakes') {
@@ -523,6 +540,36 @@ if (Test-Path -LiteralPath $StabilityControllerFile) {
             Add-Failure 'Mutation survived: longitudinal velocity mutation.'
         } else {
             Write-Host 'Killed mutation: longitudinal velocity mutation'
+        }
+
+        $ReplacementVelocityMutation = $StabilityController.Replace(
+            '_vehicle setVelocityModelSpace _velocity;',
+            'private _otherVelocity = [0, _recommendedLateral, _vertical];' + [Environment]::NewLine + '_vehicle setVelocityModelSpace _otherVelocity;'
+        )
+        if ((Get-StabilityControllerContractFailures $ReplacementVelocityMutation).Count -eq 0) {
+            Add-Failure 'Mutation survived: model-space velocity replacement through arbitrary variable.'
+        } else {
+            Write-Host 'Killed mutation: model-space velocity replacement through arbitrary variable'
+        }
+
+        $LateVelocityMutation = $StabilityController.Replace(
+            '];' + [Environment]::NewLine + '};' + [Environment]::NewLine + [Environment]::NewLine + 'true',
+            '];' + [Environment]::NewLine + '};' + [Environment]::NewLine + [Environment]::NewLine + '_vehicle setVelocityModelSpace _velocity;' + [Environment]::NewLine + [Environment]::NewLine + 'true'
+        )
+        if ((Get-StabilityControllerContractFailures $LateVelocityMutation).Count -eq 0) {
+            Add-Failure 'Mutation survived: model-space velocity mutation after verticalAfter diagnostics.'
+        } else {
+            Write-Host 'Killed mutation: model-space velocity mutation after verticalAfter diagnostics'
+        }
+
+        $StaleVerticalAfterMutation = $StabilityController.Replace(
+            'private _actualVelocity = velocityModelSpace _vehicle;',
+            'private _actualVelocity = _velocity;'
+        )
+        if ((Get-StabilityControllerContractFailures $StaleVerticalAfterMutation).Count -eq 0) {
+            Add-Failure 'Mutation survived: stale verticalAfter diagnostic without post-mutation resample.'
+        } else {
+            Write-Host 'Killed mutation: stale verticalAfter diagnostic without post-mutation resample'
         }
     }
 }

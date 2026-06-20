@@ -50,6 +50,21 @@ private _clearYawSample = {
     ];
 };
 
+private _clearRollSample = {
+    params ["_sampleVehicle"];
+
+    _sampleVehicle setVariable [
+        "FIXICS_rollPreviousBank",
+        nil,
+        false
+    ];
+    _sampleVehicle setVariable [
+        "FIXICS_rollPreviousTime",
+        nil,
+        false
+    ];
+};
+
 if (!local _vehicle) exitWith {
     [_vehicle] call _clearYawSample;
     false
@@ -80,6 +95,7 @@ private _rollAirborneGraceSeconds = missionNamespace getVariable [
     "FIXICS_rollAirborneGraceSeconds",
     0.35
 ];
+_rollAirborneGraceSeconds = (_rollAirborneGraceSeconds max 0) min 1;
 private _lastGroundedAt = _vehicle getVariable [
     "FIXICS_rollLastGroundedAt",
     (_now - _rollAirborneGraceSeconds - 1)
@@ -170,23 +186,6 @@ if (_isGrounded) then {
     };
 };
 
-private _pitchBank = _vehicle call BIS_fnc_getPitchBank;
-private _bank = _pitchBank # 1;
-private _previousBank = _vehicle getVariable [
-    "FIXICS_rollPreviousBank",
-    _bank
-];
-private _previousRollTime = _vehicle getVariable [
-    "FIXICS_rollPreviousTime",
-    _now
-];
-private _rollDeltaTime = (_now - _previousRollTime) max 0.001;
-private _bankDelta = ((_bank - _previousBank + 540) mod 360) - 180;
-private _bankRate = _bankDelta / _rollDeltaTime;
-
-_vehicle setVariable ["FIXICS_rollPreviousBank", _bank, false];
-_vehicle setVariable ["FIXICS_rollPreviousTime", _now, false];
-
 private _rollEnabled = missionNamespace getVariable [
     "FIXICS_rollStabilityEnabled",
     true
@@ -198,8 +197,29 @@ private _rollApplied = false;
 private _recommendedVertical = _vertical;
 private _rollCorrection = 0;
 private _rollSeverity = 0;
+private _bank = 0;
+private _bankRate = 0;
 
-if (_rollEligible) then {
+if (!_rollEligible) then {
+    [_vehicle] call _clearRollSample;
+} else {
+    private _pitchBank = _vehicle call BIS_fnc_getPitchBank;
+    _bank = _pitchBank # 1;
+    private _previousBank = _vehicle getVariable [
+        "FIXICS_rollPreviousBank",
+        _bank
+    ];
+    private _previousRollTime = _vehicle getVariable [
+        "FIXICS_rollPreviousTime",
+        _now
+    ];
+    private _rollDeltaTime = (_now - _previousRollTime) max 0.001;
+    private _bankDelta = ((_bank - _previousBank + 540) mod 360) - 180;
+    _bankRate = _bankDelta / _rollDeltaTime;
+
+    _vehicle setVariable ["FIXICS_rollPreviousBank", _bank, false];
+    _vehicle setVariable ["FIXICS_rollPreviousTime", _now, false];
+
     private _rollSettings = [
         missionNamespace getVariable ["FIXICS_rollActivationBankDeg", 18],
         missionNamespace getVariable ["FIXICS_rollActivationRateDeg", 45],

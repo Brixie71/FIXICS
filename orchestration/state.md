@@ -46,6 +46,7 @@ Current Phase 1 systems:
 - Future feature workflow was updated on 2026-06-21: all future features use a Requirements Packet, SQA questions are gathered up front, implementation proceeds autonomously after SQA approval, and completed gameplay work is handed back to SQA for QA comments and repeat-cycle fixes.
 - Runtime Assist Coordination requirements were captured on 2026-06-21. SQA approved a new local-player coordination layer where ABS, slope rollback, driver intent, Vehicle Stability Assistance, Roll Stability Assist, terrain effects, per-system presets, and native advisory math communicate through one layer before implementation. Next gate is SQA review of `docs/requirements/runtime-assist-coordination-requirements.md`, then a design spec and implementation plan before any gameplay source changes.
 - Runtime Assist Coordination design was drafted on 2026-06-21 in `docs/superpowers/specs/2026-06-21-runtime-assist-coordination-design.md`. The spec keeps the feature local-player only, preserves accepted ABS/handbrake/Drive-Reverse behavior, prioritizes roll and stability before braking/slope composition, keeps native advisory non-authoritative, and requires SQA review before implementation planning.
+- Runtime Assist Coordination implementation plan was drafted on 2026-06-21 in `docs/superpowers/plans/2026-06-21-runtime-assist-coordination.md`. The next gate is SQA execution choice: subagent-driven implementation or inline execution.
 
 ## Constraints
 

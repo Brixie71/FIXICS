@@ -73,7 +73,9 @@ if ($Config -match '"A3_Soft_F"|\"A3_Armor_F\"') {
     'addons\main\functions\fn_logVehicleHandlingConfig.sqf',
     'addons\main\functions\fn_startSteeringDiagnostics.sqf',
     'addons\main\functions\fn_getNativeSlopeControl.sqf',
-    'addons\main\functions\fn_getNativeDriverAssist.sqf'
+    'addons\main\functions\fn_getNativeDriverAssist.sqf',
+    'addons\main\functions\fn_getRuntimeAssistRecommendation.sqf',
+    'addons\main\functions\fn_coordinateVehicleAssists.sqf'
 ) | ForEach-Object {
     Assert-FileExists $_
 }
@@ -108,6 +110,8 @@ Assert-Contains $Config 'class getVehicleStabilityProfile\s*\{\s*\};' 'Stability
 Assert-Contains $Config 'class getVehicleStabilityRecommendation\s*\{\s*\};' 'Stability recommendation math must be registered.'
 Assert-Contains $Config 'class applyVehicleStability\s*\{\s*\};' 'Local stability mutation boundary must be registered.'
 Assert-Contains $Config 'class getRollStabilityRecommendation\s*\{\s*\};' 'getRollStabilityRecommendation must be registered in CfgFunctions.'
+Assert-Contains $Config 'class getRuntimeAssistRecommendation\s*\{\s*\};' 'Runtime assist recommendation must be registered in CfgFunctions.'
+Assert-Contains $Config 'class coordinateVehicleAssists\s*\{\s*\};' 'Runtime assist coordinator must be registered in CfgFunctions.'
 if ($Config -match 'class CfgVehicles|brakeIdleSpeed\s*=\s*0\.01|dampingRateZeroThrottleClutchEngaged\s*=\s*0\.25|dampingRateZeroThrottleClutchDisengaged\s*=\s*0\.25') {
     Add-Failure 'Failed config-class experiment must be removed before native gameplay-control escalation.'
 }
@@ -314,6 +318,39 @@ if (Test-Path -LiteralPath $RollStabilityRecommendationFile) {
     Assert-Contains $RollRecommendation '(?i)applied[\s\S]*?recommended[\s\S]*?correction[\s\S]*?severity|severity[\s\S]*?correction[\s\S]*?recommended[\s\S]*?applied' 'Roll recommendation must return applied state, recommendation, correction, and severity.'
     if ($RollRecommendation -match 'setVelocity|setVelocityModelSpace|setDir|setVectorDirAndUp|disableBrakes') {
         Add-Failure 'Roll recommendation must remain pure and must not mutate objects.'
+    }
+}
+
+$RuntimeRecommendationFile = Join-Path $RepoRoot 'addons\main\functions\fn_getRuntimeAssistRecommendation.sqf'
+Assert-FileExists 'addons\main\functions\fn_getRuntimeAssistRecommendation.sqf'
+if (Test-Path -LiteralPath $RuntimeRecommendationFile) {
+    $RuntimeRecommendation = Get-Content -Raw -LiteralPath $RuntimeRecommendationFile
+    Assert-Contains $RuntimeRecommendation '\bparams\b' 'Runtime recommendation must declare parameters.'
+    Assert-Contains $RuntimeRecommendation 'priorityWinner' 'Runtime recommendation must expose a priority winner.'
+    Assert-Contains $RuntimeRecommendation 'terrainMultiplier' 'Runtime recommendation must expose terrain multiplier.'
+    Assert-Contains $RuntimeRecommendation 'massMultiplier' 'Runtime recommendation must expose mass multiplier.'
+    Assert-Contains $RuntimeRecommendation 'slopeRetention' 'Runtime recommendation must expose braking slope retention.'
+    Assert-Contains $RuntimeRecommendation 'suppressedAssists' 'Runtime recommendation must expose suppressed or reduced assists.'
+    Assert-Contains $RuntimeRecommendation 'finalCorrection' 'Runtime recommendation must expose final correction summary.'
+    Assert-Contains $RuntimeRecommendation '\bfinite\b' 'Runtime recommendation must reject non-finite numeric inputs.'
+    if ($RuntimeRecommendation -match '\b(setVelocity|setVelocityModelSpace|setDir|setVectorDirAndUp|disableBrakes|setVariable|publicVariable|remoteExec|remoteExecCall|callExtension)\b') {
+        Add-Failure 'Runtime recommendation must remain pure and must not mutate objects, network state, brakes, or native extension state.'
+    }
+}
+
+$RuntimeCoordinatorFile = Join-Path $RepoRoot 'addons\main\functions\fn_coordinateVehicleAssists.sqf'
+Assert-FileExists 'addons\main\functions\fn_coordinateVehicleAssists.sqf'
+if (Test-Path -LiteralPath $RuntimeCoordinatorFile) {
+    $RuntimeCoordinator = Get-Content -Raw -LiteralPath $RuntimeCoordinatorFile
+    Assert-Contains $RuntimeCoordinator 'driver _vehicle == player' 'Runtime coordinator must require the local player driver.'
+    Assert-Contains $RuntimeCoordinator 'local _vehicle' 'Runtime coordinator must require local vehicle ownership.'
+    Assert-Contains $RuntimeCoordinator 'FIXICS_handbrakeEnabled' 'Runtime coordinator must respect persistent FIXICS handbrake priority.'
+    Assert-Contains $RuntimeCoordinator 'FIXICS_fnc_getRuntimeAssistRecommendation' 'Runtime coordinator must call the pure recommendation helper.'
+    Assert-Contains $RuntimeCoordinator 'FIXICS_runtimeAssistLastDecision' 'Runtime coordinator must store last decision telemetry.'
+    Assert-Contains $RuntimeCoordinator 'FIXICS_runtimeAssistDebugLogging' 'Runtime coordinator must support explicit debug logging.'
+    Assert-Contains $RuntimeCoordinator 'velocityModelSpace _vehicle' 'Runtime coordinator must work in model-space velocity.'
+    if ($RuntimeCoordinator -match '\b(setDir|setVectorDirAndUp|remoteExec|remoteExecCall|publicVariable)\b') {
+        Add-Failure 'Runtime coordinator must not mutate orientation or network state.'
     }
 }
 
@@ -898,6 +935,23 @@ if (Test-Path -LiteralPath $SettingsFile) {
     Assert-Contains $Stringtable 'STR_FIXICS_SETTING_ROLL_PRESET_AGGRESSIVE_SQA' 'Stringtable must expose the Aggressive SQA roll preset label.'
     Assert-Contains $Stringtable 'STR_FIXICS_SETTING_ROLL_PRESET_OFFROAD_ASSIST' 'Stringtable must expose the Offroad Assist roll preset label.'
     Assert-Contains $Stringtable 'STR_FIXICS_SETTING_ROLL_PRESET_CUSTOM' 'Stringtable must expose the Custom roll preset label.'
+
+    @(
+        'FIXICS_runtimeAssistCoordinatorEnabled',
+        'FIXICS_runtimeAssistTerrainInfluenceEnabled',
+        'FIXICS_runtimeAssistTerrainInfluenceStrength',
+        'FIXICS_runtimeAssistBrakingSlopeRetention',
+        'FIXICS_runtimeAssistMassDampingStrength',
+        'FIXICS_runtimeAssistMaximumComposedCorrection',
+        'FIXICS_runtimeAssistDebugLogging'
+    ) | ForEach-Object {
+        Assert-Contains $Settings $_ "Runtime Assist setting $_ must be registered."
+        Assert-Contains $Stringtable $_ "Runtime Assist setting $_ must have localized text."
+    }
+
+    Assert-Contains $Settings 'missionNamespace setVariable \["FIXICS_runtimeAssistCoordinatorEnabled", true, false\]' 'Runtime Assist coordinator must default enabled.'
+    Assert-Contains $Settings 'missionNamespace setVariable \["FIXICS_runtimeAssistBrakingSlopeRetention", 0\.35, false\]' 'Runtime Assist braking slope retention must default conservative.'
+    Assert-Contains $Settings '\["FIXICS", "Runtime Assist"\]' 'Runtime Assist settings must use their own FIXICS Global category.'
 }
 
 $MonitorFile = Join-Path $RepoRoot 'addons\main\functions\fn_monitorVehicleAutobrake.sqf'
@@ -956,6 +1010,7 @@ if (Test-Path -LiteralPath $AbsFile) {
     Assert-Contains $Abs '!_ignoreLowSpeedCutoff' 'ABS helper must bypass the normal low-speed cutoff only when requested.'
     Assert-Contains $Abs '"_deltaTime"' 'ABS helper must accept elapsed time for controller/monitor-independent tuning.'
     Assert-Contains $Abs 'private _timeScale = \(\(_deltaTime[\s\S]*?\) / 0\.25;' 'ABS helper must normalize braking against the original monitor interval.'
+    Assert-Contains $Abs 'FIXICS_absLastDecision' 'ABS must store last decision metadata for Runtime Assist telemetry.'
 }
 
 $DriverInputFile = Join-Path $RepoRoot 'addons\main\functions\fn_getDriverInputIntent.sqf'
@@ -1006,6 +1061,8 @@ if (Test-Path -LiteralPath $SlopeRollbackFile) {
     Assert-Contains $SlopeRollback 'if \(_inputBlocksSlopeAssist\) exitWith' 'Slope helper must reject handbrake/combined input from the function scope.'
     Assert-Contains $SlopeRollback '"_deltaTime"' 'Slope helper must accept elapsed time for controller/monitor-independent tuning.'
     Assert-Contains $SlopeRollback 'private _timeScale = \(\(_deltaTime[\s\S]*?\) / 0\.25;' 'Slope helper must normalize acceleration against the original monitor interval.'
+    Assert-Contains $SlopeRollback 'FIXICS_slopeLastDecision' 'Slope rollback must store last decision metadata for Runtime Assist telemetry.'
+    Assert-Contains $SlopeRollback 'FIXICS_runtimeAssistBrakingSlopeRetention' 'Slope rollback must allow reduced, not disabled, slope acceleration while service braking.'
 }
 
 $RegisterVehicleControlsFile = Join-Path $RepoRoot 'addons\main\functions\fn_registerVehicleControls.sqf'
@@ -1030,6 +1087,7 @@ if (Test-Path -LiteralPath $DriverControllerFile) {
     Assert-Contains $DriverController 'velocityModelSpace' 'Driver controller must read model-space longitudinal velocity.'
     Assert-Contains $DriverController 'setVelocityModelSpace' 'Driver controller must apply model-space direction transitions.'
     Assert-Contains $DriverController 'FIXICS_fnc_getDriverInputIntent' 'Driver controller must use the shared W/S input decoder.'
+    Assert-Contains $DriverController 'FIXICS_fnc_coordinateVehicleAssists' 'Driver controller finalizer must route through Runtime Assist Coordinator.'
     if ($DriverController -match 'inputAction "Car(?:Forward|FastForward|SlowForward|Back)"') {
         Add-Failure 'Driver controller must not independently decode W/S input.'
     }
@@ -1160,6 +1218,16 @@ if (Test-Path -LiteralPath $HandlingConfigLogFile) {
     Assert-Contains $HandlingConfigLog 'FIXICS_handbrakeEnabled' 'Handling diagnostic must include persistent FIXICS handbrake state.'
     Assert-Contains $HandlingConfigLog 'FIXICS_absEnabled' 'Handling diagnostic must include ABS setting state.'
     Assert-Contains $HandlingConfigLog 'FIXICS_stabilityAssistMode' 'Handling diagnostic must include stability assist mode.'
+    @(
+        'FIXICS_runtimeAssistLastDecision',
+        'runtimeAssistPriorityWinner',
+        'runtimeAssistTerrainMultiplier',
+        'runtimeAssistMassMultiplier',
+        'runtimeAssistSuppressedAssists',
+        'runtimeAssistFinalCorrection'
+    ) | ForEach-Object {
+        Assert-Contains $HandlingConfigLog $_ "Handling telemetry must include $_."
+    }
     Assert-Contains $HandlingConfigLog 'yawRate' 'Handling diagnostic must derive yaw rate during continuous capture.'
     Assert-Contains $HandlingConfigLog 'pitchRate' 'Handling diagnostic must derive pitch rate during continuous capture.'
     Assert-Contains $HandlingConfigLog 'bankRate' 'Handling diagnostic must derive bank rate during continuous capture.'

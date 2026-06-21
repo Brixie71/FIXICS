@@ -4,6 +4,32 @@ Record validation runs that matter for implementation, review, or release decisi
 
 ## Entries
 
+### 2026-06-21 - Runtime Assist Coordination design spec
+
+- Command: documentation design spec
+- Result: completed
+- Automated coverage: documented the local-player coordinator design, priority rules, terrain/mass influence, braking behavior, telemetry fields, and validation boundary.
+- Manual coverage: not run.
+- Notes: design-only architecture contract for local-player runtime assist coordination. No addon source, native source, config, or generated build output changed.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: confirmed governance guidance still passes after adding the Runtime Assist Coordination design spec.
+- Manual coverage: not run.
+- Notes: documentation-only design gate.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: confirmed vehicle physics static and mutation checks still pass after the design spec and state update.
+- Manual coverage: not run.
+- Notes: no gameplay behavior changed.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\check.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT loaded FIXICS 1.0.0.1, rapified 2 addon configs, compiled 22 SQF files, checked 1 stringtable, and passed stability/roll recommendation tests.
+- Manual coverage: not run.
+- Notes: no build artifact was produced for this documentation-only task.
+
 ### 2026-06-21 - Runtime Assist Coordination requirements packet
 
 - Command: documentation/research packet

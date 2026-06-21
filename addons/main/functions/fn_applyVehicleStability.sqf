@@ -193,6 +193,16 @@ private _velocity = velocityModelSpace _vehicle;
 private _lateral = _velocity # 0;
 private _longitudinal = _velocity # 1;
 private _vertical = _velocity # 2;
+private _stabilityDecision = createHashMapFromArray [
+    ["applied", false],
+    ["lateralDelta", 0],
+    ["rollDelta", 0],
+    ["mode", _mode],
+    ["rollApplied", false],
+    ["yawRate", 0],
+    ["bank", 0],
+    ["bankRate", 0]
+];
 private _speedKmh = (abs _longitudinal) * 3.6;
 private _activationSpeedKmh = _profile # 1;
 
@@ -247,7 +257,10 @@ if (_isGrounded) then {
     if (_recommended && {_recommendedLateral != _lateral}) then {
         _velocity set [0, _recommendedLateral];
         _lateralApplied = true;
+        _stabilityDecision set ["lateralDelta", _recommendedLateral - _lateral];
     };
+    _stabilityDecision set ["mode", _recommendedMode];
+    _stabilityDecision set ["yawRate", _diagnosticYawRate];
 };
 
 private _rollEnabled = missionNamespace getVariable [
@@ -283,6 +296,8 @@ if (!_rollEligible) then {
 
     _vehicle setVariable ["FIXICS_rollPreviousBank", _bank, false];
     _vehicle setVariable ["FIXICS_rollPreviousTime", _now, false];
+    _stabilityDecision set ["bank", _bank];
+    _stabilityDecision set ["bankRate", _bankRate];
 
     private _rollSettings = [
         _rollActivationBankDeg,
@@ -308,14 +323,19 @@ if (!_rollEligible) then {
     if (_recommendedRoll && {_recommendedVertical != _vertical}) then {
         _velocity set [2, _recommendedVertical];
         _rollApplied = true;
+        _stabilityDecision set ["rollDelta", _rollCorrection];
+        _stabilityDecision set ["rollApplied", _rollApplied];
     };
 };
 
 if (!_lateralApplied && {!_rollApplied}) exitWith {
+    _vehicle setVariable ["FIXICS_stabilityLastDecision", _stabilityDecision, false];
     false
 };
 
 _vehicle setVelocityModelSpace _velocity;
+_stabilityDecision set ["applied", _lateralApplied || {_rollApplied}];
+_vehicle setVariable ["FIXICS_stabilityLastDecision", _stabilityDecision, false];
 
 private _actualVelocity = velocityModelSpace _vehicle;
 private _actualLateral = _actualVelocity # 0;

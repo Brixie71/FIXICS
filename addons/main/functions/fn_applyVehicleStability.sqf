@@ -199,6 +199,11 @@ private _stabilityDecision = createHashMapFromArray [
     ["rollDelta", 0],
     ["mode", _mode],
     ["rollApplied", false],
+    ["rollReason", "not-evaluated"],
+    ["rollEligible", false],
+    ["rollPreset", ""],
+    ["rollActivationBankDeg", 0],
+    ["rollActivationRateDeg", 0],
     ["yawRate", 0],
     ["bank", 0],
     ["bankRate", 0]
@@ -275,8 +280,13 @@ private _recommendedVertical = _vertical;
 private _rollCorrection = 0;
 private _rollSeverity = 0;
 private _rollReason = "not-evaluated";
+private _rollEvaluated = false;
 private _bank = 0;
 private _bankRate = 0;
+_stabilityDecision set ["rollEligible", _rollEligible];
+_stabilityDecision set ["rollPreset", _rollPreset];
+_stabilityDecision set ["rollActivationBankDeg", _rollActivationBankDeg];
+_stabilityDecision set ["rollActivationRateDeg", _rollActivationRateDeg];
 
 if (!_rollEligible) then {
     [_vehicle] call _clearRollSample;
@@ -286,7 +296,9 @@ if (!_rollEligible) then {
         case (_speedKmh < _activationSpeedKmh): {"below-speed-threshold"};
         default {"not-eligible"};
     };
+    _stabilityDecision set ["rollReason", _rollReason];
 } else {
+    _rollEvaluated = true;
     private _pitchBank = _vehicle call BIS_fnc_getPitchBank;
     _bank = _pitchBank # 1;
     private _previousBank = _vehicle getVariable [
@@ -364,7 +376,7 @@ if (missionNamespace getVariable ["FIXICS_stabilityDebugLogging", false]) then {
     ];
 
     diag_log format [
-        "[FIXICS][Stability] class=%1 preset=%2 mode=%3 speedKmh=%4 slip=%5 yawRate=%6 lateralBefore=%7 lateralAfter=%8 longitudinalBefore=%9 longitudinalAfter=%10 verticalBefore=%11 verticalAfter=%12 recommendedLongitudinal=%13 unusedYawRecommendation=%14 rollApplied=%15 bank=%16 bankRate=%17 rollCorrection=%18 rollSeverity=%19 rollReason=%20",
+        "[FIXICS][Stability] class=%1 preset=%2 mode=%3 speedKmh=%4 slip=%5 yawRate=%6 lateralBefore=%7 lateralAfter=%8 longitudinalBefore=%9 longitudinalAfter=%10 verticalBefore=%11 verticalAfter=%12 recommendedLongitudinal=%13 unusedYawRecommendation=%14 rollApplied=%15 bank=%16 bankRate=%17 rollCorrection=%18 rollSeverity=%19 rollReason=%20 rollPreset=%21 rollEnabled=%22 rollEligible=%23 rollEvaluated=%24 rollActivationBank=%25 rollActivationRate=%26 rollTelemetryVersion=2",
         typeOf _vehicle,
         _preset,
         _recommendedMode,
@@ -384,7 +396,13 @@ if (missionNamespace getVariable ["FIXICS_stabilityDebugLogging", false]) then {
         _bankRate,
         _rollCorrection,
         _rollSeverity,
-        _rollReason
+        _rollReason,
+        _rollPreset,
+        _rollEnabled,
+        _rollEligible,
+        _rollEvaluated,
+        _rollActivationBankDeg,
+        _rollActivationRateDeg
     ];
 };
 

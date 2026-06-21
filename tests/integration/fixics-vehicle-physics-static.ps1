@@ -489,6 +489,30 @@ if (Test-Path -LiteralPath $StabilityControllerFile) {
                 Message = 'Stability debug evidence must include the roll assist reason.'
             },
             @{
+                Pattern = 'rollPreset='
+                Message = 'Stability debug evidence must include the active roll preset.'
+            },
+            @{
+                Pattern = 'rollEligible='
+                Message = 'Stability debug evidence must include roll eligibility.'
+            },
+            @{
+                Pattern = 'rollEvaluated='
+                Message = 'Stability debug evidence must identify whether the roll recommendation was evaluated.'
+            },
+            @{
+                Pattern = 'rollActivationBank='
+                Message = 'Stability debug evidence must include the roll activation bank threshold.'
+            },
+            @{
+                Pattern = 'rollActivationRate='
+                Message = 'Stability debug evidence must include the roll activation rate threshold.'
+            },
+            @{
+                Pattern = 'rollTelemetryVersion=2'
+                Message = 'Stability debug evidence must expose roll telemetry version for stale-build detection.'
+            },
+            @{
                 Pattern = 'below-speed-threshold'
                 Message = 'Stability controller must explain low-speed roll suppression.'
             }

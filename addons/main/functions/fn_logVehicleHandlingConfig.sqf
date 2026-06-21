@@ -72,6 +72,7 @@ private _pitchBank = _vehicle call BIS_fnc_getPitchBank;
 private _surfacePosition = getPosASL _vehicle;
 private _terrainNormal = surfaceNormal _surfacePosition;
 private _terrainNormalZ = ((_terrainNormal # 2) max -1) min 1;
+private _runtimeAssistDecision = _vehicle getVariable ["FIXICS_runtimeAssistLastDecision", createHashMap];
 private _hitPointDamage = getAllHitPointsDamage _vehicle;
 private _wheelHitpointDamage = [];
 if ((count _hitPointDamage) >= 3) then {
@@ -118,6 +119,12 @@ private _values = [
     ["FIXICS_handbrakeEnabled", _vehicle getVariable ["FIXICS_handbrakeEnabled", false]],
     ["FIXICS_absEnabled", missionNamespace getVariable ["FIXICS_absEnabled", true]],
     ["FIXICS_stabilityAssistMode", missionNamespace getVariable ["FIXICS_stabilityAssistMode", 0]],
+    ["FIXICS_runtimeAssistLastDecision", _runtimeAssistDecision],
+    ["runtimeAssistPriorityWinner", _runtimeAssistDecision getOrDefault ["priorityWinner", "none"]],
+    ["runtimeAssistTerrainMultiplier", _runtimeAssistDecision getOrDefault ["terrainMultiplier", 1]],
+    ["runtimeAssistMassMultiplier", _runtimeAssistDecision getOrDefault ["massMultiplier", 1]],
+    ["runtimeAssistSuppressedAssists", _runtimeAssistDecision getOrDefault ["suppressedAssists", []]],
+    ["runtimeAssistFinalCorrection", _runtimeAssistDecision getOrDefault ["finalCorrection", 0]],
     ["surface", surfaceType (getPosWorld _vehicle)]
 ];
 
@@ -169,6 +176,12 @@ if (_duration > 0) then {
             private _surfacePosition = getPosASL _vehicle;
             private _terrainNormal = surfaceNormal _surfacePosition;
             private _terrainNormalZ = ((_terrainNormal # 2) max -1) min 1;
+            private _runtimeAssistDecision = _vehicle getVariable ["FIXICS_runtimeAssistLastDecision", createHashMap];
+            private _runtimeAssistPriorityWinner = _runtimeAssistDecision getOrDefault ["priorityWinner", "none"];
+            private _runtimeAssistTerrainMultiplier = _runtimeAssistDecision getOrDefault ["terrainMultiplier", 1];
+            private _runtimeAssistMassMultiplier = _runtimeAssistDecision getOrDefault ["massMultiplier", 1];
+            private _runtimeAssistSuppressedAssists = _runtimeAssistDecision getOrDefault ["suppressedAssists", []];
+            private _runtimeAssistFinalCorrection = _runtimeAssistDecision getOrDefault ["finalCorrection", 0];
             private _hitPointDamage = getAllHitPointsDamage _vehicle;
             private _wheelHitpointDamage = [];
             if ((count _hitPointDamage) >= 3) then {
@@ -183,7 +196,7 @@ if (_duration > 0) then {
             };
 
             diag_log format [
-                "[FIXICS] Vehicle handling sample: t=%1 vehicle=%2 input=[drive=%3,fast=%4,slow=%5,reverse=%6,engineHandbrake=%7,left=%8,right=%9,steerNet=%10] speedKmh=%11 velocityWorld=%12 velocityModelSpace=%13 positionWorld=%14 positionASL=%15 heading=%16 headingDelta=%17 yawRate=%18 pitch=%19 pitchRate=%20 bank=%21 bankRate=%22 vectorDir=%23 vectorUp=%24 terrainNormal=%25 slopeFactor=%26 isTouchingGround=%27 wheelHitpointDamageProxy=%28 FIXICS_driverState=%29 FIXICS_handbrakeEnabled=%30 FIXICS_absEnabled=%31 FIXICS_stabilityAssistMode=%32 surface=%33",
+                "[FIXICS] Vehicle handling sample: t=%1 vehicle=%2 input=[drive=%3,fast=%4,slow=%5,reverse=%6,engineHandbrake=%7,left=%8,right=%9,steerNet=%10] speedKmh=%11 velocityWorld=%12 velocityModelSpace=%13 positionWorld=%14 positionASL=%15 heading=%16 headingDelta=%17 yawRate=%18 pitch=%19 pitchRate=%20 bank=%21 bankRate=%22 vectorDir=%23 vectorUp=%24 terrainNormal=%25 slopeFactor=%26 isTouchingGround=%27 wheelHitpointDamageProxy=%28 FIXICS_driverState=%29 FIXICS_handbrakeEnabled=%30 FIXICS_absEnabled=%31 FIXICS_stabilityAssistMode=%32 surface=%33 runtimeAssistPriorityWinner=%34 runtimeAssistTerrainMultiplier=%35 runtimeAssistMassMultiplier=%36 runtimeAssistSuppressedAssists=%37 runtimeAssistFinalCorrection=%38",
                 _now - _startedAt,
                 typeOf _vehicle,
                 _forwardInput,
@@ -216,7 +229,12 @@ if (_duration > 0) then {
                 _vehicle getVariable ["FIXICS_handbrakeEnabled", false],
                 missionNamespace getVariable ["FIXICS_absEnabled", true],
                 missionNamespace getVariable ["FIXICS_stabilityAssistMode", 0],
-                surfaceType (getPosWorld _vehicle)
+                surfaceType (getPosWorld _vehicle),
+                _runtimeAssistPriorityWinner,
+                _runtimeAssistTerrainMultiplier,
+                _runtimeAssistMassMultiplier,
+                _runtimeAssistSuppressedAssists,
+                _runtimeAssistFinalCorrection
             ];
 
             _previousTime = _now;

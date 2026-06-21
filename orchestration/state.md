@@ -44,6 +44,7 @@ Current Phase 1 systems:
 - Vehicle Behavior Evidence Registry architecture was approved on 2026-06-20. The first implementation is read-only documentation and static validation; Runtime Assist coordination and Config Research remain future designs.
 - Documentation cleanup/alignment was approved on 2026-06-20 to bring README, fix memory, workaround records, open issues, validation notes, and project state into sync with the implemented Phase 1 vehicle systems.
 - Future feature workflow was updated on 2026-06-21: all future features use a Requirements Packet, SQA questions are gathered up front, implementation proceeds autonomously after SQA approval, and completed gameplay work is handed back to SQA for QA comments and repeat-cycle fixes.
+- Runtime Assist Coordination requirements were captured on 2026-06-21. SQA approved a new local-player coordination layer where ABS, slope rollback, driver intent, Vehicle Stability Assistance, Roll Stability Assist, terrain effects, per-system presets, and native advisory math communicate through one layer before implementation. Next gate is SQA review of `docs/requirements/runtime-assist-coordination-requirements.md`, then a design spec and implementation plan before any gameplay source changes.
 
 ## Constraints
 

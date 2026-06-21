@@ -51,6 +51,7 @@ Current Phase 1 systems:
 - Runtime Assist Coordinator implementation was added on 2026-06-21 after SQA approved the requirements packet and design spec. It preserves accepted ABS, ACE handbrake, Drive/Reverse, slope rollback, Vehicle Stability, and Roll Stability behavior while adding explicit telemetry and conservative coordination modifiers.
 - Runtime Assist compact telemetry was added on 2026-06-21 after SQA DAGOR/tarmac logs showed long handling sample lines could truncate before final Runtime Assist fields.
 - Roll Stability recommendation now reports an explicit telemetry reason and uses a bounded `severity-anchor` correction when roll severity exists but vertical-speed damping would otherwise produce a zero correction. SQA manual gameplay validation is still required.
+- Roll Stability eligibility telemetry version 2 was added on 2026-06-21. SQA telemetry then proved roll was enabled, eligible, and evaluated under `AGGRESSIVE_SQA`, but correction telemetry remained stale because `_rollRecommendation params [` did not update the outer variables used by the stability log. The controller now extracts recommendation fields explicitly.
 
 ## Constraints
 

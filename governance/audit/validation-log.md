@@ -4,6 +4,32 @@ Record validation runs that matter for implementation, review, or release decisi
 
 ## Entries
 
+### 2026-06-21 - Roll recommendation telemetry extraction fix
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: confirmed governance guidance still passes after roll recommendation extraction fix.
+- Manual coverage: not run.
+- Notes: SQA telemetry with `rollTelemetryVersion=2` proved roll was eligible and evaluated while correction telemetry stayed stale.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: confirmed the stability controller now rejects `_rollRecommendation params [` destructuring and preserves mutation guards.
+- Manual coverage: not run.
+- Notes: killed stale yaw, longitudinal mutation, arbitrary model-space replacement, late velocity mutation, and stale verticalAfter mutations.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\check.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT compiled 24 SQF files and passed stability, roll, runtime assist, and mutation unit tests.
+- Manual coverage: not run.
+- Notes: roll recommendation values are now explicitly extracted into outer telemetry variables.
+
+- Command: `git diff --check`
+- Result: passed, exit code 0
+- Automated coverage: confirmed no whitespace errors.
+- Manual coverage: not run.
+- Notes: Git reported CRLF normalization warnings only.
+
 ### 2026-06-21 - Roll stability eligibility telemetry
 
 - Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1`

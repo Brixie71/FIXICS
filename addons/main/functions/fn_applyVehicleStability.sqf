@@ -332,13 +332,11 @@ if (!_rollEligible) then {
         _rollSettings
     ] call FIXICS_fnc_getRollStabilityRecommendation;
 
-    _rollRecommendation params [
-        ["_recommendedRoll", false, [false]],
-        ["_recommendedVertical", _vertical, [0]],
-        ["_rollCorrection", 0, [0]],
-        ["_rollSeverity", 0, [0]],
-        ["_rollReason", "unknown", [""]]
-    ];
+    private _recommendedRoll = _rollRecommendation param [0, false, [false]];
+    _recommendedVertical = _rollRecommendation param [1, _vertical, [0]];
+    _rollCorrection = _rollRecommendation param [2, 0, [0]];
+    _rollSeverity = _rollRecommendation param [3, 0, [0]];
+    _rollReason = _rollRecommendation param [4, "unknown", [""]];
 
     if (_recommendedRoll && {_recommendedVertical != _vertical}) then {
         _velocity set [2, _recommendedVertical];

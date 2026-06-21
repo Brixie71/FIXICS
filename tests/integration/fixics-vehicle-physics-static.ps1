@@ -595,6 +595,9 @@ if (Test-Path -LiteralPath $StabilityControllerFile) {
         if ($Content -match 'setDir|setVectorDirAndUp') {
             $ContractFailures.Add('Stability controller must not mutate vehicle orientation.')
         }
+        if ($Content -match '_rollRecommendation\s+params\s+\[') {
+            $ContractFailures.Add('Stability controller must extract roll recommendation fields explicitly so outer telemetry variables are updated.')
+        }
 
         return $ContractFailures.ToArray()
     }

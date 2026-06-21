@@ -27,6 +27,7 @@ Current Phase 1 systems:
 - Vehicle Stability Assistance for the approved `EMP_Polaris_DAGOR`, `B_LSV_01_unarmed_F`, `LOP_IA_Offroad`, and `B_G_Offroad_01_F` classes, applying bounded lateral damping only through the local driver controller.
 - Roll Stability Assist, server-global and enabled by default, applying bounded model-space vertical damping for registered vehicles and awaiting SQA manual validation on registered LSV/Offroad classes.
 - Roll Stability presets are available as Realistic Stable, Offroad Assist, Aggressive SQA, and Custom; Aggressive SQA preserves SQA's max-tested rollover-assist values.
+- Runtime Assist Coordinator, local-player only, coordinating ABS, slope rollback, driver intent, Vehicle Stability Assistance, Roll Stability Assist, terrain, mass, per-system presets, and native advisory telemetry.
 
 ## Last Decision
 
@@ -47,6 +48,7 @@ Current Phase 1 systems:
 - Runtime Assist Coordination requirements were captured on 2026-06-21. SQA approved a new local-player coordination layer where ABS, slope rollback, driver intent, Vehicle Stability Assistance, Roll Stability Assist, terrain effects, per-system presets, and native advisory math communicate through one layer before implementation. Next gate is SQA review of `docs/requirements/runtime-assist-coordination-requirements.md`, then a design spec and implementation plan before any gameplay source changes.
 - Runtime Assist Coordination design was drafted on 2026-06-21 in `docs/superpowers/specs/2026-06-21-runtime-assist-coordination-design.md`. The spec keeps the feature local-player only, preserves accepted ABS/handbrake/Drive-Reverse behavior, prioritizes roll and stability before braking/slope composition, keeps native advisory non-authoritative, and requires SQA review before implementation planning.
 - Runtime Assist Coordination implementation plan was drafted on 2026-06-21 in `docs/superpowers/plans/2026-06-21-runtime-assist-coordination.md`. The next gate is SQA execution choice: subagent-driven implementation or inline execution.
+- Runtime Assist Coordinator implementation was added on 2026-06-21 after SQA approved the requirements packet and design spec. It preserves accepted ABS, ACE handbrake, Drive/Reverse, slope rollback, Vehicle Stability, and Roll Stability behavior while adding explicit telemetry and conservative coordination modifiers.
 
 ## Constraints
 

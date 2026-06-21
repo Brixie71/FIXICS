@@ -49,6 +49,8 @@ Current Phase 1 systems:
 - Runtime Assist Coordination design was drafted on 2026-06-21 in `docs/superpowers/specs/2026-06-21-runtime-assist-coordination-design.md`. The spec keeps the feature local-player only, preserves accepted ABS/handbrake/Drive-Reverse behavior, prioritizes roll and stability before braking/slope composition, keeps native advisory non-authoritative, and requires SQA review before implementation planning.
 - Runtime Assist Coordination implementation plan was drafted on 2026-06-21 in `docs/superpowers/plans/2026-06-21-runtime-assist-coordination.md`. The next gate is SQA execution choice: subagent-driven implementation or inline execution.
 - Runtime Assist Coordinator implementation was added on 2026-06-21 after SQA approved the requirements packet and design spec. It preserves accepted ABS, ACE handbrake, Drive/Reverse, slope rollback, Vehicle Stability, and Roll Stability behavior while adding explicit telemetry and conservative coordination modifiers.
+- Runtime Assist compact telemetry was added on 2026-06-21 after SQA DAGOR/tarmac logs showed long handling sample lines could truncate before final Runtime Assist fields.
+- Roll Stability recommendation now reports an explicit telemetry reason and uses a bounded `severity-anchor` correction when roll severity exists but vertical-speed damping would otherwise produce a zero correction. SQA manual gameplay validation is still required.
 
 ## Constraints
 

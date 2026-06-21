@@ -4,6 +4,32 @@ Record validation runs that matter for implementation, review, or release decisi
 
 ## Entries
 
+### 2026-06-21 - Roll stability anchor and telemetry reason
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: confirmed governance guidance still passes after roll stability follow-up.
+- Manual coverage: not run.
+- Notes: SQA approved follow-up after telemetry showed roll priority detection with zero-looking roll correction.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: confirmed roll recommendation anchor contract, roll reason telemetry, and stability controller mutation guards.
+- Manual coverage: not run.
+- Notes: killed stale yaw, longitudinal mutation, arbitrary model-space replacement, late velocity mutation, and stale verticalAfter mutations.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\check.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT compiled 24 SQF files and passed stability, roll, runtime assist, and mutation unit tests.
+- Manual coverage: not run.
+- Notes: roll recommendation now emits a `severity-anchor` reason when severity exists but vertical damping would otherwise be zero.
+
+- Command: `git diff --check`
+- Result: passed, exit code 0
+- Automated coverage: confirmed no whitespace errors.
+- Manual coverage: not run.
+- Notes: Git reported CRLF normalization warnings only.
+
 ### 2026-06-21 - Runtime Assist compact telemetry export
 
 - Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1`

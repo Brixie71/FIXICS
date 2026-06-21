@@ -274,11 +274,18 @@ private _rollApplied = false;
 private _recommendedVertical = _vertical;
 private _rollCorrection = 0;
 private _rollSeverity = 0;
+private _rollReason = "not-evaluated";
 private _bank = 0;
 private _bankRate = 0;
 
 if (!_rollEligible) then {
     [_vehicle] call _clearRollSample;
+    _rollReason = switch (true) do {
+        case (!_rollEnabled): {"disabled"};
+        case (!_withinRollGrace): {"airborne-grace-expired"};
+        case (_speedKmh < _activationSpeedKmh): {"below-speed-threshold"};
+        default {"not-eligible"};
+    };
 } else {
     private _pitchBank = _vehicle call BIS_fnc_getPitchBank;
     _bank = _pitchBank # 1;
@@ -317,7 +324,8 @@ if (!_rollEligible) then {
         ["_recommendedRoll", false, [false]],
         ["_recommendedVertical", _vertical, [0]],
         ["_rollCorrection", 0, [0]],
-        ["_rollSeverity", 0, [0]]
+        ["_rollSeverity", 0, [0]],
+        ["_rollReason", "unknown", [""]]
     ];
 
     if (_recommendedRoll && {_recommendedVertical != _vertical}) then {
@@ -325,6 +333,9 @@ if (!_rollEligible) then {
         _rollApplied = true;
         _stabilityDecision set ["rollDelta", _rollCorrection];
         _stabilityDecision set ["rollApplied", _rollApplied];
+        _stabilityDecision set ["rollReason", _rollReason];
+    } else {
+        _stabilityDecision set ["rollReason", _rollReason];
     };
 };
 
@@ -353,7 +364,7 @@ if (missionNamespace getVariable ["FIXICS_stabilityDebugLogging", false]) then {
     ];
 
     diag_log format [
-        "[FIXICS][Stability] class=%1 preset=%2 mode=%3 speedKmh=%4 slip=%5 yawRate=%6 lateralBefore=%7 lateralAfter=%8 longitudinalBefore=%9 longitudinalAfter=%10 verticalBefore=%11 verticalAfter=%12 recommendedLongitudinal=%13 unusedYawRecommendation=%14 rollApplied=%15 bank=%16 bankRate=%17 rollCorrection=%18 rollSeverity=%19",
+        "[FIXICS][Stability] class=%1 preset=%2 mode=%3 speedKmh=%4 slip=%5 yawRate=%6 lateralBefore=%7 lateralAfter=%8 longitudinalBefore=%9 longitudinalAfter=%10 verticalBefore=%11 verticalAfter=%12 recommendedLongitudinal=%13 unusedYawRecommendation=%14 rollApplied=%15 bank=%16 bankRate=%17 rollCorrection=%18 rollSeverity=%19 rollReason=%20",
         typeOf _vehicle,
         _preset,
         _recommendedMode,
@@ -372,7 +383,8 @@ if (missionNamespace getVariable ["FIXICS_stabilityDebugLogging", false]) then {
         _bank,
         _bankRate,
         _rollCorrection,
-        _rollSeverity
+        _rollSeverity,
+        _rollReason
     ];
 };
 

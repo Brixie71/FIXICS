@@ -60,8 +60,8 @@ function Assert-RollResult {
         [string]$Scenario
     )
 
-    if ($Actual.Count -ne 4) {
-        Add-Failure "$Scenario must return a four-element tuple."
+    if ($Actual.Count -ne 5) {
+        Add-Failure "$Scenario must return a five-element tuple."
         return
     }
 
@@ -72,6 +72,9 @@ function Assert-RollResult {
     Assert-Close ([double]$Actual[1]) ([double]$Expected[1]) "$Scenario recommended vertical mismatch."
     Assert-Close ([double]$Actual[2]) ([double]$Expected[2]) "$Scenario correction mismatch."
     Assert-Close ([double]$Actual[3]) ([double]$Expected[3]) "$Scenario severity mismatch."
+    if ($Actual[4] -ne $Expected[4]) {
+        Add-Failure "$Scenario reason mismatch. Expected $($Expected[4]), got $($Actual[4])."
+    }
 }
 
 function Test-Finite {
@@ -102,7 +105,7 @@ function Get-RollRecommendationMirror {
     )
 
     if (-not (Test-Finite $VerticalSpeed)) {
-        return @($false, 0.0, 0.0, 0.0)
+        return @($false, 0.0, 0.0, 0.0, 'invalid-vertical')
     }
 
     if (
@@ -110,11 +113,11 @@ function Get-RollRecommendationMirror {
         -not (Test-Finite $BankRateDeg) -or
         -not (Test-Finite $DeltaTime)
     ) {
-        return @($false, $VerticalSpeed, 0.0, 0.0)
+        return @($false, $VerticalSpeed, 0.0, 0.0, 'invalid-attitude')
     }
 
     if ($Settings.Count -lt 4) {
-        return @($false, $VerticalSpeed, 0.0, 0.0)
+        return @($false, $VerticalSpeed, 0.0, 0.0, 'invalid-settings')
     }
 
     [double]$ActivationBankDeg = $Settings[0]
@@ -128,7 +131,7 @@ function Get-RollRecommendationMirror {
         -not (Test-Finite $Strength) -or
         -not (Test-Finite $MaximumCorrection)
     ) {
-        return @($false, $VerticalSpeed, 0.0, 0.0)
+        return @($false, $VerticalSpeed, 0.0, 0.0, 'invalid-setting-value')
     }
 
     $ActivationBankDeg = [Math]::Min([Math]::Max($ActivationBankDeg, 5.0), 60.0)
@@ -142,72 +145,83 @@ function Get-RollRecommendationMirror {
     $Severity = [Math]::Min([Math]::Max($BankSeverity, $RateSeverity), 1.0)
 
     if ($Severity -le 0.0 -or $Strength -le 0.0) {
-        return @($false, $VerticalSpeed, 0.0, 0.0)
+        return @($false, $VerticalSpeed, 0.0, 0.0, 'below-threshold')
     }
 
     $Damping = [Math]::Min($Severity * $Strength * $DeltaTime, $MaximumCorrection)
     $RecommendedVertical = $VerticalSpeed * (1.0 - $Damping)
     $Correction = $RecommendedVertical - $VerticalSpeed
-    $Applied = $Correction -ne 0.0
+    $Reason = 'damped-vertical'
+    if ([Math]::Abs($Correction) -lt 0.0001) {
+        $Correction = -([Math]::Min($Severity * $Strength, $MaximumCorrection))
+        $RecommendedVertical = $VerticalSpeed + $Correction
+        $Reason = 'severity-anchor'
+    }
+    $Applied = [Math]::Abs($Correction) -gt 0.0
 
-    return @($Applied, $RecommendedVertical, $Correction, $Severity)
+    return @($Applied, $RecommendedVertical, $Correction, $Severity, $Reason)
 }
 
 $BehaviorCases = @(
     @{
         Name = 'below threshold preserves vertical'
         Actual = Get-RollRecommendationMirror 2.0 10.0 20.0 0.5 @(20.0, 45.0, 0.2, 0.1)
-        Expected = @($false, 2.0, 0.0, 0.0)
+        Expected = @($false, 2.0, 0.0, 0.0, 'below-threshold')
     },
     @{
         Name = 'above bank threshold dampens vertical'
         Actual = Get-RollRecommendationMirror 2.0 30.0 20.0 0.5 @(20.0, 45.0, 0.2, 0.4)
-        Expected = @($true, 1.9, -0.1, 0.5)
+        Expected = @($true, 1.9, -0.1, 0.5, 'damped-vertical')
     },
     @{
         Name = 'above rate threshold applies damping'
         Actual = Get-RollRecommendationMirror 2.0 10.0 90.0 0.5 @(20.0, 45.0, 0.2, 0.4)
-        Expected = @($true, 1.8, -0.2, 1.0)
+        Expected = @($true, 1.8, -0.2, 1.0, 'damped-vertical')
     },
     @{
         Name = 'clamped settings bound correction'
         Actual = Get-RollRecommendationMirror 2.0 200.0 500.0 5.0 @(1.0, 1.0, 2.0, 2.0)
-        Expected = @($true, 1.2, -0.8, 1.0)
+        Expected = @($true, 1.2, -0.8, 1.0, 'damped-vertical')
     },
     @{
         Name = 'missing settings preserves vertical'
         Actual = Get-RollRecommendationMirror 2.0 30.0 90.0 0.5 @(20.0, 45.0)
-        Expected = @($false, 2.0, 0.0, 0.0)
+        Expected = @($false, 2.0, 0.0, 0.0, 'invalid-settings')
     },
     @{
         Name = 'zero strength does not apply'
         Actual = Get-RollRecommendationMirror 2.0 30.0 90.0 0.5 @(20.0, 45.0, 0.0, 0.4)
-        Expected = @($false, 2.0, 0.0, 0.0)
+        Expected = @($false, 2.0, 0.0, 0.0, 'below-threshold')
     },
     @{
         Name = 'zero delta does not apply'
         Actual = Get-RollRecommendationMirror 2.0 30.0 90.0 0.0 @(20.0, 45.0, 0.2, 0.4)
-        Expected = @($false, 2.0, 0.0, 1.0)
+        Expected = @($true, 1.8, -0.2, 1.0, 'severity-anchor')
+    },
+    @{
+        Name = 'zero vertical speed anchors roll severity'
+        Actual = Get-RollRecommendationMirror 0.0 30.0 90.0 0.1 @(20.0, 45.0, 0.2, 0.4)
+        Expected = @($true, -0.2, -0.2, 1.0, 'severity-anchor')
     },
     @{
         Name = 'non-finite bank preserves vertical'
         Actual = Get-RollRecommendationMirror 2.0 ([double]::NaN) 90.0 0.5 @(20.0, 45.0, 0.2, 0.4)
-        Expected = @($false, 2.0, 0.0, 0.0)
+        Expected = @($false, 2.0, 0.0, 0.0, 'invalid-attitude')
     },
     @{
         Name = 'non-finite rate preserves vertical'
         Actual = Get-RollRecommendationMirror 2.0 30.0 ([double]::PositiveInfinity) 0.5 @(20.0, 45.0, 0.2, 0.4)
-        Expected = @($false, 2.0, 0.0, 0.0)
+        Expected = @($false, 2.0, 0.0, 0.0, 'invalid-attitude')
     },
     @{
         Name = 'non-finite delta preserves vertical'
         Actual = Get-RollRecommendationMirror 2.0 30.0 90.0 ([double]::NegativeInfinity) @(20.0, 45.0, 0.2, 0.4)
-        Expected = @($false, 2.0, 0.0, 0.0)
+        Expected = @($false, 2.0, 0.0, 0.0, 'invalid-attitude')
     },
     @{
         Name = 'non-finite vertical returns safe zero'
         Actual = Get-RollRecommendationMirror ([double]::NaN) 30.0 90.0 0.5 @(20.0, 45.0, 0.2, 0.4)
-        Expected = @($false, 0.0, 0.0, 0.0)
+        Expected = @($false, 0.0, 0.0, 0.0, 'invalid-vertical')
     }
 )
 
@@ -230,8 +244,8 @@ if (-not (Test-Path -LiteralPath $FunctionPath)) {
     Assert-Contains $Source '_settings' 'Roll recommendation must accept a settings array.'
 
     Assert-Contains $Source '\bfinite\b' 'Roll recommendation must reject non-finite numeric inputs.'
-    Assert-Contains $Source 'if\s*\(!finite\s+_verticalSpeed\)\s*exitWith\s*\{\s*\[\s*false,\s*0,\s*0,\s*0\s*\]\s*\};' 'Non-finite vertical speed must return a safe zero recommendation.'
-    Assert-Contains $Source 'if\s*\([\s\S]*!finite\s+_bankDeg[\s\S]*!finite\s+_bankRateDeg[\s\S]*!finite\s+_deltaTime[\s\S]*\)\s*exitWith\s*\{\s*\[\s*false,\s*_verticalSpeed,\s*0,\s*0\s*\]\s*\};' 'Non-finite bank, rate, or delta time must preserve finite vertical speed.'
+    Assert-Contains $Source 'if\s*\(!finite\s+_verticalSpeed\)\s*exitWith\s*\{\s*\[\s*false,\s*0,\s*0,\s*0,\s*"invalid-vertical"\s*\]\s*\};' 'Non-finite vertical speed must return a safe zero recommendation with reason.'
+    Assert-Contains $Source 'if\s*\([\s\S]*!finite\s+_bankDeg[\s\S]*!finite\s+_bankRateDeg[\s\S]*!finite\s+_deltaTime[\s\S]*\)\s*exitWith\s*\{\s*\[\s*false,\s*_verticalSpeed,\s*0,\s*0,\s*"invalid-attitude"\s*\]\s*\};' 'Non-finite bank, rate, or delta time must preserve finite vertical speed with reason.'
     Assert-Contains $Source '_activationBankDeg\s*=\s*\(_activationBankDeg\s+max\s+5\)\s+min\s+60' 'Activation bank threshold must be clamped to 5..60.'
     Assert-Contains $Source '_activationRateDeg\s*=\s*\(_activationRateDeg\s+max\s+5\)\s+min\s+240' 'Activation rate threshold must be clamped to 5..240.'
     Assert-Contains $Source '_strength\s*=\s*\(_strength\s+max\s+0\)\s+min\s+0\.5' 'Strength must be clamped to 0..0.5.'
@@ -244,8 +258,10 @@ if (-not (Test-Path -LiteralPath $FunctionPath)) {
     Assert-Contains $Source '_damping' 'Roll recommendation must calculate damping.'
     Assert-Contains $Source '_recommendedVertical\s*=\s*_verticalSpeed\s*\*\s*\(1\s*-\s*_damping\)' 'Roll recommendation must dampen vertical speed without mutation.'
     Assert-Contains $Source '_correction' 'Roll recommendation must expose the vertical correction amount.'
+    Assert-Contains $Source 'severity-anchor' 'Roll recommendation must anchor severe roll when vertical damping would be zero.'
+    Assert-Contains $Source '_reason' 'Roll recommendation must expose telemetry reason.'
 
-    Assert-Contains $Source '\[\s*_applied,\s*_recommendedVertical,\s*_correction,\s*_severity\s*\]' 'Return tuple must include applied, recommended vertical, correction, and severity.'
+    Assert-Contains $Source '\[\s*_applied,\s*_recommendedVertical,\s*_correction,\s*_severity,\s*_reason\s*\]' 'Return tuple must include applied, recommended vertical, correction, severity, and reason.'
 
     if ($Source -match '\b(setVelocity|setVelocityModelSpace|setDir|setVectorDirAndUp|disableBrakes|setVariable|publicVariable|remoteExec|remoteExecCall)\b') {
         Add-Failure 'Roll recommendation must remain pure and must not mutate objects or network state.'

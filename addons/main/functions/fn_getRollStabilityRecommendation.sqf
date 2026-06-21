@@ -10,7 +10,7 @@
  *   3: Delta time in seconds <NUMBER>
  *   4: Settings [activationBankDeg, activationRateDeg, strength, maximumCorrection] <ARRAY>
  *
- * Return: [applied, recommendedVertical, correction, severity] <ARRAY>
+ * Return: [applied, recommendedVertical, correction, severity, reason] <ARRAY>
  * Locality: any machine
  *
  * Engine note:
@@ -29,7 +29,7 @@ params [
 ];
 
 if (!finite _verticalSpeed) exitWith {
-    [false, 0, 0, 0]
+    [false, 0, 0, 0, "invalid-vertical"]
 };
 
 if (
@@ -37,11 +37,11 @@ if (
     || {!finite _bankRateDeg}
     || {!finite _deltaTime}
 ) exitWith {
-    [false, _verticalSpeed, 0, 0]
+    [false, _verticalSpeed, 0, 0, "invalid-attitude"]
 };
 
 if ((count _settings) < 4) exitWith {
-    [false, _verticalSpeed, 0, 0]
+    [false, _verticalSpeed, 0, 0, "invalid-settings"]
 };
 
 _settings params [
@@ -58,7 +58,7 @@ private _settingValues = [
     _maximumCorrection
 ];
 if ((_settingValues findIf {!finite _x}) >= 0) exitWith {
-    [false, _verticalSpeed, 0, 0]
+    [false, _verticalSpeed, 0, 0, "invalid-setting-value"]
 };
 
 _activationBankDeg = (_activationBankDeg max 5) min 60;
@@ -72,17 +72,26 @@ private _rateSeverity = (((abs _bankRateDeg) - _activationRateDeg) / _activation
 private _severity = (_bankSeverity max _rateSeverity) min 1;
 
 if (_severity <= 0 || {_strength <= 0}) exitWith {
-    [false, _verticalSpeed, 0, 0]
+    [false, _verticalSpeed, 0, 0, "below-threshold"]
 };
 
 private _damping = (_severity * _strength * _deltaTime) min _maximumCorrection;
 private _recommendedVertical = _verticalSpeed * (1 - _damping);
 private _correction = _recommendedVertical - _verticalSpeed;
-private _applied = _correction != 0;
+private _reason = "damped-vertical";
+if ((abs _correction) < 0.0001) then {
+    private _anchorCorrection = -((_severity * _strength) min _maximumCorrection);
+    _recommendedVertical = _verticalSpeed + _anchorCorrection;
+    _correction = _anchorCorrection;
+    _reason = "severity-anchor";
+};
+
+private _applied = (abs _correction) > 0;
 
 [
     _applied,
     _recommendedVertical,
     _correction,
-    _severity
+    _severity,
+    _reason
 ]

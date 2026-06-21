@@ -314,6 +314,8 @@ if (Test-Path -LiteralPath $RollStabilityRecommendationFile) {
     Assert-Contains $RollRecommendation '(?i)(correction|maximum)[\s\S]*?(max|min)|(?:max|min)[\s\S]*?(correction|maximum)' 'Roll recommendation must bound maximum correction.'
     Assert-Contains $RollRecommendation '(?i)severity' 'Roll recommendation must calculate severity.'
     Assert-Contains $RollRecommendation '(?i)damping' 'Roll recommendation must calculate damping.'
+    Assert-Contains $RollRecommendation 'severity-anchor' 'Roll recommendation must apply a bounded anchor when severity exists but vertical damping would be zero.'
+    Assert-Contains $RollRecommendation 'reason' 'Roll recommendation must return an explicit reason for telemetry.'
     Assert-Contains $RollRecommendation '(?i)recommended' 'Roll recommendation must produce a recommended vertical value.'
     Assert-Contains $RollRecommendation '(?i)applied[\s\S]*?recommended[\s\S]*?correction[\s\S]*?severity|severity[\s\S]*?correction[\s\S]*?recommended[\s\S]*?applied' 'Roll recommendation must return applied state, recommendation, correction, and severity.'
     if ($RollRecommendation -match 'setVelocity|setVelocityModelSpace|setDir|setVectorDirAndUp|disableBrakes') {
@@ -481,6 +483,14 @@ if (Test-Path -LiteralPath $StabilityControllerFile) {
             @{
                 Pattern = 'verticalAfter='
                 Message = 'Stability debug evidence must include actual vertical velocity after mutation.'
+            },
+            @{
+                Pattern = 'rollReason='
+                Message = 'Stability debug evidence must include the roll assist reason.'
+            },
+            @{
+                Pattern = 'below-speed-threshold'
+                Message = 'Stability controller must explain low-speed roll suppression.'
             }
         )
 
@@ -604,9 +614,11 @@ if (Test-Path -LiteralPath $StabilityControllerFile) {
             Write-Host 'Killed mutation: model-space velocity replacement through arbitrary variable'
         }
 
-        $LateVelocityMutation = $StabilityController.Replace(
-            '];' + [Environment]::NewLine + '};' + [Environment]::NewLine + [Environment]::NewLine + 'true',
-            '];' + [Environment]::NewLine + '};' + [Environment]::NewLine + [Environment]::NewLine + '_vehicle setVelocityModelSpace _velocity;' + [Environment]::NewLine + [Environment]::NewLine + 'true'
+        $LateVelocityMutation = [regex]::Replace(
+            $StabilityController,
+            '(?s)(\];\s*\};\s*)true\s*$',
+            '$1_vehicle setVelocityModelSpace _velocity;' + [Environment]::NewLine + [Environment]::NewLine + 'true',
+            1
         )
         if ((Get-StabilityControllerContractFailures $LateVelocityMutation).Count -eq 0) {
             Add-Failure 'Mutation survived: model-space velocity mutation after verticalAfter diagnostics.'

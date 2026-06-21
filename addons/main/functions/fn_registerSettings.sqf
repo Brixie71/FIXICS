@@ -57,6 +57,13 @@ missionNamespace setVariable ["FIXICS_rollStrength", 0.08, false];
 missionNamespace setVariable ["FIXICS_rollMaximumCorrection", 0.08, false];
 missionNamespace setVariable ["FIXICS_rollAirborneGraceSeconds", 0.35, false];
 missionNamespace setVariable ["FIXICS_stabilityDebugLogging", false, false];
+missionNamespace setVariable ["FIXICS_runtimeAssistCoordinatorEnabled", true, false];
+missionNamespace setVariable ["FIXICS_runtimeAssistTerrainInfluenceEnabled", true, false];
+missionNamespace setVariable ["FIXICS_runtimeAssistTerrainInfluenceStrength", 0.25, false];
+missionNamespace setVariable ["FIXICS_runtimeAssistBrakingSlopeRetention", 0.35, false];
+missionNamespace setVariable ["FIXICS_runtimeAssistMassDampingStrength", 0.15, false];
+missionNamespace setVariable ["FIXICS_runtimeAssistMaximumComposedCorrection", 0.25, false];
+missionNamespace setVariable ["FIXICS_runtimeAssistDebugLogging", false, false];
 
 [
     "FIXICS_disableIdleAutobrake",
@@ -559,6 +566,90 @@ missionNamespace setVariable ["FIXICS_stabilityDebugLogging", false, false];
         localize "STR_FIXICS_SETTING_STABILITY_DEBUG_LOGGING_TOOLTIP"
     ],
     ["FIXICS", "Vehicle Stability"],
+    false,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_runtimeAssistCoordinatorEnabled",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_RUNTIME_COORDINATOR_ENABLED",
+        localize "STR_FIXICS_SETTING_RUNTIME_COORDINATOR_ENABLED_TOOLTIP"
+    ],
+    ["FIXICS", "Runtime Assist"],
+    true,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_runtimeAssistTerrainInfluenceEnabled",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_RUNTIME_TERRAIN_ENABLED",
+        localize "STR_FIXICS_SETTING_RUNTIME_TERRAIN_ENABLED_TOOLTIP"
+    ],
+    ["FIXICS", "Runtime Assist"],
+    true,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_runtimeAssistTerrainInfluenceStrength",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_RUNTIME_TERRAIN_STRENGTH",
+        localize "STR_FIXICS_SETTING_RUNTIME_TERRAIN_STRENGTH_TOOLTIP"
+    ],
+    ["FIXICS", "Runtime Assist"],
+    [0, 1, 0.25, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_runtimeAssistBrakingSlopeRetention",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_RUNTIME_BRAKING_SLOPE_RETENTION",
+        localize "STR_FIXICS_SETTING_RUNTIME_BRAKING_SLOPE_RETENTION_TOOLTIP"
+    ],
+    ["FIXICS", "Runtime Assist"],
+    [0, 1, 0.35, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_runtimeAssistMassDampingStrength",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_RUNTIME_MASS_DAMPING",
+        localize "STR_FIXICS_SETTING_RUNTIME_MASS_DAMPING_TOOLTIP"
+    ],
+    ["FIXICS", "Runtime Assist"],
+    [0, 1, 0.15, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_runtimeAssistMaximumComposedCorrection",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_RUNTIME_MAX_CORRECTION",
+        localize "STR_FIXICS_SETTING_RUNTIME_MAX_CORRECTION_TOOLTIP"
+    ],
+    ["FIXICS", "Runtime Assist"],
+    [0, 0.5, 0.25, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_runtimeAssistDebugLogging",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_RUNTIME_DEBUG_LOGGING",
+        localize "STR_FIXICS_SETTING_RUNTIME_DEBUG_LOGGING_TOOLTIP"
+    ],
+    ["FIXICS", "Runtime Assist"],
     false,
     1
 ] call CBA_fnc_addSetting;

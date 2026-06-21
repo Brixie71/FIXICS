@@ -946,7 +946,25 @@ if (Test-Path -LiteralPath $SettingsFile) {
         'FIXICS_runtimeAssistDebugLogging'
     ) | ForEach-Object {
         Assert-Contains $Settings $_ "Runtime Assist setting $_ must be registered."
-        Assert-Contains $Stringtable $_ "Runtime Assist setting $_ must have localized text."
+    }
+
+    @(
+        'STR_FIXICS_SETTING_RUNTIME_COORDINATOR_ENABLED',
+        'STR_FIXICS_SETTING_RUNTIME_COORDINATOR_ENABLED_TOOLTIP',
+        'STR_FIXICS_SETTING_RUNTIME_TERRAIN_ENABLED',
+        'STR_FIXICS_SETTING_RUNTIME_TERRAIN_ENABLED_TOOLTIP',
+        'STR_FIXICS_SETTING_RUNTIME_TERRAIN_STRENGTH',
+        'STR_FIXICS_SETTING_RUNTIME_TERRAIN_STRENGTH_TOOLTIP',
+        'STR_FIXICS_SETTING_RUNTIME_BRAKING_SLOPE_RETENTION',
+        'STR_FIXICS_SETTING_RUNTIME_BRAKING_SLOPE_RETENTION_TOOLTIP',
+        'STR_FIXICS_SETTING_RUNTIME_MASS_DAMPING',
+        'STR_FIXICS_SETTING_RUNTIME_MASS_DAMPING_TOOLTIP',
+        'STR_FIXICS_SETTING_RUNTIME_MAX_CORRECTION',
+        'STR_FIXICS_SETTING_RUNTIME_MAX_CORRECTION_TOOLTIP',
+        'STR_FIXICS_SETTING_RUNTIME_DEBUG_LOGGING',
+        'STR_FIXICS_SETTING_RUNTIME_DEBUG_LOGGING_TOOLTIP'
+    ) | ForEach-Object {
+        Assert-Contains $Stringtable ('ID="' + $_ + '"') "Stringtable must define $_."
     }
 
     Assert-Contains $Settings 'missionNamespace setVariable \["FIXICS_runtimeAssistCoordinatorEnabled", true, false\]' 'Runtime Assist coordinator must default enabled.'

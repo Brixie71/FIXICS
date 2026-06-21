@@ -175,6 +175,48 @@
         <Key ID="STR_FIXICS_SETTING_ROLL_STRENGTH_TOOLTIP">
             <Original>Server-global vertical correction strength for roll and bank recovery. Higher values intervene harder.</Original>
         </Key>
+        <Key ID="STR_FIXICS_SETTING_RUNTIME_BRAKING_SLOPE_RETENTION">
+            <Original>Braking slope retention</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_RUNTIME_BRAKING_SLOPE_RETENTION_TOOLTIP">
+            <Original>How much downhill slope acceleration remains while the service brake is held. Zero fully suppresses slope assist; one leaves it unchanged.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_RUNTIME_COORDINATOR_ENABLED">
+            <Original>Runtime assist coordinator</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_RUNTIME_COORDINATOR_ENABLED_TOOLTIP">
+            <Original>Enables the local coordination layer that aligns ABS, slope, stability, roll, terrain, mass, and native advisory decisions.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_RUNTIME_DEBUG_LOGGING">
+            <Original>Runtime assist debug logging</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_RUNTIME_DEBUG_LOGGING_TOOLTIP">
+            <Original>Writes coordinator priority, suppression, terrain, mass, and final correction decisions to the RPT for SQA evidence.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_RUNTIME_MASS_DAMPING">
+            <Original>Mass damping influence</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_RUNTIME_MASS_DAMPING_TOOLTIP">
+            <Original>Reduces abrupt correction on heavier vehicles so coordination behaves more like damping than snapping.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_RUNTIME_MAX_CORRECTION">
+            <Original>Maximum composed correction</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_RUNTIME_MAX_CORRECTION_TOOLTIP">
+            <Original>Maximum final correction the coordinator can apply per update after priority, terrain, mass, and braking modifiers.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_RUNTIME_TERRAIN_ENABLED">
+            <Original>Terrain influence</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_RUNTIME_TERRAIN_ENABLED_TOOLTIP">
+            <Original>Lets surface conditions reduce assist strength so dirt and grass preserve more controlled sliding than paved roads.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_RUNTIME_TERRAIN_STRENGTH">
+            <Original>Terrain influence strength</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_RUNTIME_TERRAIN_STRENGTH_TOOLTIP">
+            <Original>How strongly terrain modifies coordinated assist strength. Conservative defaults keep existing handling familiar.</Original>
+        </Key>
         <Key ID="STR_FIXICS_SETTING_SLOPE_COAST_BREAKAWAY">
             <Original>Coast breakaway velocity</Original>
         </Key>

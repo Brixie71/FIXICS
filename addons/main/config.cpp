@@ -47,6 +47,7 @@ class CfgFunctions
             class getVehicleStabilityProfile {};
             class getVehicleStabilityRecommendation {};
             class getRollStabilityRecommendation {};
+            class getRuntimeAssistRecommendation {};
             class applyVehicleStability {};
         };
     };

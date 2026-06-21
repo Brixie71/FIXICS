@@ -4,6 +4,26 @@ Record validation runs that matter for implementation, review, or release decisi
 
 ## Entries
 
+### 2026-06-21 - Future feature requirements workflow
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: confirmed governance guidance still passes after adding the Requirements Packet workflow.
+- Manual coverage: not run.
+- Notes: documentation-only process update. No addon source changed.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: confirmed vehicle physics static and mutation checks still pass after workflow documentation changes.
+- Manual coverage: not run.
+- Notes: no gameplay behavior changed.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\check.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT/tool wrapper checks passed after workflow documentation changes.
+- Manual coverage: not run.
+- Notes: no build artifact was produced for this documentation-only task.
+
 ### 2026-06-20 - Vehicle Behavior Evidence Registry
 
 - Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1`

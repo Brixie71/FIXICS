@@ -43,6 +43,7 @@ Current Phase 1 systems:
 - Roll Stability preset selection was added on 2026-06-20 after SQA confirmed maxed settings improved rollover assist on the LSV/buggy test case.
 - Vehicle Behavior Evidence Registry architecture was approved on 2026-06-20. The first implementation is read-only documentation and static validation; Runtime Assist coordination and Config Research remain future designs.
 - Documentation cleanup/alignment was approved on 2026-06-20 to bring README, fix memory, workaround records, open issues, validation notes, and project state into sync with the implemented Phase 1 vehicle systems.
+- Future feature workflow was updated on 2026-06-21: all future features use a Requirements Packet, SQA questions are gathered up front, implementation proceeds autonomously after SQA approval, and completed gameplay work is handed back to SQA for QA comments and repeat-cycle fixes.
 
 ## Constraints
 

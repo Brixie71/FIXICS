@@ -55,7 +55,8 @@ Then say exactly this:
 
 1. Match it to one row in `CONTEXT-LOAD.md`.
 2. Load only those files silently.
-3. Present one suggestion in this format — nothing more:
+3. For a future feature, research task, gameplay change, architecture change, or implementation larger than a status check, prepare a Requirements Packet before implementation.
+4. Present one suggestion in this format — nothing more:
 
 ```
 Objective  : [name]
@@ -67,6 +68,35 @@ Ready to proceed?
 
 Wait. Do not write code. Do not make changes. Do not elaborate.
 SQA says yes — then you execute.
+
+---
+
+## Future Feature Workflow
+
+All future features use an agile SQA cycle:
+
+1. Gather requirements before implementation.
+2. Ask SQA all clarifying questions up front.
+3. Write or update a Requirements Packet using `docs/templates/requirements-packet.md`.
+4. Recommend a documentation/research path and an implementation path.
+5. Wait for SQA approval.
+6. Write the approved design and implementation plan when required.
+7. Execute autonomously after SQA approves the packet and plan.
+8. Stop only for mandatory gates, failed validation, unclear requirements, or direct SQA command.
+9. Hand the completed feature to SQA for gameplay QA.
+10. Record SQA findings as comments, issues, fix-log entries, or workaround entries.
+11. Repeat the cycle until SQA accepts the feature.
+
+The Requirements Packet must include:
+
+- Objective
+- Current system state
+- Files to load
+- SQA questions and answers
+- Constraints
+- Approval gates
+- Validation commands
+- Expected output
 
 ---
 
@@ -88,7 +118,9 @@ Wait for SQA confirmation before loading anything.
 4. Present suggestion card. Wait for SQA approval.
 5. On approval — implement using test-first for behavior changes and bug fixes.
 6. Run required automated validation.
-7. Report completion card to SQA. Update `orchestration/state.md`.
+7. Hand off to SQA for manual QA when gameplay behavior changes.
+8. Record SQA comments and repeat the fix cycle when SQA reports follow-up issues.
+9. Report completion card to SQA. Update `orchestration/state.md`.
 
 ---
 
@@ -103,6 +135,7 @@ Stop before implementation if the work touches any of:
 - Broad `CfgVehicles` patch
 - Multiplayer authority or sync
 - Regression risk
+- Direct SQA stop/pause/hold command
 
 Present to SQA:
 

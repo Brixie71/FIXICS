@@ -13,7 +13,7 @@ When guidance conflicts, use this order:
 3. `governance/policies/` - enforceable coding, scope, phase, and workaround policy.
 4. `agents/` - task-specific role overlays.
 5. `docs/reference/` - technical research aids.
-6. `CONTENT-LOAD.md` - Instruction to be a Longer Development time but lessend token usage via the prompts.
+6. `CONTEXT-LOAD.md` - objective file map and token-saving load rules.
 
 Addon source and actual build configuration remain the final source of truth for implementation facts. SQA is the final authority for product behavior and acceptance.
 
@@ -51,6 +51,9 @@ Completed ABS, handbrake, slope-rolling, and direction-transition work are Phase
 - Classify it as logic, physics, config, regression, tooling, documentation, or engine limitation.
 - Inspect the repository before asking discoverable questions.
 - File or update an issue in `docs/fixes/open-issues.md` for unresolved gameplay defects.
+- For all future features, gather requirements before implementation and ask SQA all clarifying questions up front.
+- Use `docs/templates/requirements-packet.md` for feature work, architecture work, gameplay changes, and multi-step implementation.
+- Do not proceed from requirements into implementation until SQA approves the Requirements Packet and implementation plan.
 
 ### 2. Research
 
@@ -76,12 +79,30 @@ Formal design approval is required for:
 
 Bounded documentation, test, and wrapper maintenance may use a concise intent update when behavior and interfaces do not change.
 
+### 3a. Agile SQA Sprint Loop
+
+Future feature work follows this loop:
+
+1. Requirements Packet.
+2. SQA approval.
+3. Documentation/research when needed.
+4. Recommended implementation plan.
+5. SQA approval.
+6. Autonomous implementation.
+7. Automated validation.
+8. SQA gameplay QA handoff.
+9. SQA comments and follow-up fixes.
+10. Repeat until SQA accepts the feature.
+
+Autonomous implementation stops for SQA command, failed validation, unclear requirements, gameplay behavior gates, native extension work, config-class patches, multiplayer authority, new dependencies, or material regression risk.
+
 ### 4. Implementation
 
 - Implement only the approved behavior.
 - Use tests first for bug fixes and behavior changes.
 - Keep edits targeted and preserve unrelated work.
 - Follow governance and specialist rules.
+- After SQA approves the Requirements Packet and plan, execute without repeated steering unless a mandatory stop condition is reached.
 
 ### 5. Verification
 
@@ -89,6 +110,7 @@ Bounded documentation, test, and wrapper maintenance may use a concise intent up
 - Run `tools\build.ps1` when a packaged artifact is required.
 - SQA performs gameplay verification.
 - Update `docs/fixes/` and `governance/audit/validation-log.md` with evidence.
+- Hand completed gameplay features to SQA with test focus, expected behavior, and known limitations.
 
 ## Agent Routing
 

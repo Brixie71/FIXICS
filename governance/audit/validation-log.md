@@ -6,11 +6,29 @@ Record validation runs that matter for implementation, review, or release decisi
 
 ### 2026-06-21 - Runtime Assist Coordination implementation
 
-- Command: implementation pending validation
-- Result: pending
-- Automated coverage: pending.
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: confirmed governance guidance still passes after Runtime Assist Coordination implementation.
 - Manual coverage: not run.
-- Notes: will be replaced with exact validation command results before completion.
+- Notes: implementation awaits SQA in-game validation.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: confirmed coordinator registration, settings, telemetry, purity, and ownership contracts.
+- Manual coverage: not run.
+- Notes: static checks do not prove gameplay feel.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\check.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT loaded FIXICS 1.0.0.1, rapified 2 addon configs, compiled 24 SQF files, checked 1 stringtable, and passed stability, roll, runtime assist, and mutation unit tests.
+- Manual coverage: not run.
+- Notes: no manual Arma behavior is claimed until SQA verifies it.
+
+- Command: `git diff --check`
+- Result: passed, exit code 0
+- Automated coverage: confirmed no whitespace errors.
+- Manual coverage: not run.
+- Notes: final source hygiene check.
 
 ### 2026-06-21 - Runtime Assist Coordination implementation plan
 

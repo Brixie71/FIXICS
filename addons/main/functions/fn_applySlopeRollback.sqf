@@ -39,6 +39,17 @@ if (_vehicle getVariable ["FIXICS_handbrakeEnabled", false]) exitWith {
     false
 };
 
+private _clearSlopeDecision = {
+    _vehicle setVariable [
+        "FIXICS_slopeLastDecision",
+        createHashMapFromArray [
+            ["applied", false],
+            ["delta", 0]
+        ],
+        false
+    ];
+};
+
 private _hasForwardInput = false;
 private _hasBackInput = false;
 private _inputBlocksSlopeAssist = false;
@@ -53,6 +64,7 @@ if (hasInterface && {!isNull _driver} && {_driver == player}) then {
 };
 
 if (_inputBlocksSlopeAssist) exitWith {
+    call _clearSlopeDecision;
     false
 };
 
@@ -61,6 +73,7 @@ private _vehicleForward = vectorDir _vehicle;
 private _forward = [_vehicleForward # 0, _vehicleForward # 1, 0];
 private _forwardLength = sqrt (((_forward # 0) * (_forward # 0)) + ((_forward # 1) * (_forward # 1)));
 if (_forwardLength <= 0) exitWith {
+    call _clearSlopeDecision;
     false
 };
 
@@ -72,9 +85,12 @@ private _longitudinalSpeed = ((_velocity # 0) * (_forward # 0)) + ((_velocity # 
 private _isForwardBraking = _hasBackInput && {_longitudinalSpeed > _stationarySpeedMps};
 private _isReverseBraking = _hasForwardInput && {_longitudinalSpeed < -_stationarySpeedMps};
 private _isBraking = _isForwardBraking || {_isReverseBraking};
-if (_isBraking) exitWith {
-    false
-};
+private _brakingSlopeRetention = missionNamespace getVariable [
+    "FIXICS_runtimeAssistBrakingSlopeRetention",
+    0.35
+];
+_brakingSlopeRetention = (_brakingSlopeRetention max 0) min 1;
+private _serviceBrakeSlopeScale = [1, _brakingSlopeRetention] select _isBraking;
 
 private _hasDriveInput = _hasForwardInput || {_hasBackInput};
 
@@ -86,6 +102,7 @@ private _downhill = [_normal # 0, _normal # 1, 0];
 private _downhillLength = sqrt (((_downhill # 0) * (_downhill # 0)) + ((_downhill # 1) * (_downhill # 1)));
 private _minimumSlope = missionNamespace getVariable ["FIXICS_slopeRollbackMinimumSlope", 0.035];
 if ((_slope < _minimumSlope) || {_downhillLength <= 0}) exitWith {
+    call _clearSlopeDecision;
     false
 };
 
@@ -109,22 +126,38 @@ if (_hasDriveInput) exitWith {
     };
     private _effectiveDriveSlope = _slope * _driveDownhillAlignment;
     if (_effectiveDriveSlope <= 0 || {_effectiveDriveSlope < _minimumSlope}) exitWith {
+        call _clearSlopeDecision;
         false
     };
 
     private _driveAxisSpeed = ((_velocity # 0) * (_driveAxis # 0)) + ((_velocity # 1) * (_driveAxis # 1));
     private _maxDriveSpeed = (missionNamespace getVariable ["FIXICS_slopeDriveMaxSpeedKmh", 120]) / 3.6;
     if (_driveAxisSpeed >= _maxDriveSpeed) exitWith {
+        call _clearSlopeDecision;
         false
     };
 
     private _driveAcceleration = missionNamespace getVariable ["FIXICS_slopeDriveAcceleration", 0.22];
-    private _driveDelta = _driveAcceleration * _effectiveDriveSlope * _timeScale;
+    private _driveDelta = _driveAcceleration * _effectiveDriveSlope * _timeScale * _serviceBrakeSlopeScale;
     _driveDelta = _driveDelta min (_maxDriveSpeed - _driveAxisSpeed);
 
     if ((abs _driveDelta) <= 0) exitWith {
+        call _clearSlopeDecision;
         false
     };
+
+    _vehicle setVariable [
+        "FIXICS_slopeLastDecision",
+        createHashMapFromArray [
+            ["applied", true],
+            ["delta", _driveDelta],
+            ["serviceBraking", _isBraking],
+            ["slopeScale", _serviceBrakeSlopeScale],
+            ["slope", _slope],
+            ["surface", surfaceType (getPosWorld _vehicle)]
+        ],
+        false
+    ];
 
     _vehicle setVelocity [
         (_velocity # 0) + ((_driveAxis # 0) * _driveDelta),
@@ -137,6 +170,7 @@ if (_hasDriveInput) exitWith {
 
 private _maxRollbackSpeed = missionNamespace getVariable ["FIXICS_slopeRollbackMaxSpeed", 2.2];
 if (_downhillSpeed >= _maxRollbackSpeed) exitWith {
+    call _clearSlopeDecision;
     false
 };
 
@@ -164,8 +198,22 @@ if ((count _nativeSlopeControl) > 0) exitWith {
         ["_nativeDeltaZ", 0, [0]]
     ];
     if (!_nativeApplied) exitWith {
+        call _clearSlopeDecision;
         false
     };
+    private _nativeDelta = sqrt ((_nativeDeltaX * _nativeDeltaX) + (_nativeDeltaY * _nativeDeltaY) + (_nativeDeltaZ * _nativeDeltaZ));
+    _vehicle setVariable [
+        "FIXICS_slopeLastDecision",
+        createHashMapFromArray [
+            ["applied", true],
+            ["delta", _nativeDelta],
+            ["serviceBraking", _isBraking],
+            ["slopeScale", _serviceBrakeSlopeScale],
+            ["slope", _slope],
+            ["surface", surfaceType (getPosWorld _vehicle)]
+        ],
+        false
+    ];
     _vehicle setVelocity [
         (_velocity # 0) + _nativeDeltaX,
         (_velocity # 1) + _nativeDeltaY,
@@ -175,14 +223,28 @@ if ((count _nativeSlopeControl) > 0) exitWith {
 };
 
 private _remainingRollbackSpeed = _maxRollbackSpeed - _downhillSpeed;
-private _delta = (_rollbackAcceleration * (_slope max 0.15) * _timeScale) min _remainingRollbackSpeed;
+private _delta = (_rollbackAcceleration * (_slope max 0.15) * _timeScale * _serviceBrakeSlopeScale) min _remainingRollbackSpeed;
 if (_minimumDelta > 0) then {
     _delta = (_delta max _minimumDelta) min _remainingRollbackSpeed;
 };
 
 if (_delta <= 0) exitWith {
+    call _clearSlopeDecision;
     false
 };
+
+_vehicle setVariable [
+    "FIXICS_slopeLastDecision",
+    createHashMapFromArray [
+        ["applied", true],
+        ["delta", _delta],
+        ["serviceBraking", _isBraking],
+        ["slopeScale", _serviceBrakeSlopeScale],
+        ["slope", _slope],
+        ["surface", surfaceType (getPosWorld _vehicle)]
+    ],
+    false
+];
 
 _vehicle setVelocity [
     (_velocity # 0) + ((_downhill # 0) * _delta),

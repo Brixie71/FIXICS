@@ -39,20 +39,35 @@ if (!(local _vehicle)) exitWith {
     false
 };
 
+private _clearAbsDecision = {
+    _vehicle setVariable [
+        "FIXICS_absLastDecision",
+        createHashMapFromArray [
+            ["applied", false],
+            ["delta", 0]
+        ],
+        false
+    ];
+};
+
 if (!isTouchingGround _vehicle) exitWith {
+    call _clearAbsDecision;
     false
 };
 
 if (_vehicle getVariable ["FIXICS_handbrakeEnabled", false]) exitWith {
+    call _clearAbsDecision;
     false
 };
 
 private _driver = driver _vehicle;
 if (!(hasInterface && {!isNull _driver} && {_driver == player})) exitWith {
+    call _clearAbsDecision;
     false
 };
 
 if ((inputAction "CarHandBrake") > 0) exitWith {
+    call _clearAbsDecision;
     false
 };
 
@@ -71,6 +86,7 @@ _forward = _forward vectorMultiply (1 / _forwardLength);
 private _speedKmh = (abs _longitudinalSpeed) * 3.6;
 private _lowSpeedCutoffKmh = missionNamespace getVariable ["FIXICS_absLowSpeedCutoffKmh", 3];
 if (!_ignoreLowSpeedCutoff && {_speedKmh <= _lowSpeedCutoffKmh}) exitWith {
+    call _clearAbsDecision;
     false
 };
 
@@ -87,6 +103,7 @@ private _isReverseBraking = (
 ) && {_longitudinalSpeed < -_brakingThreshold};
 private _isBraking = _isForwardBraking || {_isReverseBraking};
 if (!_isBraking) exitWith {
+    call _clearAbsDecision;
     false
 };
 
@@ -199,8 +216,21 @@ if (_selectedResult isEqualTo []) then {
 
 _selectedResult params ["_applied", "_newLongitudinalSpeed", "_delta", "_detail"];
 if (!_applied) exitWith {
+    call _clearAbsDecision;
     false
 };
+
+private _absDecision = createHashMapFromArray [
+    ["applied", _applied],
+    ["requestedDirection", _requestedDirection],
+    ["targetLongitudinalSpeed", _newLongitudinalSpeed],
+    ["delta", _delta],
+    ["source", _source],
+    ["detail", _detail],
+    ["slope", _slope],
+    ["downhillBrakeLoad", _downhillBrakeLoad]
+];
+_vehicle setVariable ["FIXICS_absLastDecision", _absDecision, false];
 
 _modelVelocity set [1, _newLongitudinalSpeed];
 _vehicle setVelocityModelSpace _modelVelocity;

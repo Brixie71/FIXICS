@@ -4,6 +4,32 @@ Record validation runs that matter for implementation, review, or release decisi
 
 ## Entries
 
+### 2026-06-21 - Runtime Assist compact telemetry export
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: confirmed governance guidance still passes after compact Runtime Assist telemetry changes.
+- Manual coverage: not run.
+- Notes: telemetry-only fix after SQA DAGOR/tarmac log showed long handling sample lines could truncate before final Runtime Assist fields.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: confirmed compact `[FIXICS][RuntimeAssistSample]` logging and exporter inclusion are covered by static contracts.
+- Manual coverage: not run.
+- Notes: no gameplay behavior changed.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\check.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT loaded FIXICS 1.0.0.1, rapified 2 addon configs, compiled 24 SQF files, checked 1 stringtable, and passed stability, roll, runtime assist, and mutation unit tests.
+- Manual coverage: not run.
+- Notes: no build artifact was produced for this telemetry-only fix.
+
+- Command: `git diff --check`
+- Result: passed, exit code 0
+- Automated coverage: confirmed no whitespace errors.
+- Manual coverage: not run.
+- Notes: Git reported CRLF normalization warnings only.
+
 ### 2026-06-21 - Runtime Assist Coordination implementation
 
 - Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1`

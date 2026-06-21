@@ -1246,6 +1246,8 @@ if (Test-Path -LiteralPath $HandlingConfigLogFile) {
     ) | ForEach-Object {
         Assert-Contains $HandlingConfigLog $_ "Handling telemetry must include $_."
     }
+    Assert-Contains $HandlingConfigLog '\[FIXICS\]\[RuntimeAssistSample\]' 'Handling telemetry must write compact Runtime Assist sample lines to avoid long-line truncation.'
+    Assert-Contains $HandlingConfigLog 'finalCorrection=%' 'Compact Runtime Assist sample must include final correction.'
     Assert-Contains $HandlingConfigLog 'yawRate' 'Handling diagnostic must derive yaw rate during continuous capture.'
     Assert-Contains $HandlingConfigLog 'pitchRate' 'Handling diagnostic must derive pitch rate during continuous capture.'
     Assert-Contains $HandlingConfigLog 'bankRate' 'Handling diagnostic must derive bank rate during continuous capture.'
@@ -1258,6 +1260,13 @@ if (Test-Path -LiteralPath $HandlingConfigLogFile) {
     if ($HandlingConfigLog -match '\b(setVelocity|setVelocityModelSpace|setDir|setVectorDirAndUp|disableBrakes)\b') {
         Add-Failure 'Handling diagnostic must remain read-only and must not mutate vehicle physics.'
     }
+}
+
+$TelemetryExporterFile = Join-Path $RepoRoot 'tools\export-vehicle-telemetry.ps1'
+if (Test-Path -LiteralPath $TelemetryExporterFile) {
+    $TelemetryExporter = Get-Content -Raw -LiteralPath $TelemetryExporterFile
+    Assert-Contains $TelemetryExporter 'RuntimeAssistSample' 'Telemetry exporter must include compact Runtime Assist sample lines.'
+    Assert-Contains $TelemetryExporter '\$isRuntimeAssist' 'Telemetry exporter must route compact Runtime Assist sample lines through an explicit predicate.'
 }
 
 $SteeringDiagnosticsFile = Join-Path $RepoRoot 'addons\main\functions\fn_startSteeringDiagnostics.sqf'

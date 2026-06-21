@@ -237,6 +237,24 @@ if (_duration > 0) then {
                 _runtimeAssistFinalCorrection
             ];
 
+            diag_log format [
+                "[FIXICS][RuntimeAssistSample] t=%1 vehicle=%2 state=%3 speedKmh=%4 surface=%5 priority=%6 terrain=%7 mass=%8 suppressed=%9 finalCorrection=%10 bank=%11 bankRate=%12 yawRate=%13 grounded=%14",
+                _now - _startedAt,
+                typeOf _vehicle,
+                _vehicle getVariable ["FIXICS_driverState", "idle"],
+                speed _vehicle,
+                surfaceType (getPosWorld _vehicle),
+                _runtimeAssistPriorityWinner,
+                _runtimeAssistTerrainMultiplier,
+                _runtimeAssistMassMultiplier,
+                _runtimeAssistSuppressedAssists,
+                _runtimeAssistFinalCorrection,
+                _bank,
+                _bankRate,
+                _yawRate,
+                isTouchingGround _vehicle
+            ];
+
             _previousTime = _now;
             _previousHeading = _heading;
             _previousPitch = _pitch;

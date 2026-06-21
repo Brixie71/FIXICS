@@ -1120,7 +1120,7 @@ if (Test-Path -LiteralPath $DriverControllerFile) {
     Assert-Contains $DriverController 'FIXICS_fnc_setVehicleHandbrake' 'Toggle handbrake mode must use the persistent FIXICS/ACE handbrake.'
     Assert-Contains $DriverController 'FIXICS_fnc_applyABSBraking' 'Service braking must invoke the ABS helper.'
     Assert-Contains $DriverController 'FIXICS_fnc_applySlopeRollback' 'Driver controller must own player slope assist.'
-    Assert-Contains $DriverController 'private _finishUpdate = \{\s*params \["_result"\];\s*\[_vehicle, _deltaTime\] call FIXICS_fnc_applyVehicleStability;\s*_result\s*\};' 'Driver controller must centralize stability application in a finalizer.'
+    Assert-Contains $DriverController 'private _finishUpdate = \{[\s\S]*?params \["_result"\];[\s\S]*?_currentState[\s\S]*?\[_vehicle, _deltaTime\] call FIXICS_fnc_applyVehicleStability;[\s\S]*?\[_vehicle, _deltaTime, _currentState\] call FIXICS_fnc_coordinateVehicleAssists;[\s\S]*?_result[\s\S]*?\};' 'Driver controller must centralize stability and runtime assist application in a finalizer.'
     Assert-Contains $DriverController 'if \(_transitionTarget != 0\) exitWith \{[\s\S]*?\[true\] call _finishUpdate\s*\};' 'Direction-transition completion must apply stability after longitudinal state work.'
     Assert-Contains $DriverController 'if \(_isCombinedBrake\) exitWith \{[\s\S]*?\[true\] call _finishUpdate\s*\};' 'Combined service-brake completion must apply stability after ABS/fallback braking.'
     Assert-Contains $DriverController 'if \(_requestedDirection != 0\) exitWith \{[\s\S]*?FIXICS_fnc_applySlopeRollback;[\s\S]*?\[true\] call _finishUpdate\s*\};' 'Drive/reverse completion must apply stability after slope rollback.'

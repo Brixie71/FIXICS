@@ -143,7 +143,9 @@ private _setState = {
 private _finishUpdate = {
     params ["_result"];
 
+    private _currentState = _vehicle getVariable ["FIXICS_driverState", ""];
     [_vehicle, _deltaTime] call FIXICS_fnc_applyVehicleStability;
+    [_vehicle, _deltaTime, _currentState] call FIXICS_fnc_coordinateVehicleAssists;
     _result
 };
 

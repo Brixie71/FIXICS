@@ -80,27 +80,58 @@ private _clearRollSample = {
     ];
 };
 
+private _clearTerrainTireRecommendation = {
+    params ["_sampleVehicle"];
+
+    private _neutralTerrainTireRecommendation = createHashMapFromArray [
+        ["terrainGripClass", "UNKNOWN"],
+        ["tractionMultiplier", 1],
+        ["accelerationTractionMultiplier", 1],
+        ["brakingTractionMultiplier", 1],
+        ["turningTractionMultiplier", 1],
+        ["slopeTractionMultiplier", 1],
+        ["wheelspinEstimate", 0],
+        ["tireDeflationState", "stale-safe"],
+        ["tireDragPenalty", 0],
+        ["tireSteeringPenalty", 0],
+        ["massModifier", 1],
+        ["perWheelMode", "aggregate"],
+        ["tireAirState", _sampleVehicle getVariable ["FIXICS_tireAirState", 1]]
+    ];
+
+    _sampleVehicle setVariable [
+        "FIXICS_terrainTireRecommendation",
+        _neutralTerrainTireRecommendation,
+        false
+    ];
+};
+
 if (!local _vehicle) exitWith {
     [_vehicle] call _clearYawSample;
+    [_vehicle] call _clearTerrainTireRecommendation;
     false
 };
 if (isNull player) exitWith {
     [_vehicle] call _clearYawSample;
+    [_vehicle] call _clearTerrainTireRecommendation;
     false
 };
 private _isPlayerDriver = driver _vehicle == player;
 if (!_isPlayerDriver) exitWith {
     [_vehicle] call _clearYawSample;
+    [_vehicle] call _clearTerrainTireRecommendation;
     false
 };
 if (_vehicle getVariable ["FIXICS_handbrakeEnabled", false]) exitWith {
     [_vehicle] call _clearYawSample;
+    [_vehicle] call _clearTerrainTireRecommendation;
     false
 };
 
 private _profile = [_vehicle] call FIXICS_fnc_getVehicleStabilityProfile;
 if ((count _profile) < 7 || {!(_profile # 0)}) exitWith {
     [_vehicle] call _clearYawSample;
+    [_vehicle] call _clearTerrainTireRecommendation;
     false
 };
 
@@ -165,12 +196,51 @@ if (_isGrounded) then {
 private _withinRollGrace = _isGrounded || {
     (_now - _lastGroundedAt) <= _rollAirborneGraceSeconds
 };
+private _swayBarEnabled = missionNamespace getVariable [
+    "FIXICS_swayBarEnabled",
+    true
+];
+private _frontSwayBarEnabled = missionNamespace getVariable [
+    "FIXICS_frontSwayBarEnabled",
+    true
+];
+private _frontSwayBarStrength = (
+    missionNamespace getVariable ["FIXICS_frontSwayBarStrength", 0.5]
+) max 0 min 1;
+private _rearSwayBarEnabled = missionNamespace getVariable [
+    "FIXICS_rearSwayBarEnabled",
+    true
+];
+private _rearSwayBarStrength = (
+    missionNamespace getVariable ["FIXICS_rearSwayBarStrength", 0.5]
+) max 0 min 1;
+private _frontSwayBarContribution = [0, _frontSwayBarStrength] select _frontSwayBarEnabled;
+private _rearSwayBarContribution = [0, _rearSwayBarStrength] select _rearSwayBarEnabled;
+private _swayBarContributionCount = 0;
+if (_frontSwayBarContribution > 0) then {
+    _swayBarContributionCount = _swayBarContributionCount + 1;
+};
+if (_rearSwayBarContribution > 0) then {
+    _swayBarContributionCount = _swayBarContributionCount + 1;
+};
+private _swayBarStrengthMultiplier = if (
+    _swayBarEnabled
+    && {_swayBarContributionCount > 0}
+) then {
+    (
+        (_frontSwayBarContribution + _rearSwayBarContribution)
+        / _swayBarContributionCount
+    ) max 0 min 1
+} else {
+    0
+};
 /*
  * Replaces the old yaw-only airborne guard:
  * if !(isTouchingGround _vehicle) exitWith { [_vehicle] call _clearYawSample; false };
  */
 if (!_isGrounded && {!_withinRollGrace}) exitWith {
     [_vehicle] call _clearYawSample;
+    [_vehicle] call _clearTerrainTireRecommendation;
     false
 };
 if (!_isGrounded) then {
@@ -178,7 +248,7 @@ if (!_isGrounded) then {
 };
 
 private _diagnosticYawRate = 0;
-private _steeringInput = 0;
+private _steeringInput = (((inputAction "CarRight") - (inputAction "CarLeft")) / 3) max -1 min 1;
 
 private _modeIndex = missionNamespace getVariable [
     "FIXICS_stabilityAssistMode",
@@ -204,12 +274,128 @@ private _stabilityDecision = createHashMapFromArray [
     ["rollPreset", ""],
     ["rollActivationBankDeg", 0],
     ["rollActivationRateDeg", 0],
+    ["controlledSlipEnabled", false],
+    ["controlledSlipEligible", false],
+    ["controlledSlipApplied", false],
+    ["controlledSlipReason", "not-evaluated"],
+    ["controlledSlipSteeringDemand", 0],
+    ["controlledSlipLateralDemand", 0],
+    ["controlledSlipRollRisk", 0],
+    ["controlledSlipTerrainClass", "unknown"],
+    ["controlledSlipTerrainMultiplier", 1],
+    ["controlledSlipGripReleaseFactor", 0],
+    ["controlledSlipCorrection", 0],
+    ["terrainTireRecommendation", createHashMap],
+    ["terrainGripClass", "UNKNOWN"],
+    ["tractionMultiplier", 1],
+    ["accelerationTractionMultiplier", 1],
+    ["brakingTractionMultiplier", 1],
+    ["turningTractionMultiplier", 1],
+    ["slopeTractionMultiplier", 1],
+    ["wheelspinEstimate", 0],
+    ["tireDeflationState", "unknown"],
+    ["tireDragPenalty", 0],
+    ["tireSteeringPenalty", 0],
+    ["massModifier", 1],
+    ["perWheelMode", "aggregate"],
     ["yawRate", 0],
     ["bank", 0],
     ["bankRate", 0]
 ];
 private _speedKmh = (abs _longitudinal) * 3.6;
 private _activationSpeedKmh = _profile # 1;
+private _surface = surfaceType (getPosWorld _vehicle);
+private _terrainClass = switch (true) do {
+    case (_surface find "#GdtAsphalt" >= 0): {"paved"};
+    case (_surface find "#GdtConcrete" >= 0): {"paved"};
+    case (_surface find "#GdtDirt" >= 0): {"dirt"};
+    case (_surface find "#GdtGrass" >= 0): {"grass"};
+    default {"unknown"};
+};
+private _terrainNormal = surfaceNormal (getPosWorld _vehicle);
+private _slopeSeverity = 1 - (((_terrainNormal # 2) max 0) min 1);
+private _terrainDeltaTime = [0.016, _deltaTime] select (finite _deltaTime && {_deltaTime > 0});
+private _massKg = getMass _vehicle;
+if (!finite _massKg || {_massKg <= 0}) then {
+    _massKg = getNumber (configOf _vehicle >> "mass");
+};
+if (!finite _massKg || {_massKg <= 0}) then {
+    _massKg = 1500;
+};
+private _terrainTireState = createHashMapFromArray [
+    ["surfaceType", _surface],
+    ["speedKmh", _speedKmh],
+    [
+        "forwardDemand",
+        (
+            (inputAction "CarForward")
+            max (inputAction "CarFastForward")
+            max (inputAction "CarSlowForward")
+        ) max 0 min 1
+    ],
+    ["brakeDemand", (inputAction "CarBack") max 0 min 1],
+    ["steeringDemand", abs _steeringInput],
+    ["slopeSeverity", _slopeSeverity],
+    ["deltaTime", _terrainDeltaTime],
+    ["massKg", _massKg],
+    ["tireDamage", damage _vehicle],
+    ["tireAirState", _vehicle getVariable ["FIXICS_tireAirState", 1]]
+];
+private _terrainTireSettings = createHashMapFromArray [
+    ["enabled", missionNamespace getVariable ["FIXICS_terrainTireEnabled", true]],
+    ["tirePressureEnabled", missionNamespace getVariable ["FIXICS_tirePressureEnabled", true]],
+    ["deflationRate", missionNamespace getVariable ["FIXICS_tireDeflationRate", 0.025]],
+    ["minimumMobility", missionNamespace getVariable ["FIXICS_tireMinimumMobility", 0.35]],
+    ["dragStrength", missionNamespace getVariable ["FIXICS_tireDragStrength", 0.35]],
+    ["steeringPenalty", missionNamespace getVariable ["FIXICS_tireSteeringPenalty", 0.30]]
+];
+private _terrainTireRecommendation = [
+    _terrainTireState,
+    _terrainTireSettings
+] call FIXICS_fnc_getTerrainTireRecommendation;
+_vehicle setVariable ["FIXICS_tireAirState", _terrainTireRecommendation getOrDefault ["tireAirState", 1], false];
+_vehicle setVariable ["FIXICS_terrainTireRecommendation", _terrainTireRecommendation, false];
+private _turningTractionMultiplier = (
+    _terrainTireRecommendation getOrDefault ["turningTractionMultiplier", 1]
+) max 0.15 min 1;
+private _terrainTireFields = [
+    ["terrainGripClass", "UNKNOWN"],
+    ["tractionMultiplier", 1],
+    ["accelerationTractionMultiplier", 1],
+    ["brakingTractionMultiplier", 1],
+    ["turningTractionMultiplier", 1],
+    ["slopeTractionMultiplier", 1],
+    ["wheelspinEstimate", 0],
+    ["tireDeflationState", "unknown"],
+    ["tireDragPenalty", 0],
+    ["tireSteeringPenalty", 0],
+    ["massModifier", 1],
+    ["perWheelMode", "aggregate"]
+];
+_stabilityDecision set ["terrainTireRecommendation", _terrainTireRecommendation];
+{
+    _x params ["_field", "_default"];
+    _stabilityDecision set [
+        _field,
+        _terrainTireRecommendation getOrDefault [_field, _default]
+    ];
+} forEach _terrainTireFields;
+if (missionNamespace getVariable ["FIXICS_tireDebugLogging", false]) then {
+    diag_log format [
+        "[FIXICS][TerrainTire] class=%1 surface=%2 terrain=%3 traction=%4 wheelspin=%5 air=%6 deflation=%7 drag=%8 steeringPenalty=%9 massModifier=%10 perWheelMode=%11",
+        typeOf _vehicle,
+        _surface,
+        _terrainClass,
+        _terrainTireRecommendation getOrDefault ["tractionMultiplier", 1],
+        _terrainTireRecommendation getOrDefault ["wheelspinEstimate", 0],
+        _terrainTireRecommendation getOrDefault ["tireAirState", 1],
+        _terrainTireRecommendation getOrDefault ["tireDeflationState", "unknown"],
+        _terrainTireRecommendation getOrDefault ["tireDragPenalty", 0],
+        _terrainTireRecommendation getOrDefault ["tireSteeringPenalty", 0],
+        _terrainTireRecommendation getOrDefault ["massModifier", 1],
+        _terrainTireRecommendation getOrDefault ["perWheelMode", "aggregate"]
+    ];
+};
 
 private _recommended = false;
 private _recommendedLongitudinal = _longitudinal;
@@ -217,6 +403,8 @@ private _recommendedLateral = _lateral;
 private _yawRecommendation = 0;
 private _recommendedMode = _mode;
 private _lateralApplied = false;
+private _controlledSlipApplied = false;
+private _controlledSlipCorrection = 0;
 
 if (_isGrounded) then {
     private _heading = getDir _vehicle;
@@ -240,6 +428,10 @@ if (_isGrounded) then {
     private _yawRate = _headingDelta / (_deltaTime max 0.001);
     _diagnosticYawRate = _yawRate;
     _steeringInput = (((inputAction "CarRight") - (inputAction "CarLeft")) / 3) max -1 min 1;
+    private _effectiveProfile = +_profile;
+    _effectiveProfile set [3, (_effectiveProfile # 3) * _swayBarStrengthMultiplier];
+    _effectiveProfile set [4, (_effectiveProfile # 4) * _swayBarStrengthMultiplier];
+    _effectiveProfile set [5, (_effectiveProfile # 5) * _swayBarStrengthMultiplier];
 
     private _recommendation = [
         _mode,
@@ -248,7 +440,7 @@ if (_isGrounded) then {
         _yawRate,
         _steeringInput,
         _deltaTime,
-        _profile
+        _effectiveProfile
     ] call FIXICS_fnc_getVehicleStabilityRecommendation;
 
     _recommendation params [
@@ -260,6 +452,7 @@ if (_isGrounded) then {
     ];
 
     if (_recommended && {_recommendedLateral != _lateral}) then {
+        _recommendedLateral = _lateral + ((_recommendedLateral - _lateral) * _turningTractionMultiplier);
         _velocity set [0, _recommendedLateral];
         _lateralApplied = true;
         _stabilityDecision set ["lateralDelta", _recommendedLateral - _lateral];
@@ -274,6 +467,8 @@ private _rollEnabled = missionNamespace getVariable [
 ];
 private _rollEligible = _withinRollGrace
     && {_rollEnabled}
+    && {_swayBarEnabled}
+    && {_swayBarStrengthMultiplier > 0}
     && {_speedKmh >= _activationSpeedKmh};
 private _rollApplied = false;
 private _recommendedVertical = _vertical;
@@ -285,6 +480,12 @@ private _bank = 0;
 private _bankRate = 0;
 _stabilityDecision set ["rollEligible", _rollEligible];
 _stabilityDecision set ["rollPreset", _rollPreset];
+_stabilityDecision set ["swayBarEnabled", _swayBarEnabled];
+_stabilityDecision set ["frontSwayBarEnabled", _frontSwayBarEnabled];
+_stabilityDecision set ["frontSwayBarStrength", _frontSwayBarStrength];
+_stabilityDecision set ["rearSwayBarEnabled", _rearSwayBarEnabled];
+_stabilityDecision set ["rearSwayBarStrength", _rearSwayBarStrength];
+_stabilityDecision set ["swayBarStrengthMultiplier", _swayBarStrengthMultiplier];
 _stabilityDecision set ["rollActivationBankDeg", _rollActivationBankDeg];
 _stabilityDecision set ["rollActivationRateDeg", _rollActivationRateDeg];
 
@@ -292,6 +493,8 @@ if (!_rollEligible) then {
     [_vehicle] call _clearRollSample;
     _rollReason = switch (true) do {
         case (!_rollEnabled): {"disabled"};
+        case (!_swayBarEnabled): {"sway-bar-disabled"};
+        case (_swayBarStrengthMultiplier <= 0): {"sway-bars-disabled"};
         case (!_withinRollGrace): {"airborne-grace-expired"};
         case (_speedKmh < _activationSpeedKmh): {"below-speed-threshold"};
         default {"not-eligible"};
@@ -321,7 +524,7 @@ if (!_rollEligible) then {
     private _rollSettings = [
         _rollActivationBankDeg,
         _rollActivationRateDeg,
-        _rollStrength,
+        _rollStrength * _swayBarStrengthMultiplier,
         _rollMaximumCorrection
     ];
     private _rollRecommendation = [
@@ -349,13 +552,118 @@ if (!_rollEligible) then {
     };
 };
 
-if (!_lateralApplied && {!_rollApplied}) exitWith {
+private _controlledSlipSettings = createHashMapFromArray [
+    ["enabled", missionNamespace getVariable ["FIXICS_controlledSlipEnabled", true]],
+    [
+        "activationSpeedKmh",
+        missionNamespace getVariable ["FIXICS_controlledSlipActivationSpeedKmh", 55]
+    ],
+    [
+        "steeringThreshold",
+        missionNamespace getVariable ["FIXICS_controlledSlipSteeringThreshold", 0.65]
+    ],
+    ["strength", missionNamespace getVariable ["FIXICS_controlledSlipStrength", 0.16]],
+    [
+        "maximumRelease",
+        missionNamespace getVariable ["FIXICS_controlledSlipMaximumRelease", 0.22]
+    ],
+    [
+        "terrainInfluence",
+        missionNamespace getVariable ["FIXICS_controlledSlipTerrainInfluence", true]
+    ]
+];
+private _controlledSlipState = createHashMapFromArray [
+    ["speedKmh", _speedKmh],
+    ["steeringDemand", abs _steeringInput],
+    ["lateralSpeed", _lateral],
+    ["longitudinalSpeed", _longitudinal],
+    ["bank", _bank],
+    ["bankRate", _bankRate],
+    ["terrainClass", _terrainClass]
+];
+private _controlledSlipDecision = [
+    _controlledSlipState,
+    _controlledSlipSettings
+] call FIXICS_fnc_getControlledSlipRecommendation;
+_controlledSlipCorrection = _controlledSlipDecision getOrDefault [
+    "controlledSlipCorrection",
+    0
+];
+_controlledSlipApplied = (
+    _controlledSlipDecision getOrDefault ["controlledSlipApplied", false]
+) && {_controlledSlipCorrection != 0};
+if (_controlledSlipApplied) then {
+    private _terrainLimitedControlledSlipCorrection = (
+        _controlledSlipCorrection * _turningTractionMultiplier
+    );
+    _velocity set [0, (_velocity # 0) - _terrainLimitedControlledSlipCorrection];
+    _stabilityDecision set ["controlledSlipDelta", -_terrainLimitedControlledSlipCorrection];
+    _controlledSlipCorrection = _terrainLimitedControlledSlipCorrection;
+};
+
+_stabilityDecision set [
+    "controlledSlipEnabled",
+    missionNamespace getVariable ["FIXICS_controlledSlipEnabled", true]
+];
+_stabilityDecision set [
+    "controlledSlipEligible",
+    _controlledSlipDecision getOrDefault ["controlledSlipEligible", false]
+];
+_stabilityDecision set ["controlledSlipApplied", _controlledSlipApplied];
+_stabilityDecision set [
+    "controlledSlipReason",
+    _controlledSlipDecision getOrDefault ["controlledSlipReason", "not-evaluated"]
+];
+_stabilityDecision set [
+    "controlledSlipSteeringDemand",
+    _controlledSlipDecision getOrDefault ["controlledSlipSteeringDemand", 0]
+];
+_stabilityDecision set [
+    "controlledSlipLateralDemand",
+    _controlledSlipDecision getOrDefault ["controlledSlipLateralDemand", 0]
+];
+_stabilityDecision set [
+    "controlledSlipRollRisk",
+    _controlledSlipDecision getOrDefault ["controlledSlipRollRisk", 0]
+];
+_stabilityDecision set [
+    "controlledSlipTerrainClass",
+    _controlledSlipDecision getOrDefault ["controlledSlipTerrainClass", "unknown"]
+];
+_stabilityDecision set [
+    "controlledSlipTerrainMultiplier",
+    _controlledSlipDecision getOrDefault ["controlledSlipTerrainMultiplier", 1]
+];
+_stabilityDecision set [
+    "controlledSlipGripReleaseFactor",
+    _controlledSlipDecision getOrDefault ["controlledSlipGripReleaseFactor", 0]
+];
+_stabilityDecision set ["controlledSlipCorrection", _controlledSlipCorrection];
+
+if (missionNamespace getVariable ["FIXICS_controlledSlipDebugLogging", false]) then {
+    diag_log format [
+        "[FIXICS][ControlledSlip] class=%1 speedKmh=%2 steering=%3 lateralDemand=%4 rollRisk=%5 terrain=%6 terrainMultiplier=%7 gripRelease=%8 correction=%9 applied=%10 reason=%11",
+        typeOf _vehicle,
+        _speedKmh,
+        _controlledSlipDecision getOrDefault ["controlledSlipSteeringDemand", 0],
+        _controlledSlipDecision getOrDefault ["controlledSlipLateralDemand", 0],
+        _controlledSlipDecision getOrDefault ["controlledSlipRollRisk", 0],
+        _controlledSlipDecision getOrDefault ["controlledSlipTerrainClass", "unknown"],
+        _controlledSlipDecision getOrDefault ["controlledSlipTerrainMultiplier", 1],
+        _controlledSlipDecision getOrDefault ["controlledSlipGripReleaseFactor", 0],
+        _controlledSlipCorrection,
+        _controlledSlipApplied,
+        _controlledSlipDecision getOrDefault ["controlledSlipReason", "not-evaluated"]
+    ];
+};
+
+if (!_lateralApplied && {!_rollApplied} && {!_controlledSlipApplied}) exitWith {
     _vehicle setVariable ["FIXICS_stabilityLastDecision", _stabilityDecision, false];
     false
 };
 
 _vehicle setVelocityModelSpace _velocity;
-_stabilityDecision set ["applied", _lateralApplied || {_rollApplied}];
+_stabilityDecision set ["applied", _lateralApplied || {_rollApplied} || {_controlledSlipApplied}];
 _vehicle setVariable ["FIXICS_stabilityLastDecision", _stabilityDecision, false];
 
 private _actualVelocity = velocityModelSpace _vehicle;
@@ -374,7 +682,7 @@ if (missionNamespace getVariable ["FIXICS_stabilityDebugLogging", false]) then {
     ];
 
     diag_log format [
-        "[FIXICS][Stability] class=%1 preset=%2 mode=%3 speedKmh=%4 slip=%5 yawRate=%6 lateralBefore=%7 lateralAfter=%8 longitudinalBefore=%9 longitudinalAfter=%10 verticalBefore=%11 verticalAfter=%12 recommendedLongitudinal=%13 unusedYawRecommendation=%14 rollApplied=%15 bank=%16 bankRate=%17 rollCorrection=%18 rollSeverity=%19 rollReason=%20 rollPreset=%21 rollEnabled=%22 rollEligible=%23 rollEvaluated=%24 rollActivationBank=%25 rollActivationRate=%26 rollTelemetryVersion=2",
+        "[FIXICS][Stability] class=%1 preset=%2 mode=%3 speedKmh=%4 slip=%5 yawRate=%6 lateralBefore=%7 lateralAfter=%8 longitudinalBefore=%9 longitudinalAfter=%10 verticalBefore=%11 verticalAfter=%12 recommendedLongitudinal=%13 unusedYawRecommendation=%14 rollApplied=%15 bank=%16 bankRate=%17 rollCorrection=%18 rollSeverity=%19 rollReason=%20 rollPreset=%21 rollEnabled=%22 swayBarEnabled=%23 frontSwayBarEnabled=%24 frontSwayBarStrength=%25 rearSwayBarEnabled=%26 rearSwayBarStrength=%27 swayBarStrengthMultiplier=%28 rollEligible=%29 rollEvaluated=%30 rollActivationBank=%31 rollActivationRate=%32 controlledSlipEnabled=%33 controlledSlipEligible=%34 controlledSlipApplied=%35 controlledSlipReason=%36 controlledSlipSteeringDemand=%37 controlledSlipLateralDemand=%38 controlledSlipRollRisk=%39 controlledSlipTerrainClass=%40 controlledSlipTerrainMultiplier=%41 controlledSlipGripReleaseFactor=%42 controlledSlipCorrection=%43 terrainGripClass=%44 tractionMultiplier=%45 accelerationTractionMultiplier=%46 brakingTractionMultiplier=%47 turningTractionMultiplier=%48 slopeTractionMultiplier=%49 wheelspinEstimate=%50 tireDragPenalty=%51 tireSteeringPenalty=%52 massModifier=%53 controlledSlipTelemetryVersion=1 rollTelemetryVersion=3",
         typeOf _vehicle,
         _preset,
         _recommendedMode,
@@ -397,10 +705,37 @@ if (missionNamespace getVariable ["FIXICS_stabilityDebugLogging", false]) then {
         _rollReason,
         _rollPreset,
         _rollEnabled,
+        _swayBarEnabled,
+        _frontSwayBarEnabled,
+        _frontSwayBarStrength,
+        _rearSwayBarEnabled,
+        _rearSwayBarStrength,
+        _swayBarStrengthMultiplier,
         _rollEligible,
         _rollEvaluated,
         _rollActivationBankDeg,
-        _rollActivationRateDeg
+        _rollActivationRateDeg,
+        _stabilityDecision getOrDefault ["controlledSlipEnabled", false],
+        _stabilityDecision getOrDefault ["controlledSlipEligible", false],
+        _stabilityDecision getOrDefault ["controlledSlipApplied", false],
+        _stabilityDecision getOrDefault ["controlledSlipReason", "not-evaluated"],
+        _stabilityDecision getOrDefault ["controlledSlipSteeringDemand", 0],
+        _stabilityDecision getOrDefault ["controlledSlipLateralDemand", 0],
+        _stabilityDecision getOrDefault ["controlledSlipRollRisk", 0],
+        _stabilityDecision getOrDefault ["controlledSlipTerrainClass", "unknown"],
+        _stabilityDecision getOrDefault ["controlledSlipTerrainMultiplier", 1],
+        _stabilityDecision getOrDefault ["controlledSlipGripReleaseFactor", 0],
+        _stabilityDecision getOrDefault ["controlledSlipCorrection", 0],
+        _stabilityDecision getOrDefault ["terrainGripClass", "UNKNOWN"],
+        _stabilityDecision getOrDefault ["tractionMultiplier", 1],
+        _stabilityDecision getOrDefault ["accelerationTractionMultiplier", 1],
+        _stabilityDecision getOrDefault ["brakingTractionMultiplier", 1],
+        _stabilityDecision getOrDefault ["turningTractionMultiplier", 1],
+        _stabilityDecision getOrDefault ["slopeTractionMultiplier", 1],
+        _stabilityDecision getOrDefault ["wheelspinEstimate", 0],
+        _stabilityDecision getOrDefault ["tireDragPenalty", 0],
+        _stabilityDecision getOrDefault ["tireSteeringPenalty", 0],
+        _stabilityDecision getOrDefault ["massModifier", 1]
     ];
 };
 

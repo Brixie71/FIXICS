@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 
-Push-Location $RepoRoot
+Push-Location -LiteralPath $RepoRoot
 try {
     if (Test-Path -LiteralPath ".\hemtt.exe") {
         & .\hemtt.exe check
@@ -26,6 +26,16 @@ try {
     }
 
     & powershell -ExecutionPolicy Bypass -File tests\unit\fixics-runtime-assist-recommendation.ps1
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
+    & powershell -ExecutionPolicy Bypass -File tests\unit\fixics-controlled-slip-recommendation.ps1
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
+    & powershell -ExecutionPolicy Bypass -File tests\unit\fixics-terrain-tire-recommendation.ps1
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }

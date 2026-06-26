@@ -1,5 +1,129 @@
 # Validation Log
 
+## 2026-06-22 - Controlled Slip Assist
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: failed, exit code 1
+- Automated coverage: TDD red check failed for missing Controlled Slip function registration, CBA settings, stringtable entries, and Stability telemetry fields.
+- Manual coverage: not run.
+- Notes: failure matched the approved Controlled Slip Assist static contract before implementation.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\unit\fixics-controlled-slip-recommendation.ps1`
+- Result: failed, exit code 1
+- Automated coverage: TDD red check failed because `fn_getControlledSlipRecommendation.sqf` did not exist.
+- Manual coverage: not run.
+- Notes: failure matched the approved pure recommendation function contract.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\unit\fixics-controlled-slip-recommendation.ps1`
+- Result: passed, exit code 0
+- Automated coverage: verified the pure Controlled Slip recommendation source contract.
+- Manual coverage: not run.
+- Notes: pure function has no vehicle mutation authority.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: verified function registration, controlled-slip settings, stability telemetry, runtime propagation, and handling telemetry fields.
+- Manual coverage: pending SQA.
+- Notes: first implementation is SQF-only and does not patch tire/friction config.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: governance static contracts passed after Controlled Slip implementation.
+- Manual coverage: not run.
+- Notes: no governance contract drift found.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\check.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT loaded FIXICS 1.0.0.1, rapified 2 addon configs, compiled 25 SQF files, checked 1 stringtable, and passed stability, roll stability, runtime assist, controlled slip, and mutation tests.
+- Manual coverage: not run.
+- Notes: HEMTT still reports the existing stringtable sort warning.
+
+- Command: `git diff --check`
+- Result: passed, exit code 0
+- Automated coverage: whitespace validation passed.
+- Manual coverage: not run.
+- Notes: Git reported expected CRLF normalization warnings only.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\build.ps1`
+- Result: blocked, exit code 1
+- Automated coverage: build did not start because `.hemttout\build` could not be removed.
+- Manual coverage: not run.
+- Notes: another process is holding the build output directory open; rerun after closing Arma or unloading the addon.
+
+## 2026-06-21 - Sway Bar Assist setting
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: failed, exit code 1
+- Automated coverage: TDD red check failed for missing front/rear sway bar settings, stringtable labels, Stability telemetry, Runtime Assist telemetry, and handling evidence fields.
+- Manual coverage: not run.
+- Notes: failure matched the approved front/rear sway bar contract before implementation.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: verified front/rear sway bar CBA settings, defaults, telemetry version 3, suppression reason, Runtime Assist propagation, and handling evidence fields.
+- Manual coverage: pending SQA.
+- Notes: front/rear sway bars scale the existing yaw/lateral and roll stability calculations as an approximation; they do not patch Arma suspension config.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: governance static contracts passed after front/rear sway bar implementation.
+- Manual coverage: not run.
+- Notes: no governance contract drift found.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\check.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT loaded FIXICS 1.0.0.1, rapified 2 addon configs, compiled 24 SQF files, checked 1 stringtable, and passed stability, roll stability, runtime assist, and mutation tests.
+- Manual coverage: not run.
+- Notes: the new SQF style warnings were cleaned; HEMTT still reports the existing stringtable sort warning.
+
+- Command: `git diff --check`
+- Result: passed, exit code 0
+- Automated coverage: whitespace validation passed.
+- Manual coverage: not run.
+- Notes: Git reported expected CRLF normalization warnings only.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\build.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT built 1 PBO after compiling 24 SQF files and checking 1 stringtable.
+- Manual coverage: not run.
+- Notes: updated local build artifact is `.hemttout/build/addons/fixics_main.pbo`; HEMTT still reports the existing stringtable sort warning.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: failed, exit code 1
+- Automated coverage: TDD red check failed for missing `FIXICS_swayBarEnabled` default registration, CBA setting registration, and stringtable entries.
+- Manual coverage: not run.
+- Notes: failure matched the approved new setting contract before implementation.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: verified the Sway Bar Assist CBA setting, default enabled state, stringtable label/tooltip, roll suppression reason, and stability telemetry field.
+- Manual coverage: pending SQA.
+- Notes: the setting gates only Roll Stability Assist anti-roll correction; ABS and yaw/lateral stability are unchanged.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: governance static contracts passed.
+- Manual coverage: not run.
+- Notes: no governance contract drift found.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\check.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT loaded FIXICS 1.0.0.1, rapified 2 addon configs, compiled 24 SQF files, checked 1 stringtable, and passed stability, roll stability, runtime assist, and mutation tests.
+- Manual coverage: not run.
+- Notes: HEMTT still reports the existing stringtable sort warning.
+
+- Command: `git diff --check`
+- Result: passed, exit code 0
+- Automated coverage: whitespace validation passed.
+- Manual coverage: not run.
+- Notes: Git reported expected CRLF normalization warnings only.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\build.ps1`
+- Result: blocked, exit code 1
+- Automated coverage: build did not start because `.hemttout\build` could not be removed.
+- Manual coverage: not run.
+- Notes: another process is holding the build output directory open; rerun after closing Arma or unloading the addon.
+
 Record validation runs that matter for implementation, review, or release decisions.
 
 ## Entries
@@ -628,3 +752,28 @@ Record validation runs that matter for implementation, review, or release decisi
 - Automated coverage: HEMTT rapified 2 addon configs, compiled 16 SQF files, checked 1 stringtable, and built 1 PBO.
 - Manual coverage: not run.
 - Notes: packaged fallback artifact is `.hemttout/release/addons/fixics_main.pbo`; HEMTT warned that Arma 3 Tools was not installed, but no supported source required binarization.
+### 2026-06-27 - Terrain Tire Behavior
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-governance-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: governance static checks passed.
+- Manual coverage: not run.
+- Notes: no governance rule violations were reported.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tests\integration\fixics-vehicle-physics-static.ps1`
+- Result: passed, exit code 0
+- Automated coverage: verified Terrain Tire registration, settings, recommendation contracts, Runtime Assist propagation, no-amplification clamps, stale-state clearing, telemetry fields, and mutation guards.
+- Manual coverage: not run.
+- Notes: mutation checks killed stale yaw state, longitudinal velocity mutation, model-space velocity replacement, stale vertical diagnostics, and related vehicle physics regressions.
+
+- Command: `powershell -ExecutionPolicy Bypass -File tools\check.ps1`
+- Result: passed, exit code 0
+- Automated coverage: HEMTT loaded FIXICS 1.0.0.1, rapified 2 addon configs, compiled 26 SQF files, checked 1 stringtable, and ran stability, roll, runtime assist, controlled slip, Terrain Tire, and mutation tests.
+- Manual coverage: not run.
+- Notes: HEMTT reported non-blocking style warnings for `select` suggestions in `fn_applyVehicleStability.sqf` and `fn_getTerrainTireRecommendation.sqf`, plus the existing stringtable sort warning.
+
+- Command: `git diff --check`
+- Result: passed, exit code 0
+- Automated coverage: no whitespace errors were reported.
+- Manual coverage: not run.
+- Notes: Git reported line-ending normalization warnings only.

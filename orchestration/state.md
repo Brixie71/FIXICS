@@ -26,8 +26,10 @@ Current Phase 1 systems:
 - Optional Native Driver Assist v2 advisory math for ABS and direction transitions, disabled by default.
 - Vehicle Stability Assistance for the approved `EMP_Polaris_DAGOR`, `B_LSV_01_unarmed_F`, `LOP_IA_Offroad`, and `B_G_Offroad_01_F` classes, applying bounded lateral damping only through the local driver controller.
 - Roll Stability Assist, server-global and enabled by default, applying bounded model-space vertical damping for registered vehicles and awaiting SQA manual validation on registered LSV/Offroad classes.
+- Sway Bar Assist, server-global and enabled by default, exposes front and rear enabled/strength settings that scale Roll Stability Assist and yaw/lateral stability assistance as an approximation, not true per-axle suspension simulation.
 - Roll Stability presets are available as Realistic Stable, Offroad Assist, Aggressive SQA, and Custom; Aggressive SQA preserves SQA's max-tested rollover-assist values.
 - Runtime Assist Coordinator, local-player only, coordinating ABS, slope rollback, driver intent, Vehicle Stability Assistance, Roll Stability Assist, terrain, mass, per-system presets, and native advisory telemetry.
+- Terrain Tire Behavior, server-global enabled and local-player applied, adding SQF-first terrain, traction, wheelspin, tire-pressure, deflation, drag, steering-penalty, and mass recommendations for registered FIXICS vehicles through Runtime Assist and telemetry.
 
 ## Last Decision
 
@@ -52,6 +54,12 @@ Current Phase 1 systems:
 - Runtime Assist compact telemetry was added on 2026-06-21 after SQA DAGOR/tarmac logs showed long handling sample lines could truncate before final Runtime Assist fields.
 - Roll Stability recommendation now reports an explicit telemetry reason and uses a bounded `severity-anchor` correction when roll severity exists but vertical-speed damping would otherwise produce a zero correction. SQA manual gameplay validation is still required.
 - Roll Stability eligibility telemetry version 2 was added on 2026-06-21. SQA telemetry then proved roll was enabled, eligible, and evaluated under `AGGRESSIVE_SQA`, but correction telemetry remained stale because `_rollRecommendation params [` did not update the outer variables used by the stability log. The controller now extracts recommendation fields explicitly.
+- SQA telemetry on 2026-06-21 proved Roll Stability Assist correction is active under `AGGRESSIVE_SQA`. SQA then approved adding a Sway Bar Assist enable/disable setting as a separate anti-roll gate for Roll Stability Assist only.
+- SQA approved front and rear Sway Bar settings on 2026-06-21. The accepted boundary is a global/server setting approximation that feeds Roll Stability Assist and yaw/lateral stability damping through a combined multiplier, with telemetry version 3 exposing front/rear values.
+- Controlled Slip Assist requirements were captured on 2026-06-22 in `docs/requirements/controlled-slip-assist-requirements.md`. SQA approved the car-first direction: use real tire behavior and GTA IV / Driver 3 / WRC as feel references, implement first through SQF against Arma exposed behavior, and defer tire/friction config patches until evidence supports a separate config plan.
+- Controlled Slip Assist design was drafted on 2026-06-22 in `docs/superpowers/specs/2026-06-22-controlled-slip-assist-design.md`. The spec keeps the feature car/light-vehicle first, SQF-first, local-player only, telemetry-heavy, and explicitly avoids broad tire/friction config patches or forced upright behavior.
+- Controlled Slip Assist implementation was added on 2026-06-22 after SQA approved the requirements, design, and implementation plan. It adds a pure recommendation function, conservative CBA settings, local stability-path integration, Runtime Assist propagation, and telemetry fields for SQA evidence.
+- Terrain Tire Behavior requirements and design were approved by SQA on 2026-06-26. Implementation was added on 2026-06-27 after SQA chose subagent-driven execution. The feature adds `FIXICS_fnc_getTerrainTireRecommendation`, CBA settings for Terrain Tire and tire pressure behavior, Runtime Assist propagation, bounded non-amplifying stability-path multipliers, local tire-air state persistence, debug logging, compact Terrain Tire telemetry, and SQA evidence matrix rows for paved/asphalt, dirt, grass, sand, rock/rough, and tire damage. Longitudinal tire drag, acceleration traction, and braking traction remain recommendation/telemetry data only until a safe existing-path integration is separately approved. Manual SQA gameplay validation is pending.
 
 ## Constraints
 

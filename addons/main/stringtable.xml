@@ -55,6 +55,48 @@
         <Key ID="STR_FIXICS_SETTING_ABS_SLOPE_COMPENSATION_TOOLTIP">
             <Original>Additional braking authority used when braking downhill.</Original>
         </Key>
+        <Key ID="STR_FIXICS_SETTING_CONTROLLED_SLIP_ACTIVATION_SPEED">
+            <Original>Controlled slip activation speed</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_CONTROLLED_SLIP_ACTIVATION_SPEED_TOOLTIP">
+            <Original>Server-global speed in km/h before Controlled Slip Assist may release lateral grip during strong steering.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_CONTROLLED_SLIP_DEBUG_LOGGING">
+            <Original>Controlled slip debug logging</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_CONTROLLED_SLIP_DEBUG_LOGGING_TOOLTIP">
+            <Original>Writes Controlled Slip Assist decisions to the RPT for SQA telemetry review.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_CONTROLLED_SLIP_ENABLED">
+            <Original>Enable controlled slip assist</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_CONTROLLED_SLIP_ENABLED_TOOLTIP">
+            <Original>Allows bounded lateral scrub during high-speed steering so eligible cars can slide before trip rollover. This is not tire config simulation.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_CONTROLLED_SLIP_MAXIMUM_RELEASE">
+            <Original>Controlled slip maximum release</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_CONTROLLED_SLIP_MAXIMUM_RELEASE_TOOLTIP">
+            <Original>Server-global cap for each controlled lateral release correction. Higher values allow stronger sliding response.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_CONTROLLED_SLIP_STEERING_THRESHOLD">
+            <Original>Controlled slip steering threshold</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_CONTROLLED_SLIP_STEERING_THRESHOLD_TOOLTIP">
+            <Original>Normalized steering demand required before Controlled Slip Assist can activate. Higher values reserve it for harder steering.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_CONTROLLED_SLIP_STRENGTH">
+            <Original>Controlled slip strength</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_CONTROLLED_SLIP_STRENGTH_TOOLTIP">
+            <Original>How strongly Controlled Slip Assist permits lateral scrub when speed, steering, terrain, and roll risk conditions are met.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_CONTROLLED_SLIP_TERRAIN_INFLUENCE">
+            <Original>Controlled slip terrain influence</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_CONTROLLED_SLIP_TERRAIN_INFLUENCE_TOOLTIP">
+            <Original>Allows paved, dirt, grass, and unknown terrain classes to modify controlled slip strength.</Original>
+        </Key>
         <Key ID="STR_FIXICS_SETTING_DIRECTION_CHANGE_THRESHOLD">
             <Original>Direction change threshold</Original>
         </Key>
@@ -97,6 +139,18 @@
         <Key ID="STR_FIXICS_SETTING_DRIVER_CONTROLLER_INTERVAL_TOOLTIP">
             <Original>Minimum time in seconds between local driver controller updates.</Original>
         </Key>
+        <Key ID="STR_FIXICS_SETTING_FRONT_SWAY_BAR_ENABLED">
+            <Original>Enable front sway bar</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_FRONT_SWAY_BAR_ENABLED_TOOLTIP">
+            <Original>Server-global front sway bar contribution for turn-in, braking, and nose-heavy rollover assistance. This is a FIXICS stability approximation, not true per-axle suspension simulation.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_FRONT_SWAY_BAR_STRENGTH">
+            <Original>Front sway bar strength</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_FRONT_SWAY_BAR_STRENGTH_TOOLTIP">
+            <Original>Front sway bar contribution from zero to one. Zero behaves like the front sway bar is disabled.</Original>
+        </Key>
         <Key ID="STR_FIXICS_SETTING_HANDBRAKE_INPUT_HOLD">
             <Original>Hold</Original>
         </Key>
@@ -120,6 +174,18 @@
         </Key>
         <Key ID="STR_FIXICS_SETTING_NATIVE_SLOPE_CONTROL_TOOLTIP">
             <Original>Uses the optional FIXICSPhysics native extension for slope rollback recommendations. Leave disabled unless the extension binary is installed.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_REAR_SWAY_BAR_ENABLED">
+            <Original>Enable rear sway bar</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_REAR_SWAY_BAR_ENABLED_TOOLTIP">
+            <Original>Server-global rear sway bar contribution for sliding, rear lift, and steering recovery rollover assistance. This is a FIXICS stability approximation, not true per-axle suspension simulation.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_REAR_SWAY_BAR_STRENGTH">
+            <Original>Rear sway bar strength</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_REAR_SWAY_BAR_STRENGTH_TOOLTIP">
+            <Original>Rear sway bar contribution from zero to one. Zero behaves like the rear sway bar is disabled.</Original>
         </Key>
         <Key ID="STR_FIXICS_SETTING_ROLL_ACTIVATION_BANK">
             <Original>Roll activation bank</Original>
@@ -333,6 +399,54 @@
         </Key>
         <Key ID="STR_FIXICS_SETTING_STATIONARY_BRAKE_BYPASS_TOOLTIP">
             <Original>Speed below which brake/reverse input stops being treated as a persistent idle hold.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_SWAY_BAR_ENABLED">
+            <Original>Enable sway bar assist</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_SWAY_BAR_ENABLED_TOOLTIP">
+            <Original>Server-global anti-roll gate for Roll Stability Assist. Disable it to allow natural body roll while leaving yaw/lateral stability and ABS unchanged.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_TERRAIN_TIRE_ENABLED">
+            <Original>Enable terrain tire behavior</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_TERRAIN_TIRE_ENABLED_TOOLTIP">
+            <Original>Enables FIXICS terrain-aware tire recommendations for eligible vehicles.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_TIRE_DEBUG_LOGGING">
+            <Original>Terrain tire debug logging</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_TIRE_DEBUG_LOGGING_TOOLTIP">
+            <Original>Writes Terrain Tire recommendation inputs and outputs to the RPT for SQA diagnostics.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_TIRE_DEFLATION_RATE">
+            <Original>Tire deflation rate</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_TIRE_DEFLATION_RATE_TOOLTIP">
+            <Original>Normalized rate used by Terrain Tire behavior when pressure loss is considered.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_TIRE_DRAG_STRENGTH">
+            <Original>Tire drag strength</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_TIRE_DRAG_STRENGTH_TOOLTIP">
+            <Original>How strongly terrain tire recommendations may add drag on low-mobility surfaces.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_TIRE_MINIMUM_MOBILITY">
+            <Original>Minimum tire mobility</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_TIRE_MINIMUM_MOBILITY_TOOLTIP">
+            <Original>Lower bound for mobility retained by terrain tire recommendations.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_TIRE_PRESSURE_ENABLED">
+            <Original>Enable tire pressure behavior</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_TIRE_PRESSURE_ENABLED_TOOLTIP">
+            <Original>Allows terrain tire recommendations to account for tire pressure and mobility loss.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_TIRE_STEERING_PENALTY">
+            <Original>Tire steering penalty</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_TIRE_STEERING_PENALTY_TOOLTIP">
+            <Original>How strongly reduced tire mobility may limit steering recommendations.</Original>
         </Key>
         <Key ID="STR_FIXICS_VR_CHAT">
             <Original>[FIXICS] Hello world from VR.</Original>

@@ -51,6 +51,25 @@ missionNamespace setVariable ["FIXICS_stabilityCountersteerStrength", 0.08, fals
 missionNamespace setVariable ["FIXICS_stabilityMaximumCorrection", 0.12, false];
 missionNamespace setVariable ["FIXICS_rollStabilityPreset", 0, false];
 missionNamespace setVariable ["FIXICS_rollStabilityEnabled", true, false];
+missionNamespace setVariable ["FIXICS_swayBarEnabled", true, false];
+missionNamespace setVariable ["FIXICS_frontSwayBarEnabled", true, false];
+missionNamespace setVariable ["FIXICS_frontSwayBarStrength", 0.5, false];
+missionNamespace setVariable ["FIXICS_rearSwayBarEnabled", true, false];
+missionNamespace setVariable ["FIXICS_rearSwayBarStrength", 0.5, false];
+missionNamespace setVariable ["FIXICS_controlledSlipEnabled", true, false];
+missionNamespace setVariable ["FIXICS_controlledSlipActivationSpeedKmh", 55, false];
+missionNamespace setVariable ["FIXICS_controlledSlipSteeringThreshold", 0.65, false];
+missionNamespace setVariable ["FIXICS_controlledSlipStrength", 0.16, false];
+missionNamespace setVariable ["FIXICS_controlledSlipMaximumRelease", 0.22, false];
+missionNamespace setVariable ["FIXICS_controlledSlipTerrainInfluence", true, false];
+missionNamespace setVariable ["FIXICS_controlledSlipDebugLogging", false, false];
+missionNamespace setVariable ["FIXICS_terrainTireEnabled", true, false];
+missionNamespace setVariable ["FIXICS_tirePressureEnabled", true, false];
+missionNamespace setVariable ["FIXICS_tireDeflationRate", 0.025, false];
+missionNamespace setVariable ["FIXICS_tireMinimumMobility", 0.35, false];
+missionNamespace setVariable ["FIXICS_tireDragStrength", 0.35, false];
+missionNamespace setVariable ["FIXICS_tireSteeringPenalty", 0.30, false];
+missionNamespace setVariable ["FIXICS_tireDebugLogging", false, false];
 missionNamespace setVariable ["FIXICS_rollActivationBankDeg", 18, false];
 missionNamespace setVariable ["FIXICS_rollActivationRateDeg", 45, false];
 missionNamespace setVariable ["FIXICS_rollStrength", 0.08, false];
@@ -495,6 +514,234 @@ missionNamespace setVariable ["FIXICS_runtimeAssistDebugLogging", false, false];
     ],
     ["FIXICS", "Vehicle Stability"],
     true,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_swayBarEnabled",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_SWAY_BAR_ENABLED",
+        localize "STR_FIXICS_SETTING_SWAY_BAR_ENABLED_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    true,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_frontSwayBarEnabled",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_FRONT_SWAY_BAR_ENABLED",
+        localize "STR_FIXICS_SETTING_FRONT_SWAY_BAR_ENABLED_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    true,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_frontSwayBarStrength",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_FRONT_SWAY_BAR_STRENGTH",
+        localize "STR_FIXICS_SETTING_FRONT_SWAY_BAR_STRENGTH_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [0, 1, 0.5, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_rearSwayBarEnabled",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_REAR_SWAY_BAR_ENABLED",
+        localize "STR_FIXICS_SETTING_REAR_SWAY_BAR_ENABLED_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    true,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_rearSwayBarStrength",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_REAR_SWAY_BAR_STRENGTH",
+        localize "STR_FIXICS_SETTING_REAR_SWAY_BAR_STRENGTH_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [0, 1, 0.5, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_controlledSlipEnabled",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_CONTROLLED_SLIP_ENABLED",
+        localize "STR_FIXICS_SETTING_CONTROLLED_SLIP_ENABLED_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    true,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_controlledSlipActivationSpeedKmh",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_CONTROLLED_SLIP_ACTIVATION_SPEED",
+        localize "STR_FIXICS_SETTING_CONTROLLED_SLIP_ACTIVATION_SPEED_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [20, 140, 55, 0],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_controlledSlipSteeringThreshold",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_CONTROLLED_SLIP_STEERING_THRESHOLD",
+        localize "STR_FIXICS_SETTING_CONTROLLED_SLIP_STEERING_THRESHOLD_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [0.1, 1, 0.65, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_controlledSlipStrength",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_CONTROLLED_SLIP_STRENGTH",
+        localize "STR_FIXICS_SETTING_CONTROLLED_SLIP_STRENGTH_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [0, 0.5, 0.16, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_controlledSlipMaximumRelease",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_CONTROLLED_SLIP_MAXIMUM_RELEASE",
+        localize "STR_FIXICS_SETTING_CONTROLLED_SLIP_MAXIMUM_RELEASE_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    [0.01, 0.6, 0.22, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_controlledSlipTerrainInfluence",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_CONTROLLED_SLIP_TERRAIN_INFLUENCE",
+        localize "STR_FIXICS_SETTING_CONTROLLED_SLIP_TERRAIN_INFLUENCE_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    true,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_controlledSlipDebugLogging",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_CONTROLLED_SLIP_DEBUG_LOGGING",
+        localize "STR_FIXICS_SETTING_CONTROLLED_SLIP_DEBUG_LOGGING_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Stability"],
+    false,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_terrainTireEnabled",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_TERRAIN_TIRE_ENABLED",
+        localize "STR_FIXICS_SETTING_TERRAIN_TIRE_ENABLED_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    true,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_tirePressureEnabled",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_TIRE_PRESSURE_ENABLED",
+        localize "STR_FIXICS_SETTING_TIRE_PRESSURE_ENABLED_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    true,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_tireDeflationRate",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_TIRE_DEFLATION_RATE",
+        localize "STR_FIXICS_SETTING_TIRE_DEFLATION_RATE_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    [0, 1, 0.025, 3],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_tireMinimumMobility",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_TIRE_MINIMUM_MOBILITY",
+        localize "STR_FIXICS_SETTING_TIRE_MINIMUM_MOBILITY_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    [0.05, 1, 0.35, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_tireDragStrength",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_TIRE_DRAG_STRENGTH",
+        localize "STR_FIXICS_SETTING_TIRE_DRAG_STRENGTH_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    [0, 1, 0.35, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_tireSteeringPenalty",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_TIRE_STEERING_PENALTY",
+        localize "STR_FIXICS_SETTING_TIRE_STEERING_PENALTY_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    [0, 1, 0.30, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_tireDebugLogging",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_TIRE_DEBUG_LOGGING",
+        localize "STR_FIXICS_SETTING_TIRE_DEBUG_LOGGING_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    false,
     1
 ] call CBA_fnc_addSetting;
 

@@ -6,7 +6,7 @@
  * Arguments:
  *   0: Vehicle to inspect <OBJECT>
  *   1: Runtime capture duration in seconds <NUMBER> (default: 0, range: 0-180)
- *   2: Runtime sample interval in seconds <NUMBER> (default: 0.1, range: 0.05-1)
+ *   2: Runtime sample interval in seconds <NUMBER> (default: 0.1, range: 0.1-1)
  *
  * Return: <BOOL> true when evidence was logged or capture was started
  * Locality: any
@@ -73,6 +73,7 @@ private _surfacePosition = getPosASL _vehicle;
 private _terrainNormal = surfaceNormal _surfacePosition;
 private _terrainNormalZ = ((_terrainNormal # 2) max -1) min 1;
 private _runtimeAssistDecision = _vehicle getVariable ["FIXICS_runtimeAssistLastDecision", createHashMap];
+private _terrainTireRecommendation = _vehicle getVariable ["FIXICS_terrainTireRecommendation", createHashMap];
 private _hitPointDamage = getAllHitPointsDamage _vehicle;
 private _wheelHitpointDamage = [];
 if ((count _hitPointDamage) >= 3) then {
@@ -125,6 +126,34 @@ private _values = [
     ["runtimeAssistMassMultiplier", _runtimeAssistDecision getOrDefault ["massMultiplier", 1]],
     ["runtimeAssistSuppressedAssists", _runtimeAssistDecision getOrDefault ["suppressedAssists", []]],
     ["runtimeAssistFinalCorrection", _runtimeAssistDecision getOrDefault ["finalCorrection", 0]],
+    ["runtimeAssistSwayBarStrengthMultiplier", _runtimeAssistDecision getOrDefault ["swayBarStrengthMultiplier", 1]],
+    ["frontSwayBarEnabled", _runtimeAssistDecision getOrDefault ["frontSwayBarEnabled", true]],
+    ["frontSwayBarStrength", _runtimeAssistDecision getOrDefault ["frontSwayBarStrength", 0.5]],
+    ["rearSwayBarEnabled", _runtimeAssistDecision getOrDefault ["rearSwayBarEnabled", true]],
+    ["rearSwayBarStrength", _runtimeAssistDecision getOrDefault ["rearSwayBarStrength", 0.5]],
+    ["controlledSlipEligible", _runtimeAssistDecision getOrDefault ["controlledSlipEligible", false]],
+    ["controlledSlipApplied", _runtimeAssistDecision getOrDefault ["controlledSlipApplied", false]],
+    ["controlledSlipReason", _runtimeAssistDecision getOrDefault ["controlledSlipReason", "not-evaluated"]],
+    ["controlledSlipGripReleaseFactor", _runtimeAssistDecision getOrDefault ["controlledSlipGripReleaseFactor", 0]],
+    ["controlledSlipCorrection", _runtimeAssistDecision getOrDefault ["controlledSlipCorrection", 0]],
+    ["terrainTireEnabled", _terrainTireRecommendation getOrDefault ["enabled", false]],
+    ["terrainTireEligible", _terrainTireRecommendation getOrDefault ["eligible", false]],
+    ["terrainTireReason", _terrainTireRecommendation getOrDefault ["reason", "not-evaluated"]],
+    ["surfaceType", _terrainTireRecommendation getOrDefault ["surfaceType", surfaceType (getPosWorld _vehicle)]],
+    ["terrainGripClass", _terrainTireRecommendation getOrDefault ["terrainGripClass", "unknown"]],
+    ["tractionMultiplier", _terrainTireRecommendation getOrDefault ["tractionMultiplier", 1]],
+    ["accelerationTractionMultiplier", _terrainTireRecommendation getOrDefault ["accelerationTractionMultiplier", 1]],
+    ["brakingTractionMultiplier", _terrainTireRecommendation getOrDefault ["brakingTractionMultiplier", 1]],
+    ["turningTractionMultiplier", _terrainTireRecommendation getOrDefault ["turningTractionMultiplier", 1]],
+    ["slopeTractionMultiplier", _terrainTireRecommendation getOrDefault ["slopeTractionMultiplier", 1]],
+    ["wheelspinEstimate", _terrainTireRecommendation getOrDefault ["wheelspinEstimate", 0]],
+    ["tireAirState", _terrainTireRecommendation getOrDefault ["tireAirState", 1]],
+    ["tireDeflationState", _terrainTireRecommendation getOrDefault ["tireDeflationState", "unknown"]],
+    ["tireDragPenalty", _terrainTireRecommendation getOrDefault ["tireDragPenalty", 0]],
+    ["tireSteeringPenalty", _terrainTireRecommendation getOrDefault ["tireSteeringPenalty", 0]],
+    ["massModifier", _terrainTireRecommendation getOrDefault ["massModifier", 1]],
+    ["terrainTireTelemetryVersion", _terrainTireRecommendation getOrDefault ["terrainTireTelemetryVersion", 0]],
+    ["perWheelMode", _terrainTireRecommendation getOrDefault ["perWheelMode", "aggregate"]],
     ["surface", surfaceType (getPosWorld _vehicle)]
 ];
 
@@ -137,7 +166,7 @@ if (_duration > 0) then {
     };
 
     _duration = (_duration max 5) min 180;
-    _interval = (_interval max 0.05) min 1;
+    _interval = (_interval max 0.1) min 1;
     missionNamespace setVariable ["FIXICS_handlingConfigLogRunning", true];
 
     [_vehicle, _duration, _interval] spawn {
@@ -156,13 +185,22 @@ if (_duration > 0) then {
             && {diag_tickTime < _deadline}
             && {missionNamespace getVariable ["FIXICS_handlingConfigLogRunning", false]}
         } do {
-            private _leftInput = inputAction "CarLeft";
-            private _rightInput = inputAction "CarRight";
-            private _forwardInput = inputAction "CarForward";
-            private _fastForwardInput = inputAction "CarFastForward";
-            private _slowForwardInput = inputAction "CarSlowForward";
-            private _backInput = inputAction "CarBack";
-            private _handbrakeInput = inputAction "CarHandBrake";
+            private _leftInput = 0;
+            private _rightInput = 0;
+            private _forwardInput = 0;
+            private _fastForwardInput = 0;
+            private _slowForwardInput = 0;
+            private _backInput = 0;
+            private _handbrakeInput = 0;
+            if (hasInterface) then {
+                _leftInput = inputAction "CarLeft";
+                _rightInput = inputAction "CarRight";
+                _forwardInput = inputAction "CarForward";
+                _fastForwardInput = inputAction "CarFastForward";
+                _slowForwardInput = inputAction "CarSlowForward";
+                _backInput = inputAction "CarBack";
+                _handbrakeInput = inputAction "CarHandBrake";
+            };
             private _now = diag_tickTime;
             private _elapsed = (_now - _previousTime) max 0.001;
             private _heading = getDir _vehicle;
@@ -182,6 +220,35 @@ if (_duration > 0) then {
             private _runtimeAssistMassMultiplier = _runtimeAssistDecision getOrDefault ["massMultiplier", 1];
             private _runtimeAssistSuppressedAssists = _runtimeAssistDecision getOrDefault ["suppressedAssists", []];
             private _runtimeAssistFinalCorrection = _runtimeAssistDecision getOrDefault ["finalCorrection", 0];
+            private _runtimeAssistSwayBarStrengthMultiplier = _runtimeAssistDecision getOrDefault ["swayBarStrengthMultiplier", 1];
+            private _frontSwayBarEnabled = _runtimeAssistDecision getOrDefault ["frontSwayBarEnabled", true];
+            private _frontSwayBarStrength = _runtimeAssistDecision getOrDefault ["frontSwayBarStrength", 0.5];
+            private _rearSwayBarEnabled = _runtimeAssistDecision getOrDefault ["rearSwayBarEnabled", true];
+            private _rearSwayBarStrength = _runtimeAssistDecision getOrDefault ["rearSwayBarStrength", 0.5];
+            private _controlledSlipEligible = _runtimeAssistDecision getOrDefault ["controlledSlipEligible", false];
+            private _controlledSlipApplied = _runtimeAssistDecision getOrDefault ["controlledSlipApplied", false];
+            private _controlledSlipReason = _runtimeAssistDecision getOrDefault ["controlledSlipReason", "not-evaluated"];
+            private _controlledSlipGripReleaseFactor = _runtimeAssistDecision getOrDefault ["controlledSlipGripReleaseFactor", 0];
+            private _controlledSlipCorrection = _runtimeAssistDecision getOrDefault ["controlledSlipCorrection", 0];
+            private _terrainTireRecommendation = _vehicle getVariable ["FIXICS_terrainTireRecommendation", createHashMap];
+            private _terrainTireEnabled = _terrainTireRecommendation getOrDefault ["enabled", false];
+            private _terrainTireEligible = _terrainTireRecommendation getOrDefault ["eligible", false];
+            private _terrainTireReason = _terrainTireRecommendation getOrDefault ["reason", "not-evaluated"];
+            private _surfaceType = _terrainTireRecommendation getOrDefault ["surfaceType", surfaceType (getPosWorld _vehicle)];
+            private _terrainGripClass = _terrainTireRecommendation getOrDefault ["terrainGripClass", "unknown"];
+            private _tractionMultiplier = _terrainTireRecommendation getOrDefault ["tractionMultiplier", 1];
+            private _accelerationTractionMultiplier = _terrainTireRecommendation getOrDefault ["accelerationTractionMultiplier", 1];
+            private _brakingTractionMultiplier = _terrainTireRecommendation getOrDefault ["brakingTractionMultiplier", 1];
+            private _turningTractionMultiplier = _terrainTireRecommendation getOrDefault ["turningTractionMultiplier", 1];
+            private _slopeTractionMultiplier = _terrainTireRecommendation getOrDefault ["slopeTractionMultiplier", 1];
+            private _wheelspinEstimate = _terrainTireRecommendation getOrDefault ["wheelspinEstimate", 0];
+            private _tireAirState = _terrainTireRecommendation getOrDefault ["tireAirState", 1];
+            private _tireDeflationState = _terrainTireRecommendation getOrDefault ["tireDeflationState", "unknown"];
+            private _tireDragPenalty = _terrainTireRecommendation getOrDefault ["tireDragPenalty", 0];
+            private _tireSteeringPenalty = _terrainTireRecommendation getOrDefault ["tireSteeringPenalty", 0];
+            private _massModifier = _terrainTireRecommendation getOrDefault ["massModifier", 1];
+            private _terrainTireTelemetryVersion = _terrainTireRecommendation getOrDefault ["terrainTireTelemetryVersion", 0];
+            private _perWheelMode = _terrainTireRecommendation getOrDefault ["perWheelMode", "aggregate"];
             private _hitPointDamage = getAllHitPointsDamage _vehicle;
             private _wheelHitpointDamage = [];
             if ((count _hitPointDamage) >= 3) then {
@@ -196,7 +263,7 @@ if (_duration > 0) then {
             };
 
             diag_log format [
-                "[FIXICS] Vehicle handling sample: t=%1 vehicle=%2 input=[drive=%3,fast=%4,slow=%5,reverse=%6,engineHandbrake=%7,left=%8,right=%9,steerNet=%10] speedKmh=%11 velocityWorld=%12 velocityModelSpace=%13 positionWorld=%14 positionASL=%15 heading=%16 headingDelta=%17 yawRate=%18 pitch=%19 pitchRate=%20 bank=%21 bankRate=%22 vectorDir=%23 vectorUp=%24 terrainNormal=%25 slopeFactor=%26 isTouchingGround=%27 wheelHitpointDamageProxy=%28 FIXICS_driverState=%29 FIXICS_handbrakeEnabled=%30 FIXICS_absEnabled=%31 FIXICS_stabilityAssistMode=%32 surface=%33 runtimeAssistPriorityWinner=%34 runtimeAssistTerrainMultiplier=%35 runtimeAssistMassMultiplier=%36 runtimeAssistSuppressedAssists=%37 runtimeAssistFinalCorrection=%38",
+                "[FIXICS] Vehicle handling sample: t=%1 vehicle=%2 input=[drive=%3,fast=%4,slow=%5,reverse=%6,engineHandbrake=%7,left=%8,right=%9,steerNet=%10] speedKmh=%11 velocityWorld=%12 velocityModelSpace=%13 positionWorld=%14 positionASL=%15 heading=%16 headingDelta=%17 yawRate=%18 pitch=%19 pitchRate=%20 bank=%21 bankRate=%22 vectorDir=%23 vectorUp=%24 terrainNormal=%25 slopeFactor=%26 isTouchingGround=%27 wheelHitpointDamageProxy=%28 FIXICS_driverState=%29 FIXICS_handbrakeEnabled=%30 FIXICS_absEnabled=%31 FIXICS_stabilityAssistMode=%32 surface=%33 runtimeAssistPriorityWinner=%34 runtimeAssistTerrainMultiplier=%35 runtimeAssistMassMultiplier=%36 runtimeAssistSuppressedAssists=%37 runtimeAssistFinalCorrection=%38 runtimeAssistSwayBarStrengthMultiplier=%39 frontSwayBarEnabled=%40 frontSwayBarStrength=%41 rearSwayBarEnabled=%42 rearSwayBarStrength=%43 controlledSlipEligible=%44 controlledSlipApplied=%45 controlledSlipReason=%46 controlledSlipGripReleaseFactor=%47 controlledSlipCorrection=%48",
                 _now - _startedAt,
                 typeOf _vehicle,
                 _forwardInput,
@@ -234,11 +301,21 @@ if (_duration > 0) then {
                 _runtimeAssistTerrainMultiplier,
                 _runtimeAssistMassMultiplier,
                 _runtimeAssistSuppressedAssists,
-                _runtimeAssistFinalCorrection
+                _runtimeAssistFinalCorrection,
+                _runtimeAssistSwayBarStrengthMultiplier,
+                _frontSwayBarEnabled,
+                _frontSwayBarStrength,
+                _rearSwayBarEnabled,
+                _rearSwayBarStrength,
+                _controlledSlipEligible,
+                _controlledSlipApplied,
+                _controlledSlipReason,
+                _controlledSlipGripReleaseFactor,
+                _controlledSlipCorrection
             ];
 
             diag_log format [
-                "[FIXICS][RuntimeAssistSample] t=%1 vehicle=%2 state=%3 speedKmh=%4 surface=%5 priority=%6 terrain=%7 mass=%8 suppressed=%9 finalCorrection=%10 bank=%11 bankRate=%12 yawRate=%13 grounded=%14",
+                "[FIXICS][RuntimeAssistSample] t=%1 vehicle=%2 state=%3 speedKmh=%4 surface=%5 priority=%6 terrain=%7 mass=%8 suppressed=%9 finalCorrection=%10 bank=%11 bankRate=%12 yawRate=%13 grounded=%14 swayBarStrengthMultiplier=%15 frontSwayBarEnabled=%16 frontSwayBarStrength=%17 rearSwayBarEnabled=%18 rearSwayBarStrength=%19 controlledSlipEligible=%20 controlledSlipApplied=%21 controlledSlipReason=%22 controlledSlipGripReleaseFactor=%23 controlledSlipCorrection=%24",
                 _now - _startedAt,
                 typeOf _vehicle,
                 _vehicle getVariable ["FIXICS_driverState", "idle"],
@@ -252,7 +329,41 @@ if (_duration > 0) then {
                 _bank,
                 _bankRate,
                 _yawRate,
-                isTouchingGround _vehicle
+                isTouchingGround _vehicle,
+                _runtimeAssistSwayBarStrengthMultiplier,
+                _frontSwayBarEnabled,
+                _frontSwayBarStrength,
+                _rearSwayBarEnabled,
+                _rearSwayBarStrength,
+                _controlledSlipEligible,
+                _controlledSlipApplied,
+                _controlledSlipReason,
+                _controlledSlipGripReleaseFactor,
+                _controlledSlipCorrection
+            ];
+
+            diag_log format [
+                "[FIXICS][TerrainTireSample] t=%1 vehicle=%2 terrainTireEnabled=%3 terrainTireEligible=%4 terrainTireReason=%5 surfaceType=%6 terrainGripClass=%7 tractionMultiplier=%8 accelerationTractionMultiplier=%9 brakingTractionMultiplier=%10 turningTractionMultiplier=%11 slopeTractionMultiplier=%12 wheelspinEstimate=%13 tireAirState=%14 tireDeflationState=%15 tireDragPenalty=%16 tireSteeringPenalty=%17 massModifier=%18 terrainTireTelemetryVersion=%19 perWheelMode=%20",
+                _now - _startedAt,
+                typeOf _vehicle,
+                _terrainTireEnabled,
+                _terrainTireEligible,
+                _terrainTireReason,
+                _surfaceType,
+                _terrainGripClass,
+                _tractionMultiplier,
+                _accelerationTractionMultiplier,
+                _brakingTractionMultiplier,
+                _turningTractionMultiplier,
+                _slopeTractionMultiplier,
+                _wheelspinEstimate,
+                _tireAirState,
+                _tireDeflationState,
+                _tireDragPenalty,
+                _tireSteeringPenalty,
+                _massModifier,
+                _terrainTireTelemetryVersion,
+                _perWheelMode
             ];
 
             _previousTime = _now;

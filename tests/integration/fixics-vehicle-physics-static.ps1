@@ -112,6 +112,8 @@ Assert-Contains $Config 'class applyVehicleStability\s*\{\s*\};' 'Local stabilit
 Assert-Contains $Config 'class getRollStabilityRecommendation\s*\{\s*\};' 'getRollStabilityRecommendation must be registered in CfgFunctions.'
 Assert-Contains $Config 'class getRuntimeAssistRecommendation\s*\{\s*\};' 'Runtime assist recommendation must be registered in CfgFunctions.'
 Assert-Contains $Config 'class coordinateVehicleAssists\s*\{\s*\};' 'Runtime assist coordinator must be registered in CfgFunctions.'
+Assert-Contains $Config 'class getControlledSlipRecommendation\s*\{\s*\};' 'Controlled Slip recommendation function must be registered.'
+Assert-Contains $Config 'class getTerrainTireRecommendation\s*\{\s*\};' 'Terrain Tire recommendation function must be registered.'
 if ($Config -match 'class CfgVehicles|brakeIdleSpeed\s*=\s*0\.01|dampingRateZeroThrottleClutchEngaged\s*=\s*0\.25|dampingRateZeroThrottleClutchDisengaged\s*=\s*0\.25') {
     Add-Failure 'Failed config-class experiment must be removed before native gameplay-control escalation.'
 }
@@ -263,8 +265,13 @@ function Assert-CbaSetting {
     if ($Arguments[1] -ne "`"$($Spec.ControlType)`"") {
         Add-Failure "$($Spec.Variable) must use a CBA $($Spec.ControlType) control."
     }
-    if ((Normalize-Sqf $Arguments[3]) -ne '["FIXICS","Vehicle Stability"]') {
-        Add-Failure "$($Spec.Variable) must appear under Vehicle Stability."
+    $ExpectedCategory = if ($Spec.ContainsKey('Category')) {
+        $Spec.Category
+    } else {
+        '["FIXICS","Vehicle Stability"]'
+    }
+    if ((Normalize-Sqf $Arguments[3]) -ne (Normalize-Sqf $ExpectedCategory)) {
+        Add-Failure "$($Spec.Variable) must appear under $ExpectedCategory."
     }
     if ((Normalize-Sqf $Arguments[4]) -ne (Normalize-Sqf $Spec.Payload)) {
         Add-Failure "$($Spec.Variable) must use payload $($Spec.Payload)."
@@ -335,6 +342,46 @@ if (Test-Path -LiteralPath $RuntimeRecommendationFile) {
     Assert-Contains $RuntimeRecommendation 'suppressedAssists' 'Runtime recommendation must expose suppressed or reduced assists.'
     Assert-Contains $RuntimeRecommendation 'finalCorrection' 'Runtime recommendation must expose final correction summary.'
     Assert-Contains $RuntimeRecommendation '\bfinite\b' 'Runtime recommendation must reject non-finite numeric inputs.'
+    @(
+        'terrainTireRecommendation',
+        'terrainGripClass',
+        'tractionMultiplier',
+        'accelerationTractionMultiplier',
+        'brakingTractionMultiplier',
+        'turningTractionMultiplier',
+        'slopeTractionMultiplier',
+        'wheelspinEstimate',
+        'tireDragPenalty',
+        'tireSteeringPenalty',
+        'massModifier'
+    ) | ForEach-Object {
+        Assert-Contains $RuntimeRecommendation $_ "Runtime recommendation must pass through Terrain Tire field $_."
+    }
+    @(
+        @{
+            Field = 'tractionMultiplier'
+            Lower = '0\.2'
+        },
+        @{
+            Field = 'brakingTractionMultiplier'
+            Lower = '0\.2'
+        },
+        @{
+            Field = 'turningTractionMultiplier'
+            Lower = '0\.15'
+        },
+        @{
+            Field = 'slopeTractionMultiplier'
+            Lower = '0\.2'
+        }
+    ) | ForEach-Object {
+        $Pattern = '(?s)private\s+_\w*' + $_.Field + '\s*=\s*\([\s\S]*?"' +
+            $_.Field + '"[\s\S]*?\)\s+max\s+' + $_.Lower + '\s+min\s+1\s*;'
+        Assert-Contains `
+            $RuntimeRecommendation `
+            $Pattern `
+            "Runtime Terrain Tire $($_.Field) correction multiplier must clamp to 1.0 maximum."
+    }
     if ($RuntimeRecommendation -match '\b(setVelocity|setVelocityModelSpace|setDir|setVectorDirAndUp|disableBrakes|setVariable|publicVariable|remoteExec|remoteExecCall|callExtension)\b') {
         Add-Failure 'Runtime recommendation must remain pure and must not mutate objects, network state, brakes, or native extension state.'
     }
@@ -351,6 +398,21 @@ if (Test-Path -LiteralPath $RuntimeCoordinatorFile) {
     Assert-Contains $RuntimeCoordinator 'FIXICS_runtimeAssistLastDecision' 'Runtime coordinator must store last decision telemetry.'
     Assert-Contains $RuntimeCoordinator 'FIXICS_runtimeAssistDebugLogging' 'Runtime coordinator must support explicit debug logging.'
     Assert-Contains $RuntimeCoordinator 'velocityModelSpace _vehicle' 'Runtime coordinator must work in model-space velocity.'
+    @(
+        'terrainTireRecommendation',
+        'terrainGripClass',
+        'tractionMultiplier',
+        'accelerationTractionMultiplier',
+        'brakingTractionMultiplier',
+        'turningTractionMultiplier',
+        'slopeTractionMultiplier',
+        'wheelspinEstimate',
+        'tireDragPenalty',
+        'tireSteeringPenalty',
+        'massModifier'
+    ) | ForEach-Object {
+        Assert-Contains $RuntimeCoordinator $_ "Runtime coordinator must expose Terrain Tire field $_."
+    }
     if ($RuntimeCoordinator -match '\b(setDir|setVectorDirAndUp|remoteExec|remoteExecCall|publicVariable)\b') {
         Add-Failure 'Runtime coordinator must not mutate orientation or network state.'
     }
@@ -360,12 +422,75 @@ $StabilityControllerFile = Join-Path $RepoRoot 'addons\main\functions\fn_applyVe
 Assert-FileExists 'addons\main\functions\fn_applyVehicleStability.sqf'
 if (Test-Path -LiteralPath $StabilityControllerFile) {
     $StabilityController = Get-Content -Raw -LiteralPath $StabilityControllerFile
+    function Remove-SqfComments {
+        param (
+            [Parameter(Mandatory = $true)]
+            [string]$Content
+        )
+
+        $Builder = New-Object System.Text.StringBuilder
+        $InString = $false
+        $InLineComment = $false
+        $InBlockComment = $false
+
+        for ($Index = 0; $Index -lt $Content.Length; $Index++) {
+            $Character = $Content[$Index]
+            $NextCharacter = if (($Index + 1) -lt $Content.Length) {
+                $Content[$Index + 1]
+            } else {
+                [char]0
+            }
+
+            if ($InLineComment) {
+                if ($Character -eq "`r" -or $Character -eq "`n") {
+                    $InLineComment = $false
+                    [void]$Builder.Append($Character)
+                }
+                continue
+            }
+
+            if ($InBlockComment) {
+                if ($Character -eq '*' -and $NextCharacter -eq '/') {
+                    $InBlockComment = $false
+                    $Index++
+                }
+                continue
+            }
+
+            if (-not $InString -and $Character -eq '/' -and $NextCharacter -eq '/') {
+                $InLineComment = $true
+                $Index++
+                continue
+            }
+
+            if (-not $InString -and $Character -eq '/' -and $NextCharacter -eq '*') {
+                $InBlockComment = $true
+                $Index++
+                continue
+            }
+
+            [void]$Builder.Append($Character)
+            if ($Character -eq '"') {
+                if ($InString -and $NextCharacter -eq '"') {
+                    [void]$Builder.Append($NextCharacter)
+                    $Index++
+                    continue
+                }
+
+                $InString = -not $InString
+            }
+        }
+
+        return $Builder.ToString()
+    }
+
     function Get-StabilityControllerContractFailures {
         param (
             [Parameter(Mandatory = $true)]
             [string]$Content
         )
 
+        $Content = Remove-SqfComments $Content
         $ContractFailures = New-Object System.Collections.Generic.List[string]
         $RequiredPatterns = @(
             @{
@@ -373,24 +498,36 @@ if (Test-Path -LiteralPath $StabilityControllerFile) {
                 Message = 'Stability controller must use one helper to clear heading and time before re-entry.'
             },
             @{
-                Pattern = 'if \(!local _vehicle\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*false\s*\};'
-                Message = 'Nonlocal guard must clear yaw state before exit.'
+                Pattern = 'private _clearTerrainTireRecommendation = \{[\s\S]*?createHashMapFromArray[\s\S]*?"terrainGripClass",\s*"UNKNOWN"[\s\S]*?"tractionMultiplier",\s*1[\s\S]*?"tireDeflationState",\s*"stale-safe"[\s\S]*?"tireAirState",\s*_sampleVehicle getVariable \["FIXICS_tireAirState", 1\][\s\S]*?_sampleVehicle setVariable \[\s*"FIXICS_terrainTireRecommendation",\s*_neutralTerrainTireRecommendation,\s*false\s*\];[\s\S]*?\};'
+                Message = 'Stability controller must define a neutral local Terrain Tire stale-state clearing helper.'
             },
             @{
-                Pattern = 'if \(!_isPlayerDriver\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*false\s*\};'
-                Message = 'Wrong-driver guard must clear yaw state before exit.'
+                Pattern = 'if \(!local _vehicle\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*\[_vehicle\] call _clearTerrainTireRecommendation;\s*false\s*\};'
+                Message = 'Nonlocal guard must clear yaw and stale Terrain Tire state before exit.'
             },
             @{
-                Pattern = 'if !\(isTouchingGround _vehicle\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*false\s*\};'
-                Message = 'Airborne guard must clear yaw state before exit.'
+                Pattern = 'if \(isNull player\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*\[_vehicle\] call _clearTerrainTireRecommendation;\s*false\s*\};'
+                Message = 'No-player guard must clear yaw and stale Terrain Tire state before exit.'
             },
             @{
-                Pattern = 'if \(_vehicle getVariable \["FIXICS_handbrakeEnabled", false\]\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*false\s*\};'
-                Message = 'Handbrake guard must clear yaw state before exit.'
+                Pattern = 'if \(!_isPlayerDriver\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*\[_vehicle\] call _clearTerrainTireRecommendation;\s*false\s*\};'
+                Message = 'Wrong-driver guard must clear yaw and stale Terrain Tire state before exit.'
             },
             @{
-                Pattern = 'if \(\(count _profile\) < 7 \|\| \{!\(_profile # 0\)\}\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*false\s*\};'
-                Message = 'Unsupported-profile guard must clear yaw state before exit.'
+                Pattern = 'private _isGrounded = isTouchingGround _vehicle;[\s\S]*?private _withinRollGrace = _isGrounded \|\| \{\s*\(_now - _lastGroundedAt\) <= _rollAirborneGraceSeconds\s*\};'
+                Message = 'Airborne state must use current ground contact plus bounded roll grace.'
+            },
+            @{
+                Pattern = 'if \(_vehicle getVariable \["FIXICS_handbrakeEnabled", false\]\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*\[_vehicle\] call _clearTerrainTireRecommendation;\s*false\s*\};'
+                Message = 'Handbrake guard must clear yaw and stale Terrain Tire state before exit.'
+            },
+            @{
+                Pattern = 'if \(\(count _profile\) < 7 \|\| \{!\(_profile # 0\)\}\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*\[_vehicle\] call _clearTerrainTireRecommendation;\s*false\s*\};'
+                Message = 'Unsupported-profile guard must clear yaw and stale Terrain Tire state before exit.'
+            },
+            @{
+                Pattern = 'if \(!_isGrounded && \{!_withinRollGrace\}\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*\[_vehicle\] call _clearTerrainTireRecommendation;\s*false\s*\};'
+                Message = 'Expired airborne grace guard must clear yaw and stale Terrain Tire state before exit.'
             },
             @{
                 Pattern = 'driver _vehicle == player'
@@ -407,6 +544,22 @@ if (Test-Path -LiteralPath $StabilityControllerFile) {
             @{
                 Pattern = 'FIXICS_fnc_getRollStabilityRecommendation'
                 Message = 'Stability controller must call the pure roll recommendation function.'
+            },
+            @{
+                Pattern = 'FIXICS_fnc_getTerrainTireRecommendation'
+                Message = 'Stability controller must call the pure Terrain Tire recommendation function.'
+            },
+            @{
+                Pattern = '_vehicle setVariable \["FIXICS_tireAirState", _terrainTireRecommendation getOrDefault \["tireAirState", 1\], false\];'
+                Message = 'Stability controller must persist Terrain Tire air state locally.'
+            },
+            @{
+                Pattern = '_vehicle setVariable \["FIXICS_terrainTireRecommendation", _terrainTireRecommendation, false\];'
+                Message = 'Stability controller must persist the Terrain Tire recommendation snapshot locally.'
+            },
+            @{
+                Pattern = 'missionNamespace getVariable \["FIXICS_tireDebugLogging", false\]'
+                Message = 'Stability controller must gate Terrain Tire debug logging behind FIXICS_tireDebugLogging.'
             },
             @{
                 Pattern = '_vehicle call BIS_fnc_getPitchBank'
@@ -509,8 +662,144 @@ if (Test-Path -LiteralPath $StabilityControllerFile) {
                 Message = 'Stability debug evidence must include the roll activation rate threshold.'
             },
             @{
-                Pattern = 'rollTelemetryVersion=2'
+                Pattern = 'rollTelemetryVersion=3'
                 Message = 'Stability debug evidence must expose roll telemetry version for stale-build detection.'
+            },
+            @{
+                Pattern = 'swayBarEnabled='
+                Message = 'Stability debug evidence must include the sway bar assist gate.'
+            },
+            @{
+                Pattern = 'frontSwayBarEnabled='
+                Message = 'Stability debug evidence must include front sway bar enabled state.'
+            },
+            @{
+                Pattern = 'frontSwayBarStrength='
+                Message = 'Stability debug evidence must include front sway bar strength.'
+            },
+            @{
+                Pattern = 'rearSwayBarEnabled='
+                Message = 'Stability debug evidence must include rear sway bar enabled state.'
+            },
+            @{
+                Pattern = 'rearSwayBarStrength='
+                Message = 'Stability debug evidence must include rear sway bar strength.'
+            },
+            @{
+                Pattern = 'swayBarStrengthMultiplier='
+                Message = 'Stability debug evidence must include combined sway bar strength multiplier.'
+            },
+            @{
+                Pattern = 'sway-bar-disabled'
+                Message = 'Stability controller must explain roll suppression when sway bar assist is disabled.'
+            },
+            @{
+                Pattern = 'sway-bars-disabled'
+                Message = 'Stability controller must explain roll suppression when both front and rear sway bars are inactive.'
+            },
+            @{
+                Pattern = 'controlledSlipEnabled'
+                Message = 'Stability controller must expose controlled slip enabled telemetry.'
+            },
+            @{
+                Pattern = 'controlledSlipEligible'
+                Message = 'Stability controller must expose controlled slip eligibility telemetry.'
+            },
+            @{
+                Pattern = 'controlledSlipApplied'
+                Message = 'Stability controller must expose controlled slip application telemetry.'
+            },
+            @{
+                Pattern = 'controlledSlipReason'
+                Message = 'Stability controller must expose controlled slip reason telemetry.'
+            },
+            @{
+                Pattern = 'controlledSlipSteeringDemand'
+                Message = 'Stability controller must expose controlled slip steering demand telemetry.'
+            },
+            @{
+                Pattern = 'controlledSlipLateralDemand'
+                Message = 'Stability controller must expose controlled slip lateral demand telemetry.'
+            },
+            @{
+                Pattern = 'controlledSlipRollRisk'
+                Message = 'Stability controller must expose controlled slip roll risk telemetry.'
+            },
+            @{
+                Pattern = 'controlledSlipTerrainClass'
+                Message = 'Stability controller must expose controlled slip terrain class telemetry.'
+            },
+            @{
+                Pattern = 'controlledSlipTerrainMultiplier'
+                Message = 'Stability controller must expose controlled slip terrain multiplier telemetry.'
+            },
+            @{
+                Pattern = 'controlledSlipGripReleaseFactor'
+                Message = 'Stability controller must expose controlled slip grip release telemetry.'
+            },
+            @{
+                Pattern = 'controlledSlipCorrection'
+                Message = 'Stability controller must expose controlled slip correction telemetry.'
+            },
+            @{
+                Pattern = 'controlledSlipTelemetryVersion=1'
+                Message = 'Stability controller must expose controlled slip telemetry version.'
+            },
+            @{
+                Pattern = 'terrainTireRecommendation'
+                Message = 'Stability controller must store the Terrain Tire recommendation.'
+            },
+            @{
+                Pattern = 'terrainGripClass'
+                Message = 'Stability controller must expose Terrain Tire grip class telemetry.'
+            },
+            @{
+                Pattern = 'tractionMultiplier'
+                Message = 'Stability controller must expose Terrain Tire traction multiplier.'
+            },
+            @{
+                Pattern = 'accelerationTractionMultiplier'
+                Message = 'Stability controller must expose Terrain Tire acceleration traction multiplier.'
+            },
+            @{
+                Pattern = 'brakingTractionMultiplier'
+                Message = 'Stability controller must expose Terrain Tire braking traction multiplier.'
+            },
+            @{
+                Pattern = 'turningTractionMultiplier'
+                Message = 'Stability controller must expose Terrain Tire turning traction multiplier.'
+            },
+            @{
+                Pattern = 'slopeTractionMultiplier'
+                Message = 'Stability controller must expose Terrain Tire slope traction multiplier.'
+            },
+            @{
+                Pattern = '(?s)private\s+_turningTractionMultiplier\s*=\s*\([\s\S]*?"turningTractionMultiplier"[\s\S]*?\)\s+max\s+0\.15\s+min\s+1\s*;'
+                Message = 'Stability Terrain Tire turning correction multiplier must clamp to 1.0 maximum.'
+            },
+            @{
+                Pattern = 'wheelspinEstimate'
+                Message = 'Stability controller must expose Terrain Tire wheelspin estimate.'
+            },
+            @{
+                Pattern = 'tireDeflationState'
+                Message = 'Stability controller must expose Terrain Tire deflation state.'
+            },
+            @{
+                Pattern = 'tireDragPenalty'
+                Message = 'Stability controller must expose Terrain Tire drag penalty.'
+            },
+            @{
+                Pattern = 'tireSteeringPenalty'
+                Message = 'Stability controller must expose Terrain Tire steering penalty.'
+            },
+            @{
+                Pattern = 'massModifier'
+                Message = 'Stability controller must expose Terrain Tire mass modifier.'
+            },
+            @{
+                Pattern = 'perWheelMode'
+                Message = 'Stability controller must expose Terrain Tire per-wheel mode.'
             },
             @{
                 Pattern = 'below-speed-threshold'
@@ -537,6 +826,9 @@ if (Test-Path -LiteralPath $StabilityControllerFile) {
         }
         if ($Content -match 'setVelocityModelSpace\s+\[') {
             $ContractFailures.Add('Stability controller must not replace model-space velocity with a new vector.')
+        }
+        if ($Content -match '\baddForce\b') {
+            $ContractFailures.Add('Stability controller must not create a Terrain Tire addForce mutation path.')
         }
         if ($Content -match '(?m)^\s*(?:private\s+)?_velocity\b\s*=\s*\[') {
             $ContractFailures.Add('Stability controller must not assign a replacement model-space velocity vector.')
@@ -928,6 +1220,41 @@ if (Test-Path -LiteralPath $SettingsFile) {
             DefaultIndex = 0
         },
         @{
+            Variable = 'FIXICS_swayBarEnabled'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'true'
+            Payload = 'true'
+            DefaultIndex = 0
+        },
+        @{
+            Variable = 'FIXICS_frontSwayBarEnabled'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'true'
+            Payload = 'true'
+            DefaultIndex = 0
+        },
+        @{
+            Variable = 'FIXICS_frontSwayBarStrength'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.5'
+            Payload = '[0, 1, 0.5, 2]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_rearSwayBarEnabled'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'true'
+            Payload = 'true'
+            DefaultIndex = 0
+        },
+        @{
+            Variable = 'FIXICS_rearSwayBarStrength'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.5'
+            Payload = '[0, 1, 0.5, 2]'
+            DefaultIndex = 2
+        },
+        @{
             Variable = 'FIXICS_rollActivationBankDeg'
             ControlType = 'SLIDER'
             NamespaceDefault = '18'
@@ -974,6 +1301,19 @@ if (Test-Path -LiteralPath $SettingsFile) {
     Assert-Contains $Stringtable 'STR_FIXICS_SETTING_ROLL_PRESET_AGGRESSIVE_SQA' 'Stringtable must expose the Aggressive SQA roll preset label.'
     Assert-Contains $Stringtable 'STR_FIXICS_SETTING_ROLL_PRESET_OFFROAD_ASSIST' 'Stringtable must expose the Offroad Assist roll preset label.'
     Assert-Contains $Stringtable 'STR_FIXICS_SETTING_ROLL_PRESET_CUSTOM' 'Stringtable must expose the Custom roll preset label.'
+    Assert-Contains $Stringtable 'STR_FIXICS_SETTING_SWAY_BAR_ENABLED' 'Stringtable must expose the sway bar assist toggle label.'
+    Assert-Contains $Stringtable 'STR_FIXICS_SETTING_SWAY_BAR_ENABLED_TOOLTIP' 'Stringtable must expose the sway bar assist toggle tooltip.'
+    Assert-Contains $Stringtable 'STR_FIXICS_SETTING_FRONT_SWAY_BAR_ENABLED' 'Stringtable must expose the front sway bar toggle label.'
+    Assert-Contains $Stringtable 'STR_FIXICS_SETTING_FRONT_SWAY_BAR_STRENGTH' 'Stringtable must expose the front sway bar strength label.'
+    Assert-Contains $Stringtable 'STR_FIXICS_SETTING_REAR_SWAY_BAR_ENABLED' 'Stringtable must expose the rear sway bar toggle label.'
+    Assert-Contains $Stringtable 'STR_FIXICS_SETTING_REAR_SWAY_BAR_STRENGTH' 'Stringtable must expose the rear sway bar strength label.'
+    Assert-Contains $Stringtable 'STR_FIXICS_SETTING_CONTROLLED_SLIP_ENABLED' 'Stringtable must expose the controlled slip toggle label.'
+    Assert-Contains $Stringtable 'STR_FIXICS_SETTING_CONTROLLED_SLIP_ACTIVATION_SPEED' 'Stringtable must expose the controlled slip activation speed label.'
+    Assert-Contains $Stringtable 'STR_FIXICS_SETTING_CONTROLLED_SLIP_STEERING_THRESHOLD' 'Stringtable must expose the controlled slip steering threshold label.'
+    Assert-Contains $Stringtable 'STR_FIXICS_SETTING_CONTROLLED_SLIP_STRENGTH' 'Stringtable must expose the controlled slip strength label.'
+    Assert-Contains $Stringtable 'STR_FIXICS_SETTING_CONTROLLED_SLIP_MAXIMUM_RELEASE' 'Stringtable must expose the controlled slip maximum release label.'
+    Assert-Contains $Stringtable 'STR_FIXICS_SETTING_CONTROLLED_SLIP_TERRAIN_INFLUENCE' 'Stringtable must expose the controlled slip terrain influence label.'
+    Assert-Contains $Stringtable 'STR_FIXICS_SETTING_CONTROLLED_SLIP_DEBUG_LOGGING' 'Stringtable must expose the controlled slip debug logging label.'
 
     @(
         'FIXICS_runtimeAssistCoordinatorEnabled',
@@ -985,6 +1325,150 @@ if (Test-Path -LiteralPath $SettingsFile) {
         'FIXICS_runtimeAssistDebugLogging'
     ) | ForEach-Object {
         Assert-Contains $Settings $_ "Runtime Assist setting $_ must be registered."
+    }
+
+    $ControlledSlipSettings = @(
+        @{
+            Variable = 'FIXICS_controlledSlipEnabled'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'true'
+            Payload = 'true'
+            DefaultIndex = 0
+        },
+        @{
+            Variable = 'FIXICS_controlledSlipActivationSpeedKmh'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '55'
+            Payload = '[20, 140, 55, 0]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_controlledSlipSteeringThreshold'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.65'
+            Payload = '[0.1, 1, 0.65, 2]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_controlledSlipStrength'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.16'
+            Payload = '[0, 0.5, 0.16, 2]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_controlledSlipMaximumRelease'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.22'
+            Payload = '[0.01, 0.6, 0.22, 2]'
+            DefaultIndex = 2
+        },
+        @{
+            Variable = 'FIXICS_controlledSlipTerrainInfluence'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'true'
+            Payload = 'true'
+            DefaultIndex = 0
+        },
+        @{
+            Variable = 'FIXICS_controlledSlipDebugLogging'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'false'
+            Payload = 'false'
+            DefaultIndex = 0
+        }
+    )
+    foreach ($Spec in $ControlledSlipSettings) {
+        Assert-Contains `
+            $Settings `
+            ('missionNamespace setVariable \["' + $Spec.Variable + '", ' + [regex]::Escape($Spec.NamespaceDefault) + ', false\];') `
+            "$($Spec.Variable) must have the approved controlled slip default."
+        Assert-CbaSetting $Settings $Spec
+    }
+
+    $TerrainTireSettings = @(
+        @{
+            Variable = 'FIXICS_terrainTireEnabled'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'true'
+            Payload = 'true'
+            DefaultIndex = 0
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_tirePressureEnabled'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'true'
+            Payload = 'true'
+            DefaultIndex = 0
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_tireDeflationRate'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.025'
+            Payload = '[0, 1, 0.025, 3]'
+            DefaultIndex = 2
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_tireMinimumMobility'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.35'
+            Payload = '[0.05, 1, 0.35, 2]'
+            DefaultIndex = 2
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_tireDragStrength'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.35'
+            Payload = '[0, 1, 0.35, 2]'
+            DefaultIndex = 2
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_tireSteeringPenalty'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.30'
+            Payload = '[0, 1, 0.30, 2]'
+            DefaultIndex = 2
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_tireDebugLogging'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'false'
+            Payload = 'false'
+            DefaultIndex = 0
+            Category = '["FIXICS", "Terrain Tire"]'
+        }
+    )
+    foreach ($Spec in $TerrainTireSettings) {
+        Assert-Contains `
+            $Settings `
+            ('missionNamespace setVariable \["' + $Spec.Variable + '", ' + [regex]::Escape($Spec.NamespaceDefault) + ', false\];') `
+            "$($Spec.Variable) must have the approved Terrain Tire default."
+        Assert-CbaSetting $Settings $Spec
+    }
+
+    @(
+        'STR_FIXICS_SETTING_TERRAIN_TIRE_ENABLED',
+        'STR_FIXICS_SETTING_TERRAIN_TIRE_ENABLED_TOOLTIP',
+        'STR_FIXICS_SETTING_TIRE_PRESSURE_ENABLED',
+        'STR_FIXICS_SETTING_TIRE_PRESSURE_ENABLED_TOOLTIP',
+        'STR_FIXICS_SETTING_TIRE_DEFLATION_RATE',
+        'STR_FIXICS_SETTING_TIRE_DEFLATION_RATE_TOOLTIP',
+        'STR_FIXICS_SETTING_TIRE_MINIMUM_MOBILITY',
+        'STR_FIXICS_SETTING_TIRE_MINIMUM_MOBILITY_TOOLTIP',
+        'STR_FIXICS_SETTING_TIRE_DRAG_STRENGTH',
+        'STR_FIXICS_SETTING_TIRE_DRAG_STRENGTH_TOOLTIP',
+        'STR_FIXICS_SETTING_TIRE_STEERING_PENALTY',
+        'STR_FIXICS_SETTING_TIRE_STEERING_PENALTY_TOOLTIP',
+        'STR_FIXICS_SETTING_TIRE_DEBUG_LOGGING',
+        'STR_FIXICS_SETTING_TIRE_DEBUG_LOGGING_TOOLTIP'
+    ) | ForEach-Object {
+        Assert-Contains $Stringtable ('ID="' + $_ + '"') "Stringtable must define $_."
     }
 
     @(
@@ -1281,12 +1765,51 @@ if (Test-Path -LiteralPath $HandlingConfigLogFile) {
         'runtimeAssistTerrainMultiplier',
         'runtimeAssistMassMultiplier',
         'runtimeAssistSuppressedAssists',
-        'runtimeAssistFinalCorrection'
+        'runtimeAssistFinalCorrection',
+        'runtimeAssistSwayBarStrengthMultiplier',
+        'frontSwayBarEnabled',
+        'frontSwayBarStrength',
+        'rearSwayBarEnabled',
+        'rearSwayBarStrength',
+        'controlledSlipEligible',
+        'controlledSlipApplied',
+        'controlledSlipReason',
+        'controlledSlipGripReleaseFactor',
+        'controlledSlipCorrection'
     ) | ForEach-Object {
         Assert-Contains $HandlingConfigLog $_ "Handling telemetry must include $_."
     }
+    Assert-Contains $HandlingConfigLog 'FIXICS_terrainTireRecommendation' 'Handling telemetry must read the stored Terrain Tire recommendation.'
+    if ($HandlingConfigLog -match '\["FIXICS_terrainTireRecommendation",\s*_\w+\]' -or $HandlingConfigLog -match '\["terrainTireRecommendation",\s*_\w+\]') {
+        Add-Failure 'One-shot handling evidence must not duplicate full Terrain Tire recommendation hashmaps; keep scalar Terrain Tire fields instead.'
+    }
+    @(
+        'terrainTireEnabled',
+        'terrainTireEligible',
+        'terrainTireReason',
+        'surfaceType',
+        'terrainGripClass',
+        'tractionMultiplier',
+        'accelerationTractionMultiplier',
+        'brakingTractionMultiplier',
+        'turningTractionMultiplier',
+        'slopeTractionMultiplier',
+        'wheelspinEstimate',
+        'tireAirState',
+        'tireDeflationState',
+        'tireDragPenalty',
+        'tireSteeringPenalty',
+        'massModifier',
+        'terrainTireTelemetryVersion',
+        'perWheelMode'
+    ) | ForEach-Object {
+        Assert-Contains $HandlingConfigLog $_ "Handling telemetry must include Terrain Tire token $_."
+    }
     Assert-Contains $HandlingConfigLog '\[FIXICS\]\[RuntimeAssistSample\]' 'Handling telemetry must write compact Runtime Assist sample lines to avoid long-line truncation.'
     Assert-Contains $HandlingConfigLog 'finalCorrection=%' 'Compact Runtime Assist sample must include final correction.'
+    Assert-Contains $HandlingConfigLog '\[FIXICS\]\[TerrainTireSample\]' 'Handling telemetry must write compact Terrain Tire sample lines.'
+    Assert-Contains $HandlingConfigLog '_interval\s*=\s*\(_interval max 0\.1\) min 1;' 'Continuous handling evidence must clamp the minimum interval to 0.1 seconds.'
+    Assert-Contains $HandlingConfigLog 'if \(hasInterface\) then \{[\s\S]*?inputAction "CarLeft"[\s\S]*?inputAction "CarHandBrake"[\s\S]*?\};' 'Continuous handling input sampling must use the same hasInterface guard pattern as the one-shot path.'
     Assert-Contains $HandlingConfigLog 'yawRate' 'Handling diagnostic must derive yaw rate during continuous capture.'
     Assert-Contains $HandlingConfigLog 'pitchRate' 'Handling diagnostic must derive pitch rate during continuous capture.'
     Assert-Contains $HandlingConfigLog 'bankRate' 'Handling diagnostic must derive bank rate during continuous capture.'
@@ -1298,6 +1821,29 @@ if (Test-Path -LiteralPath $HandlingConfigLogFile) {
     Assert-Contains $HandlingConfigLog 'diag_log' 'Handling diagnostic must write evidence to the RPT log.'
     if ($HandlingConfigLog -match '\b(setVelocity|setVelocityModelSpace|setDir|setVectorDirAndUp|disableBrakes)\b') {
         Add-Failure 'Handling diagnostic must remain read-only and must not mutate vehicle physics.'
+    }
+    $TerrainTireSample = [regex]::Match(
+        $HandlingConfigLog,
+        '(?s)diag_log format\s*\[\s*"\[FIXICS\]\[TerrainTireSample\][^"]*",\s*(?<Args>.*?)\s*\];'
+    )
+    if (-not $TerrainTireSample.Success) {
+        Add-Failure 'Terrain Tire sample format must be available for placeholder alignment checks.'
+    } else {
+        $SampleText = $TerrainTireSample.Value
+        $PlaceholderNumbers = [regex]::Matches($SampleText, '%(\d+)') | ForEach-Object {
+            [int]$_.Groups[1].Value
+        }
+        $MaxPlaceholder = if ($PlaceholderNumbers.Count -gt 0) {
+            ($PlaceholderNumbers | Measure-Object -Maximum).Maximum
+        } else {
+            0
+        }
+        $SampleArguments = Split-SqfArray "[$($TerrainTireSample.Groups['Args'].Value)]"
+        if ($null -eq $SampleArguments) {
+            Add-Failure 'Terrain Tire sample arguments must be parseable for placeholder alignment checks.'
+        } elseif ($SampleArguments.Count -ne $MaxPlaceholder) {
+            Add-Failure "Terrain Tire sample format placeholder count must match argument count. Placeholders: $MaxPlaceholder Arguments: $($SampleArguments.Count)."
+        }
     }
 }
 

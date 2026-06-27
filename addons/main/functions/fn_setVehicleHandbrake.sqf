@@ -28,9 +28,9 @@ if (!(_vehicle isKindOf "LandVehicle")) exitWith {
     false
 };
 
-_vehicle setVariable ["FIXICS_handbrakeEnabled", _enabled, false];
+_vehicle setVariable ["FIXICS_handbrakeEnabled", _enabled, true];
 
-if (local _vehicle) then {
+if ([_vehicle] call FIXICS_fnc_isVehicleLocal) then {
     private _brakeControlOwner = _vehicle getVariable ["FIXICS_brakeControlOwner", ""];
     if (_enabled) then {
         if (_brakeControlOwner == "") then {

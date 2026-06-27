@@ -26,7 +26,7 @@ private _clearDirectionTransition = {
 private _claimVehicle = {
     params ["_targetVehicle"];
 
-    if (isNull _targetVehicle || {!(local _targetVehicle)}) exitWith {
+    if (isNull _targetVehicle || {!([_targetVehicle] call FIXICS_fnc_isVehicleLocal)}) exitWith {
         false
     };
 
@@ -48,7 +48,7 @@ private _releaseVehicle = {
 
     [_targetVehicle] call _clearDirectionTransition;
 
-    if (!isNull _targetVehicle && {local _targetVehicle}) then {
+    if (!isNull _targetVehicle && {[_targetVehicle] call FIXICS_fnc_isVehicleLocal}) then {
         private _brakeControlOwner = _targetVehicle getVariable ["FIXICS_brakeControlOwner", ""];
         private _persistentHandbrake = _targetVehicle getVariable ["FIXICS_handbrakeEnabled", false];
         if (_brakeControlOwner == "driver" && {_persistentHandbrake}) then {
@@ -119,7 +119,7 @@ if (
     || {isNull _vehicle}
     || {_vehicle == player}
     || {!(_vehicle isKindOf "LandVehicle")}
-    || {!(local _vehicle)}
+    || {!([_vehicle] call FIXICS_fnc_isVehicleLocal)}
     || {driver _vehicle != player}
 ) exitWith {
     [_previousVehicle] call _releaseVehicle;
@@ -131,6 +131,15 @@ if (
 if (_previousVehicle != _vehicle) then {
     [_previousVehicle] call _releaseVehicle;
     missionNamespace setVariable ["FIXICS_handbrakeInputWasDown", false, false];
+    _vehicle setVariable ["FIXICS_nativeTerrainTireCache", nil, false];
+    _vehicle setVariable ["FIXICS_tireAirState", nil, false];
+    _vehicle setVariable ["FIXICS_weatherTerrainLastUpdate", nil, false];
+    _vehicle setVariable ["FIXICS_weatherTerrainSaturation", nil, false];
+    _vehicle setVariable ["FIXICS_terrainTireRecommendation", nil, false];
+    _vehicle setVariable ["FIXICS_runtimeAssistLastDecision", nil, false];
+    _vehicle setVariable ["FIXICS_absLastDecision", nil, false];
+    _vehicle setVariable ["FIXICS_slopeLastDecision", nil, false];
+    _vehicle setVariable ["FIXICS_stabilityLastDecision", nil, false];
     [_vehicle, true] call FIXICS_fnc_getVehicleProfile;
 };
 missionNamespace setVariable ["FIXICS_driverControllerVehicle", _vehicle, false];

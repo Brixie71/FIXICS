@@ -1,4 +1,4 @@
-﻿# Project State
+# Project State
 
 ## Stable Facts
 
@@ -68,6 +68,7 @@ Current Phase 1 systems:
 - Native Terrain Tire Advisory was approved and implemented on 2026-06-27 inside the existing `FIXICSPhysics_x64.dll`. It adds the optional `terrainTireV2` native command, CMake/CTest coverage, `FIXICS_fnc_getNativeTerrainTire`, and the disabled-by-default `FIXICS_nativeTerrainTireEnabled` CBA setting. SQF remains authoritative and falls back to SQF Terrain Tire math when native output is disabled, missing, or invalid. SQA should compare telemetry with `FIXICS_nativeTerrainTireEnabled=false` and `true` on the same vehicle/surface matrix before enabling it by default.
 - Weather-Aware Terrain Tire Effects were approved and implemented on 2026-06-27 as a Terrain Tire extension. It adds conservative default weather terrain settings, rain saturation over 30 seconds, drying over 180 seconds only when `rain == 0`, wet terrain grip multipliers, paved hydroplaning risk starting at 70 km/h, wet dirt/grass degradation, wet sand compaction, and minimal crosswind lateral influence through the existing stability path. Telemetry now records weather enablement, rain, overcast, surface wetness, terrain saturation, weather grip, hydroplaning risk, wind strength, wind cross component, wind handling multiplier, and weather reason. SQA must verify saturation feel, hydroplaning detectability, drying pause during active rain, and crosswind/slope interaction.
 - Runtime Assist arbitration was tightened on 2026-06-27 after SQA identified same-frame assist conflicts. The pure Runtime Assist recommendation now exposes an explicit priority stack: ACE/FIXICS handbrake, rollover suppression, ABS braking, slope correction, Terrain Tire modifier, then wind lateral. ABS now reads current Terrain Tire braking/weather/hydroplaning values and records Terrain Tire ABS feedback telemetry. Native Terrain Tire advisory calls are cached for a bounded 0.10-0.25 second TTL and invalidated by surface, speed, support, and damage buckets to reduce repeated `callExtension` pressure.
+- Multiplayer Phase 1 compatibility slice was approved and implemented on 2026-06-27 as an authority/sync-only change with zero new velocity mutations. Existing mutation-capable systems now route vehicle authority through `FIXICS_fnc_isVehicleLocal`; the global `FIXICS_multiplayerCompatibilityEnabled` setting defaults true; ACE handbrake is driver-only in MP and publishes state globally; per-vehicle profile cache can publish in MP; native DLL advisory calls are suppressed on dedicated server instances. SQA acceptance requires a dedicated server with 2+ players for locality transfer, JIP, server override, and native suppression checks.
 
 ## Constraints
 

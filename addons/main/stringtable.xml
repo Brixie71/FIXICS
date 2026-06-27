@@ -205,6 +205,12 @@
         <Key ID="STR_FIXICS_SETTING_HYDROPLANING_SPEED_TOOLTIP">
             <Original>Speed in km/h where wet paved hydroplaning risk begins. Default 70 keeps SQA testing relevant to normal road driving.</Original>
         </Key>
+        <Key ID="STR_FIXICS_SETTING_MULTIPLAYER_COMPATIBILITY">
+            <Original>Enable multiplayer compatibility layer</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_MULTIPLAYER_COMPATIBILITY_TOOLTIP">
+            <Original>Uses vehicle locality as the authority rule for FIXICS systems in multiplayer and disables the slice when turned off.</Original>
+        </Key>
         <Key ID="STR_FIXICS_SETTING_NATIVE_DRIVER_ASSIST">
             <Original>Enable native driver assist advisor</Original>
         </Key>

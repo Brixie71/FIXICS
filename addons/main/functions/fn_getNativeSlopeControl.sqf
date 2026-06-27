@@ -30,6 +30,9 @@ params [
 if !(missionNamespace getVariable ["FIXICS_nativeSlopeControlEnabled", false]) exitWith {
     []
 };
+if (!hasInterface && {isMultiplayer}) exitWith {
+    []
+};
 
 private _result = "FIXICSPhysics" callExtension [
     "slopeControl",

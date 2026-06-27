@@ -43,7 +43,7 @@ if (!(_vehicle isKindOf "LandVehicle")) exitWith {
     false
 };
 
-if (!(local _vehicle)) exitWith {
+if (!([_vehicle] call FIXICS_fnc_isVehicleLocal)) exitWith {
     false
 };
 

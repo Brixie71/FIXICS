@@ -44,6 +44,10 @@ params [
     ["_ignoreLowSpeedCutoff", false, [false]]
 ];
 
+if (!hasInterface && {isMultiplayer}) exitWith {
+    []
+};
+
 if !(missionNamespace getVariable ["FIXICS_nativeDriverAssistEnabled", false]) exitWith {
     []
 };

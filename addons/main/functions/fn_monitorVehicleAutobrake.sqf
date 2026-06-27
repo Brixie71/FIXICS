@@ -27,7 +27,7 @@ while { missionNamespace getVariable ["FIXICS_vehicleAutobrakeMonitorRunning", f
     missionNamespace setVariable ["FIXICS_vehicleAutobrakeMonitorLastUpdate", _now, false];
 
     {
-        if ((_x isKindOf "LandVehicle") && { local _x }) then {
+        if ((_x isKindOf "LandVehicle") && {[_x] call FIXICS_fnc_isVehicleLocal}) then {
             private _driver = driver _x;
             private _isPlayerDriven = missionNamespace getVariable ["FIXICS_driverControllerEnabled", true]
                 && {missionNamespace getVariable ["FIXICS_vehicleControlsRegistered", false]}

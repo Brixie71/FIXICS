@@ -17,6 +17,9 @@ params [
 if !(missionNamespace getVariable ["FIXICS_nativeTerrainTireEnabled", false]) exitWith {
     []
 };
+if (!hasInterface && {isMultiplayer}) exitWith {
+    []
+};
 if ((count _arguments) < 18) exitWith {
     []
 };

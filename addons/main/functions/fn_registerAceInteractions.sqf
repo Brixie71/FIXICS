@@ -27,6 +27,7 @@ private _canSetHandbrake = {
     params ["_target", "_player", "_actionParams"];
 
     (_target isKindOf "LandVehicle")
+    && {(!isMultiplayer) || {driver _target == _player}}
     && {!(_target getVariable ["FIXICS_handbrakeEnabled", false])}
     && {[_player, _target, []] call ace_common_fnc_canInteractWith}
 };
@@ -35,6 +36,7 @@ private _canReleaseHandbrake = {
     params ["_target", "_player", "_actionParams"];
 
     (_target isKindOf "LandVehicle")
+    && {(!isMultiplayer) || {driver _target == _player}}
     && {_target getVariable ["FIXICS_handbrakeEnabled", false]}
     && {[_player, _target, []] call ace_common_fnc_canInteractWith}
 };

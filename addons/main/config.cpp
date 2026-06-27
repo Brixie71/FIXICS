@@ -39,6 +39,7 @@ class CfgFunctions
             class applyABSBraking {};
             class getDriverInputIntent {};
             class registerVehicleControls {};
+            class isVehicleLocal {};
             class updateDriverController {};
             class logVehicleHandlingConfig {};
             class startSteeringDiagnostics {};

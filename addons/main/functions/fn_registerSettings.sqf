@@ -22,6 +22,7 @@ missionNamespace setVariable ["FIXICS_disableIdleAutobrake", true, false];
 missionNamespace setVariable ["FIXICS_nativeSlopeControlEnabled", false, false];
 missionNamespace setVariable ["FIXICS_nativeDriverAssistEnabled", false, false];
 missionNamespace setVariable ["FIXICS_nativeTerrainTireEnabled", false, false];
+missionNamespace setVariable ["FIXICS_multiplayerCompatibilityEnabled", true, false];
 missionNamespace setVariable ["FIXICS_driverAssistDebugLogging", false, false];
 missionNamespace setVariable ["FIXICS_slopeRollbackMinimumSlope", 0.035, false];
 missionNamespace setVariable ["FIXICS_slopeRollbackMaxSpeed", 2.2, false];
@@ -135,6 +136,18 @@ missionNamespace setVariable ["FIXICS_vehicleProfileDebugLogging", false, false]
     ],
     ["FIXICS", "Vehicle Profiles"],
     false,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_multiplayerCompatibilityEnabled",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_MULTIPLAYER_COMPATIBILITY",
+        localize "STR_FIXICS_SETTING_MULTIPLAYER_COMPATIBILITY_TOOLTIP"
+    ],
+    ["FIXICS", "Multiplayer"],
+    true,
     1
 ] call CBA_fnc_addSetting;
 

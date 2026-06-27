@@ -16,7 +16,7 @@
 
 ## Overview
 
-FIXICS is an Arma 3 addon focused on Phase 1 ground-vehicle physics behavior. It improves slope rolling, braking, direction changes, stability, rollover resistance, controlled sliding, and terrain/tire telemetry through bounded SQF systems and optional native advisory math.
+FIXICS is an Arma 3 addon focused on Phase 1 ground-vehicle physics behavior. It improves slope rolling, braking, direction changes, stability, rollover resistance, controlled sliding, terrain/tire behavior, weather-aware grip, and vehicle-specific tuning through bounded SQF systems and optional native advisory math.
 
 All public functions use the `FIXICS_fnc_*` prefix. Runtime namespace keys use the `FIXICS_*` prefix. The PBO prefix is `x\fixics\addons\main`.
 
@@ -56,7 +56,13 @@ Only Phase 1 is active.
 | FIX-008 | Sway Bar Assist | Implemented, front/rear approximation settings |
 | FIX-009 | Runtime Assist Coordinator | Implemented |
 | FIX-010 | Controlled Slip Assist | Implemented, pending broader SQA terrain matrix |
-| FIX-011 | Terrain Tire Behavior | Implemented, pending SQA gameplay validation |
+| FIX-011 | Terrain Tire Behavior | Implemented |
+| FIX-012 | Per-Vehicle Settings | Implemented |
+| FIX-013 | Terrain Tire Phase 2 safety | Implemented |
+| FIX-014 | Native Terrain Tire advisory | Implemented, disabled by default |
+| FIX-015 | Weather-Aware Terrain Tire Effects | Implemented |
+| FIX-016 | Runtime Assist priority stack and ABS terrain feedback | Implemented |
+| FIX-017 | Multiplayer Phase 1 compatibility slice | Implemented, pending dedicated 2+ player SQA validation |
 
 ### What Phase 1 Changes
 
@@ -85,16 +91,25 @@ Registered vehicles can use a separate roll-stability layer that applies bounded
 Front and rear sway bar settings feed the stability and roll systems as an approximation. This is not true per-axle suspension simulation; it is a bounded anti-roll tuning layer.
 
 **Runtime Assist Coordinator**
-Runtime Assist coordinates ABS, slope rolling, driver intent, Vehicle Stability, Roll Stability, Sway Bar, Controlled Slip, Terrain Tire data, mass modifiers, and optional native advisory values through one shared decision layer.
+Runtime Assist coordinates ABS, slope rolling, driver intent, Vehicle Stability, Roll Stability, Sway Bar, Controlled Slip, Terrain Tire data, mass modifiers, and optional native advisory values through one shared decision layer. It now resolves conflicts through an explicit priority stack: handbrake, rollover suppression, ABS braking, slope correction, Terrain Tire modifier, then wind lateral influence.
 
 **Controlled Slip Assist**
 Controlled Slip Assist lets registered light vehicles release grip in a bounded way during high-speed steering demand. The goal is controlled lateral scrub before rollover energy becomes too high, not ice-like sliding or forced grip.
 
 **Terrain Tire Behavior**
-Terrain Tire Behavior adds SQF-first recommendations for terrain grip, wheelspin, tire pressure, slow deflation, run-flat-style degraded mobility, drag penalty, steering penalty, and mass influence. Active handling paths currently use Terrain Tire data conservatively and non-amplifyingly; tire drag, acceleration traction, and braking traction are exposed as recommendation/telemetry data until a safe existing-path integration is separately approved.
+Terrain Tire Behavior adds SQF-first recommendations for terrain grip, wheelspin, tire pressure, slow deflation, run-flat-style degraded mobility, drag penalty, steering penalty, and mass influence. It also reports wheel support state, rollover suppression, destroyed tire penalties, driverless decay, and mobility limiting for flipped, airborne, or damaged-wheel cases.
+
+**Weather-Aware Terrain Tire Effects**
+Weather-aware terrain behavior adds gradual rain saturation, drying, wet-surface grip loss, paved hydroplaning risk, wet dirt/grass degradation, wet sand compaction, and minimal crosswind handling influence. These effects feed Terrain Tire telemetry and conservative runtime assist paths.
+
+**Per-Vehicle Settings**
+Vehicle profiles can be assigned by exact classname or parent class. Exact vehicle profiles take priority over parent profiles, and vehicles with no profile continue using global defaults. ACE interaction can show the active FIXICS vehicle profile.
+
+**Native Terrain Tire advisory**
+The optional native extension now supports `terrainTireV2` advisory math for Terrain Tire calculations. SQF remains authoritative; the DLL only recommends values and the SQF layer validates and applies them. Native Terrain Tire is disabled by default and includes short advisory caching to reduce repeated extension calls.
 
 **Telemetry diagnostics**
-Vehicle handling telemetry can record inputs, velocity, position, heading, yaw rate, pitch, bank, pitch/bank rates, terrain normal, ground contact, wheel hitpoint proxy data, Runtime Assist state, Controlled Slip state, Terrain Tire state, and relevant FIXICS settings.
+Vehicle handling telemetry can record inputs, velocity, position, heading, yaw rate, pitch, bank, pitch/bank rates, terrain normal, ground contact, wheel hitpoint proxy data, Runtime Assist state, Controlled Slip state, Terrain Tire state, weather grip state, active vehicle profile, and relevant FIXICS settings. A terminal dashboard is available for live RPT telemetry watching.
 
 ---
 
@@ -150,7 +165,17 @@ powershell -ExecutionPolicy Bypass -File tools\launch-eden.ps1
 
 `native/fixics_physics/` contains optional Windows x64 native extension source for `FIXICSPhysics_x64.dll`.
 
-The native extension is advisory only. SQF remains the final mutation authority. Native code can recommend slope, braking, and direction-transition values, but it cannot intercept Arma input processing, replace Arma's hidden gearbox, or directly own vehicle physics.
+The native extension is advisory only. SQF remains the final mutation authority. Native code can recommend slope, braking, direction-transition, and Terrain Tire values, but it cannot intercept Arma input processing, replace Arma's hidden gearbox, or directly own vehicle physics.
+
+Implemented native commands:
+
+| Command | Purpose | Default |
+|---|---|---|
+| `slopeControl` | Slope rollback advisory math | Disabled |
+| `driverAssist` | ABS and Drive/Reverse advisory math | Disabled |
+| `terrainTireV2` | Terrain Tire advisory math | Disabled |
+
+Native Terrain Tire advisory results are cached for a short bounded interval and invalidated by surface, speed, support, and damage buckets.
 
 New native binaries or native authority changes require explicit SQA approval before deployment.
 
@@ -182,6 +207,8 @@ All FIXICS settings are available in-game under **Options -> Addon Options -> FI
 | `FIXICS_absLowSpeedCutoffKmh` | `3` | `0 - 20` | km/h |
 | `FIXICS_absSlopeCompensation` | `0.25` | `0 - 1` | scalar |
 | `FIXICS_absDebugLogging` | `false` | checkbox | boolean |
+
+ABS now reads Terrain Tire braking grip, weather grip, and hydroplaning risk when calculating effective brake force.
 
 ### Driver-State Controller
 
@@ -241,12 +268,64 @@ All FIXICS settings are available in-game under **Options -> Addon Options -> FI
 | Setting | Default | Notes |
 |---|---|---|
 | `FIXICS_terrainTireEnabled` | `true` | Enables Terrain Tire recommendations |
+| `FIXICS_nativeTerrainTireEnabled` | `false` | Enables optional native Terrain Tire advisory |
 | `FIXICS_tirePressureEnabled` | `true` | Enables slow tire deflation model |
 | `FIXICS_tireDeflationRate` | `0.025` | Simulated pressure loss rate |
 | `FIXICS_tireMinimumMobility` | `0.35` | Run-flat-style minimum mobility floor |
 | `FIXICS_tireDragStrength` | `0.35` | Drag penalty from low tire pressure |
 | `FIXICS_tireSteeringPenalty` | `0.30` | Steering precision loss from low pressure |
 | `FIXICS_tireDebugLogging` | `false` | RPT debug logging |
+| `FIXICS_rolloverSafetyEnabled` | `true` | Suppresses drive/traction assist when flipped, airborne, or side unsupported |
+| `FIXICS_airborneGraceWindow` | `0.50` | Short grace window after bumps/jumps |
+| `FIXICS_driverlessDecayEnabled` | `true` | Gently decays abandoned vehicle residual motion |
+| `FIXICS_driverlessDecayCap` | `0.15` | Gentle driverless deceleration cap |
+| `FIXICS_destroyedTireThreshold` | `0.85` | Destroyed tire detection threshold |
+| `FIXICS_destroyedTireDebugLogging` | `false` | Destroyed tire debug logging |
+
+### Weather-Aware Terrain Tire Effects
+
+| Setting | Default | Notes |
+|---|---|---|
+| `FIXICS_weatherTerrainEnabled` | `true` | Enables weather-aware terrain grip effects |
+| `FIXICS_weatherSaturationTime` | `30` | Rain saturation time in seconds |
+| `FIXICS_weatherDryingTime` | `180` | Drying time in seconds after rain stops |
+| `FIXICS_hydroplaningEnabled` | `true` | Enables paved wet-road hydroplaning risk |
+| `FIXICS_hydroplaningSpeedKmh` | `70` | Hydroplaning starts becoming relevant above this speed |
+| `FIXICS_windHandlingEnabled` | `true` | Enables minimal crosswind lateral influence |
+| `FIXICS_windHandlingStrength` | `0.05` | Conservative wind influence strength |
+| `FIXICS_weatherDebugLogging` | `false` | Weather terrain RPT debug logging |
+
+### Per-Vehicle Profiles
+
+| Setting | Purpose |
+|---|---|
+| Exact vehicle profile text | Applies overrides to exact classnames first |
+| Parent vehicle profile text | Applies overrides to parent classes when exact class is not set |
+| Presets | `DEFAULT`, `LIGHT_OFFROAD`, `MRAP`, `TRUCK`, `TRACKED`, `CUSTOM` |
+
+Profile diagnostics:
+
+```sqf
+[vehicle player, true] call FIXICS_fnc_dumpVehicleProfile;
+[] call FIXICS_fnc_dumpVehicleClasses;
+```
+
+---
+
+### Multiplayer
+
+| Setting | Default | Notes |
+|---|---|---|
+| `FIXICS_multiplayerCompatibilityEnabled` | `true` | Enables the Phase 1 MP authority/sync slice |
+
+Multiplayer rules:
+
+- Existing physics mutations run only where the vehicle is local.
+- ACE handbrake interaction is driver-only in multiplayer.
+- Handbrake state is globally synchronized.
+- Per-vehicle profile state can be shared for JIP/profile viewing.
+- Native DLL advisory calls are disabled on dedicated server instances.
+- This slice adds authority and sync safeguards only; it does not add new multiplayer physics behavior.
 
 ---
 
@@ -278,12 +357,24 @@ Terrain Tire telemetry includes:
 - tire steering penalty
 - mass modifier
 - per-wheel/fallback mode
+- wheel support state
+- rollover suppression state
+- driverless decay
+- destroyed tire count and penalty
+- mobility limiter
+- rain, overcast, wetness, saturation, weather grip, hydroplaning, and wind fields
+
+Live terminal dashboard:
+
+```powershell
+python tools\live-vehicle-telemetry.py
+```
 
 ---
 
 ## Known Limitations
 
-All active Phase 1 gameplay corrections are local-player focused. Multiplayer vehicle authority and server deployment remain deferred.
+Phase 1 multiplayer support is authority/sync focused. Existing gameplay corrections still run only where the vehicle is local; full server-authoritative physics remains deferred.
 
 | Limit | Reference | Impact |
 |---|---|---|
@@ -294,10 +385,10 @@ All active Phase 1 gameplay corrections are local-player focused. Multiplayer ve
 
 Current Terrain Tire boundary:
 
-- Active correction paths are non-amplifying.
-- Tire drag, acceleration traction, and braking traction are currently recommendation/telemetry data only.
+- Active correction paths are conservative and bounded.
+- ABS now consumes Terrain Tire braking/weather feedback.
 - Broad tire/friction config patches remain deferred until SQA telemetry proves they are needed.
-- Wet/mud behavior is deferred until Arma surface data supports it clearly enough.
+- Deep wet/mud/stuck behavior remains deferred until Arma surface data and SQA evidence justify it.
 
 Full engine limit records: [`docs/reference/known-engine-limits.md`](docs/reference/known-engine-limits.md)
 Active workarounds: [`docs/fixes/workaround-registry.md`](docs/fixes/workaround-registry.md)
@@ -314,6 +405,7 @@ Active workarounds: [`docs/fixes/workaround-registry.md`](docs/fixes/workaround-
 | `FIXICS_fnc_registerSettings` | Registers CBA addon settings |
 | `FIXICS_fnc_registerAceInteractions` | Registers ACE handbrake vehicle actions |
 | `FIXICS_fnc_registerVehicleControls` | Installs CBA per-frame driver controller |
+| `FIXICS_fnc_isVehicleLocal` | Pure helper for vehicle locality authority |
 | `FIXICS_fnc_monitorVehicleAutobrake` | Local scheduled monitor for non-player vehicles |
 | `FIXICS_fnc_updateDriverController` | Fast per-frame driver-state update |
 | `FIXICS_fnc_setVehicleHandbrake` | Sets or clears `FIXICS_handbrakeEnabled` |
@@ -324,6 +416,10 @@ Active workarounds: [`docs/fixes/workaround-registry.md`](docs/fixes/workaround-
 | `FIXICS_fnc_getDriverInputIntent` | Reads and normalizes current driver input state |
 | `FIXICS_fnc_getNativeSlopeControl` | Reads optional native slope-control advisory output |
 | `FIXICS_fnc_getNativeDriverAssist` | Reads optional native driver-assist advisory output |
+| `FIXICS_fnc_getNativeTerrainTire` | Reads optional native Terrain Tire advisory output |
+| `FIXICS_fnc_getVehicleProfile` | Resolves exact/parent/global per-vehicle profile data |
+| `FIXICS_fnc_dumpVehicleProfile` | Dumps active vehicle profile diagnostics |
+| `FIXICS_fnc_dumpVehicleClasses` | Dumps available vehicle class information for profile authoring |
 | `FIXICS_fnc_getVehicleStabilityProfile` | Resolves registered vehicle stability profile data |
 | `FIXICS_fnc_getStabilityRecommendation` | Calculates stability recommendation data |
 | `FIXICS_fnc_getRollStabilityRecommendation` | Calculates roll-stability recommendation data |
@@ -412,6 +508,99 @@ Recent validation covered:
 - mutation checks for stability behavior
 
 Manual Arma gameplay validation remains SQA-owned.
+
+---
+
+## Changelog
+
+### 2026-06-27 - Expanded Vehicle Physics Systems
+
+Added:
+
+- Per-vehicle profile support by exact classname and parent class.
+- ACE read-only profile viewing.
+- Vehicle class/profile dump diagnostics.
+- Terrain Tire Phase 2 safety fields for wheel support, rollover suppression, destroyed tires, driverless decay, and mobility limiting.
+- Optional native `terrainTireV2` advisory command in `FIXICSPhysics_x64.dll`.
+- Native Terrain Tire SQF bridge with validation and short advisory caching.
+- Weather-aware terrain tire behavior with rain saturation, drying, wet grip, hydroplaning risk, wet sand compaction, and minimal wind handling influence.
+- Live terminal telemetry dashboard at `tools/live-vehicle-telemetry.py`.
+- Runtime Assist priority stack for deterministic assist conflict resolution.
+- ABS feedback path from Terrain Tire braking/weather/hydroplaning values.
+- SQA profile text artifacts for class-family tuning.
+- Multiplayer Phase 1 authority helper and global compatibility setting.
+
+Changed:
+
+- Runtime Assist now resolves conflicts in this order: handbrake, rollover suppression, ABS braking, slope correction, Terrain Tire modifier, wind lateral.
+- ABS braking is now terrain/weather-aware and records Terrain Tire ABS feedback telemetry.
+- Terrain Tire telemetry now includes weather, wheel support, destroyed tire, and mobility limiter fields.
+- Native extension documentation and tests now include Terrain Tire advisory behavior.
+- Existing mutation paths now route locality authority through `FIXICS_fnc_isVehicleLocal`.
+- Native advisory calls are suppressed on dedicated server instances.
+
+Validation:
+
+- Governance static checks passed.
+- Vehicle physics static checks passed.
+- HEMTT/check wrapper passed.
+- Runtime Assist, Controlled Slip, Stability, Roll Stability, and Terrain Tire recommendation tests passed.
+- Dedicated server 2+ player SQA validation remains required for MP acceptance.
+
+### Steam Workshop Update Template
+
+```text
+[h1]FIXICS Vehicle Physics Update[/h1]
+
+[b]This update expands Phase 1 ground vehicle physics with per-vehicle tuning, terrain tire behavior, weather-aware grip, native advisory support, and improved assist coordination.[/b]
+
+[h1]Highlights[/h1]
+[list]
+[*] Added per-vehicle FIXICS profiles by exact classname and parent class.
+[*] Added Terrain Tire Phase 2 safety for rollover, airborne, side-supported, destroyed tire, and driverless vehicle cases.
+[*] Added weather-aware terrain tire effects: wet grip, rain saturation, drying, hydroplaning risk, wet sand compaction, and minimal wind influence.
+[*] Added optional native Terrain Tire advisory support through FIXICSPhysics_x64.dll.
+[*] Added deterministic Runtime Assist priority handling so ABS, slope rolling, rollover suppression, Terrain Tire, and wind no longer fight unpredictably.
+[*] ABS now reads Terrain Tire braking grip, weather grip, and hydroplaning risk.
+[*] Added live telemetry dashboard tooling for SQA testing.
+[/list]
+
+[h1]Gameplay Notes[/h1]
+[list]
+[*] Light vehicles should retain the accepted rally-like controlled handling feel.
+[*] Heavy vehicles and MRAPs now have better profile separation and terrain-aware braking data.
+[*] Flipped, airborne, side-supported, or heavily wheel-damaged vehicles receive reduced FIXICS drive/traction assistance.
+[*] Wet paved roads can now produce hydroplaning risk at speed.
+[*] Loose terrain, damaged tires, weather, and mass now provide richer telemetry for future tuning.
+[/list]
+
+[h1]Admin / SQA Notes[/h1]
+[list]
+[*] ACE3 and CBA_A3 remain required.
+[*] Native Terrain Tire advisory is optional and disabled by default.
+[*] Per-vehicle profiles fall back to global defaults when no exact or parent profile exists.
+[*] Terrain Tire and weather behavior are still bounded SQF-first systems, not full engine replacement.
+[/list]
+
+[h1]Validation[/h1]
+[list]
+[*] Governance static checks passed.
+[*] Vehicle physics static checks passed.
+[*] HEMTT/check wrapper passed.
+[*] Stability, Roll Stability, Runtime Assist, Controlled Slip, and Terrain Tire recommendation tests passed.
+[/list]
+
+[h1]Known Limits[/h1]
+[list]
+[*] Arma 3 still does not expose a direct hidden gearbox override.
+[*] Per-wheel friction is not directly controlled at runtime.
+[*] Full server-authoritative multiplayer physics remains deferred; this update adds locality-safe Phase 1 compatibility only.
+[*] Broad tire/friction config patches remain deferred until SQA evidence proves they are needed.
+[/list]
+
+[h1]GitHub[/h1]
+https://github.com/Brixie71/FIXICS
+```
 
 ---
 

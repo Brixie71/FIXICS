@@ -69,6 +69,7 @@ if ($Config -match '"A3_Soft_F"|\"A3_Armor_F\"') {
     'addons\main\functions\fn_applyHandbrakeLock.sqf',
     'addons\main\functions\fn_getDriverInputIntent.sqf',
     'addons\main\functions\fn_registerVehicleControls.sqf',
+    'addons\main\functions\fn_isVehicleLocal.sqf',
     'addons\main\functions\fn_updateDriverController.sqf',
     'addons\main\functions\fn_logVehicleHandlingConfig.sqf',
     'addons\main\functions\fn_startSteeringDiagnostics.sqf',
@@ -101,6 +102,7 @@ Assert-Contains $Config 'class applyABSBraking\s*\{\s*\};' 'applyABSBraking must
 Assert-Contains $Config 'class applyHandbrakeLock\s*\{\s*\};' 'applyHandbrakeLock must be registered in CfgFunctions.'
 Assert-Contains $Config 'class getDriverInputIntent\s*\{\s*\};' 'getDriverInputIntent must be registered in CfgFunctions.'
 Assert-Contains $Config 'class registerVehicleControls\s*\{\s*\};' 'registerVehicleControls must be registered in CfgFunctions.'
+Assert-Contains $Config 'class isVehicleLocal\s*\{\s*\};' 'Multiplayer authority helper must be registered in CfgFunctions.'
 Assert-Contains $Config 'class updateDriverController\s*\{\s*\};' 'updateDriverController must be registered in CfgFunctions.'
 Assert-Contains $Config 'class logVehicleHandlingConfig\s*\{\s*\};' 'logVehicleHandlingConfig must be registered in CfgFunctions.'
 Assert-Contains $Config 'class startSteeringDiagnostics\s*\{\s*\};' 'startSteeringDiagnostics must be registered in CfgFunctions.'
@@ -440,7 +442,7 @@ Assert-FileExists 'addons\main\functions\fn_coordinateVehicleAssists.sqf'
 if (Test-Path -LiteralPath $RuntimeCoordinatorFile) {
     $RuntimeCoordinator = Get-Content -Raw -LiteralPath $RuntimeCoordinatorFile
     Assert-Contains $RuntimeCoordinator 'driver _vehicle == player' 'Runtime coordinator must require the local player driver.'
-    Assert-Contains $RuntimeCoordinator 'local _vehicle' 'Runtime coordinator must require local vehicle ownership.'
+    Assert-Contains $RuntimeCoordinator 'FIXICS_fnc_isVehicleLocal' 'Runtime coordinator must require vehicle ownership through the MP authority helper.'
     Assert-Contains $RuntimeCoordinator 'FIXICS_handbrakeEnabled' 'Runtime coordinator must respect persistent FIXICS handbrake priority.'
     Assert-Contains $RuntimeCoordinator 'FIXICS_fnc_getRuntimeAssistRecommendation' 'Runtime coordinator must call the pure recommendation helper.'
     Assert-Contains $RuntimeCoordinator 'FIXICS_runtimeAssistLastDecision' 'Runtime coordinator must store last decision telemetry.'
@@ -568,7 +570,7 @@ if (Test-Path -LiteralPath $StabilityControllerFile) {
                 Message = 'Stability controller must define a neutral local Terrain Tire stale-state clearing helper.'
             },
             @{
-                Pattern = 'if \(!local _vehicle\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*\[_vehicle\] call _clearTerrainTireRecommendation;\s*false\s*\};'
+                Pattern = 'if \(!\(\[_vehicle\] call FIXICS_fnc_isVehicleLocal\)\) exitWith \{\s*\[_vehicle\] call _clearYawSample;\s*\[_vehicle\] call _clearTerrainTireRecommendation;\s*false\s*\};'
                 Message = 'Nonlocal guard must clear yaw and stale Terrain Tire state before exit.'
             },
             @{
@@ -994,7 +996,7 @@ if (Test-Path -LiteralPath $StabilityControllerFile) {
 
     if ((Get-StabilityControllerContractFailures $StabilityController).Count -eq 0) {
         $StaleStatePattern = [regex]::new(
-            '(if \(!local _vehicle\) exitWith \{\s*)\[_vehicle\] call _clearYawSample;\s*'
+            '(if \(!\(\[_vehicle\] call FIXICS_fnc_isVehicleLocal\)\) exitWith \{\s*)\[_vehicle\] call _clearYawSample;\s*'
         )
         $StaleStateMutation = $StaleStatePattern.Replace(
             $StabilityController,
@@ -1216,6 +1218,9 @@ if (Test-Path -LiteralPath $SettingsFile) {
     Assert-Contains $Settings '"FIXICS_absSlopeCompensation"' 'Settings registration must define FIXICS_absSlopeCompensation.'
     Assert-Contains $Settings '"FIXICS_absDebugLogging"' 'Settings registration must define FIXICS_absDebugLogging.'
     Assert-Contains $Settings '"FIXICS_driverControllerEnabled"' 'Settings registration must define FIXICS_driverControllerEnabled.'
+    Assert-Contains $Settings '"FIXICS_multiplayerCompatibilityEnabled"' 'Settings registration must define FIXICS_multiplayerCompatibilityEnabled.'
+    Assert-Contains $Settings 'missionNamespace setVariable \["FIXICS_multiplayerCompatibilityEnabled", true, false\]' 'MP compatibility must default enabled.'
+    Assert-Contains $Settings '\["FIXICS", "Multiplayer"\]' 'MP compatibility settings must use their own FIXICS Multiplayer category.'
     Assert-Contains $Settings '"FIXICS_nativeDriverAssistEnabled"' 'Settings registration must define FIXICS_nativeDriverAssistEnabled.'
     Assert-Contains $Settings '"FIXICS_driverAssistDebugLogging"' 'Settings registration must define FIXICS_driverAssistDebugLogging.'
     Assert-Contains $Settings '"FIXICS_handbrakeInputMode"' 'Settings registration must define FIXICS_handbrakeInputMode.'
@@ -2149,6 +2154,7 @@ $NativeDriverAssistFile = Join-Path $RepoRoot 'addons\main\functions\fn_getNativ
 if (Test-Path -LiteralPath $NativeDriverAssistFile) {
     $NativeDriverAssist = Get-Content -Raw -LiteralPath $NativeDriverAssistFile
     Assert-Contains $NativeDriverAssist '"FIXICS_nativeDriverAssistEnabled", false' 'Native driver assist bridge must default disabled.'
+    Assert-Contains $NativeDriverAssist '!hasInterface\s*&&\s*\{isMultiplayer\}' 'Native driver assist bridge must suppress DLL calls on dedicated servers in MP.'
     Assert-Contains $NativeDriverAssist '"FIXICSPhysics"\s+callExtension\s+\[[\s\S]*?"driverAssist"' 'Native driver assist bridge must call the FIXICSPhysics driverAssist function.'
     Assert-Contains $NativeDriverAssist 'parseSimpleArray' 'Native driver assist bridge must parse the extension response.'
     Assert-Contains $NativeDriverAssist 'errorCode' 'Native driver assist bridge must check callExtension errorCode.'
@@ -2161,6 +2167,7 @@ Assert-FileExists 'addons\main\functions\fn_getNativeTerrainTire.sqf'
 if (Test-Path -LiteralPath $NativeTerrainTireFile) {
     $NativeTerrainTire = Get-Content -Raw -LiteralPath $NativeTerrainTireFile
     Assert-Contains $NativeTerrainTire '"FIXICS_nativeTerrainTireEnabled", false' 'Native Terrain Tire bridge must default disabled.'
+    Assert-Contains $NativeTerrainTire '!hasInterface\s*&&\s*\{isMultiplayer\}' 'Native Terrain Tire bridge must suppress DLL calls on dedicated servers in MP.'
     Assert-Contains $NativeTerrainTire '"FIXICSPhysics"\s+callExtension\s+\[[\s\S]*?"terrainTireV2"' 'Native Terrain Tire bridge must call the FIXICSPhysics terrainTireV2 function.'
     Assert-Contains $NativeTerrainTire 'FIXICS_nativeTerrainTireCache' 'Native Terrain Tire bridge must cache advisory results per vehicle/state bucket.'
     Assert-Contains $NativeTerrainTire 'FIXICS_nativeTerrainTireCacheTtl' 'Native Terrain Tire bridge must use a bounded cache TTL.'
@@ -2170,6 +2177,52 @@ if (Test-Path -LiteralPath $NativeTerrainTireFile) {
     Assert-Contains $NativeTerrainTire 'errorCode' 'Native Terrain Tire bridge must check callExtension errorCode.'
     Assert-Contains $NativeTerrainTire 'isEqualType' 'Native Terrain Tire bridge must validate response element types.'
     Assert-Contains $NativeTerrainTire 'finite' 'Native Terrain Tire bridge must reject non-finite numeric recommendations.'
+}
+
+$NativeSlopeFile = Join-Path $RepoRoot 'addons\main\functions\fn_getNativeSlopeControl.sqf'
+if (Test-Path -LiteralPath $NativeSlopeFile) {
+    $NativeSlope = Get-Content -Raw -LiteralPath $NativeSlopeFile
+    Assert-Contains $NativeSlope '!hasInterface\s*&&\s*\{isMultiplayer\}' 'Native slope bridge must suppress DLL calls on dedicated servers in MP.'
+}
+
+$AuthorityHelperFile = Join-Path $RepoRoot 'addons\main\functions\fn_isVehicleLocal.sqf'
+Assert-FileExists 'addons\main\functions\fn_isVehicleLocal.sqf'
+if (Test-Path -LiteralPath $AuthorityHelperFile) {
+    $AuthorityHelper = Get-Content -Raw -LiteralPath $AuthorityHelperFile
+    Assert-Contains $AuthorityHelper 'FIXICS_multiplayerCompatibilityEnabled' 'MP authority helper must honor the multiplayer compatibility setting.'
+    Assert-Contains $AuthorityHelper 'isMultiplayer' 'MP authority helper must branch on multiplayer state.'
+    Assert-Contains $AuthorityHelper '\blocal\s+_vehicle\b' 'MP authority helper must use Arma vehicle locality.'
+    if ($AuthorityHelper -match '\b(setVelocity|setVelocityModelSpace|setDir|setVectorDirAndUp|disableBrakes|setVariable|publicVariable|remoteExec|remoteExecCall|callExtension)\b') {
+        Add-Failure 'MP authority helper must remain pure and must not mutate vehicle, network, brakes, or native state.'
+    }
+}
+
+@(
+    'addons\main\functions\fn_updateDriverController.sqf',
+    'addons\main\functions\fn_applyABSBraking.sqf',
+    'addons\main\functions\fn_applySlopeRollback.sqf',
+    'addons\main\functions\fn_applyVehicleStability.sqf',
+    'addons\main\functions\fn_coordinateVehicleAssists.sqf',
+    'addons\main\functions\fn_monitorVehicleAutobrake.sqf'
+) | ForEach-Object {
+    $MutationPath = Join-Path $RepoRoot $_
+    if (Test-Path -LiteralPath $MutationPath) {
+        $MutationSource = Get-Content -Raw -LiteralPath $MutationPath
+        Assert-Contains $MutationSource 'FIXICS_fnc_isVehicleLocal' "$_ must route mutation authority through FIXICS_fnc_isVehicleLocal."
+    }
+}
+
+$AceInteractionsFile = Join-Path $RepoRoot 'addons\main\functions\fn_registerAceInteractions.sqf'
+if (Test-Path -LiteralPath $AceInteractionsFile) {
+    $AceInteractions = Get-Content -Raw -LiteralPath $AceInteractionsFile
+    Assert-Contains $AceInteractions 'driver _target\s*==\s*_player' 'ACE handbrake interaction must be driver-only for MP authority safety.'
+}
+
+$ProfileFile = Join-Path $RepoRoot 'addons\main\functions\fn_getVehicleProfile.sqf'
+if (Test-Path -LiteralPath $ProfileFile) {
+    $ProfileSource = Get-Content -Raw -LiteralPath $ProfileFile
+    Assert-Contains $ProfileSource 'isMultiplayer' 'Vehicle profile resolver must account for multiplayer profile authority.'
+    Assert-Contains $ProfileSource 'FIXICS_multiplayerCompatibilityEnabled' 'Vehicle profile resolver must honor MP compatibility setting.'
 }
 
 $AbsFile = Join-Path $RepoRoot 'addons\main\functions\fn_applyABSBraking.sqf'

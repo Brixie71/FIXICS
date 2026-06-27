@@ -84,6 +84,9 @@ private _cached = _vehicle getVariable ["FIXICS_vehicleProfile", createHashMap];
 if (!_forceRefresh && {_cached isEqualType createHashMap} && {count _cached > 0}) exitWith {
     _cached
 };
+if (_forceRefresh) then {
+    _vehicle setVariable ["FIXICS_vehicleProfile", nil, false];
+};
 
 private _settings = createHashMap;
 {
@@ -96,6 +99,8 @@ private _profileId = "DEFAULT";
 private _profileSource = "global";
 private _overridesApplied = [];
 private _debug = missionNamespace getVariable ["FIXICS_vehicleProfileDebugLogging", false];
+private _mpCompatibilityEnabled = missionNamespace getVariable ["FIXICS_multiplayerCompatibilityEnabled", true];
+private _multiplayerProfileAuthority = isMultiplayer && {_mpCompatibilityEnabled};
 
 private _applyPreset = {
     params ["_presetName", "_source"];
@@ -180,11 +185,11 @@ private _parseEntries = {
 
 private _exactEntries = [
     missionNamespace getVariable ["FIXICS_vehicleProfileExactOverrides", "[]"],
-    "exact"
+    ["exact", "server-exact"] select _multiplayerProfileAuthority
 ] call _parseEntries;
 private _parentEntries = [
     missionNamespace getVariable ["FIXICS_vehicleProfileParentOverrides", "[]"],
-    "parent"
+    ["parent", "server-parent"] select _multiplayerProfileAuthority
 ] call _parseEntries;
 
 private _type = typeOf _vehicle;
@@ -251,8 +256,9 @@ private _profile = createHashMapFromArray [
     ["vehicleProfileOverridesApplied", _overridesApplied],
     ["vehicleClass", _type],
     ["vehicleParentClass", configName inheritsFrom _config],
+    ["multiplayerProfileAuthority", _multiplayerProfileAuthority],
     ["settings", _settings]
 ];
 
-_vehicle setVariable ["FIXICS_vehicleProfile", _profile, false];
+_vehicle setVariable ["FIXICS_vehicleProfile", _profile, _multiplayerProfileAuthority];
 _profile

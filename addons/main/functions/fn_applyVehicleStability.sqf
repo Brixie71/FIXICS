@@ -124,7 +124,7 @@ private _clearTerrainTireRecommendation = {
     ];
 };
 
-if (!local _vehicle) exitWith {
+if (!([_vehicle] call FIXICS_fnc_isVehicleLocal)) exitWith {
     [_vehicle] call _clearYawSample;
     [_vehicle] call _clearTerrainTireRecommendation;
     false

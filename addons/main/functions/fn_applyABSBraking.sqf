@@ -23,11 +23,19 @@ params [
     ["_deltaTime", 0.25, [0]]
 ];
 
-if (!(missionNamespace getVariable ["FIXICS_absEnabled", true])) exitWith {
+if (isNull _vehicle) exitWith {
     false
 };
 
-if (isNull _vehicle) exitWith {
+private _vehicleProfile = [_vehicle] call FIXICS_fnc_getVehicleProfile;
+private _profileSettings = _vehicleProfile getOrDefault ["settings", createHashMap];
+private _getProfileSetting = {
+    params ["_key", "_default"];
+
+    _profileSettings getOrDefault [_key, missionNamespace getVariable [_key, _default]]
+};
+
+if (!(["FIXICS_absEnabled", true] call _getProfileSetting)) exitWith {
     false
 };
 
@@ -84,13 +92,13 @@ if (_forwardLength <= 0) exitWith {
 _forward = _forward vectorMultiply (1 / _forwardLength);
 
 private _speedKmh = (abs _longitudinalSpeed) * 3.6;
-private _lowSpeedCutoffKmh = missionNamespace getVariable ["FIXICS_absLowSpeedCutoffKmh", 3];
+private _lowSpeedCutoffKmh = ["FIXICS_absLowSpeedCutoffKmh", 3] call _getProfileSetting;
 if (!_ignoreLowSpeedCutoff && {_speedKmh <= _lowSpeedCutoffKmh}) exitWith {
     call _clearAbsDecision;
     false
 };
 
-private _stationarySpeedKmh = missionNamespace getVariable ["FIXICS_stationaryBrakeBypassSpeedKmh", 1];
+private _stationarySpeedKmh = ["FIXICS_stationaryBrakeBypassSpeedKmh", 1] call _getProfileSetting;
 private _stationarySpeedMps = _stationarySpeedKmh / 3.6;
 private _brakingThreshold = [_stationarySpeedMps, 0] select _ignoreLowSpeedCutoff;
 private _isForwardBraking = (
@@ -122,20 +130,53 @@ if (_downhillLength > 0) then {
     _downhillAlignment = ((_downhill # 0) * (_forward # 0)) + ((_downhill # 1) * (_forward # 1));
 };
 
-private _slopeCompensation = missionNamespace getVariable ["FIXICS_absSlopeCompensation", 0.25];
+private _slopeCompensation = ["FIXICS_absSlopeCompensation", 0.25] call _getProfileSetting;
 private _downhillBrakeLoad = if (_isForwardBraking) then {
     _downhillAlignment max 0
 } else {
     (-_downhillAlignment) max 0
 };
 
-private _brakeStrength = missionNamespace getVariable ["FIXICS_absBrakeStrength", 0.45];
-private _releaseBias = missionNamespace getVariable ["FIXICS_absReleaseBias", 0.35];
+private _brakeStrength = ["FIXICS_absBrakeStrength", 0.45] call _getProfileSetting;
+private _releaseBias = ["FIXICS_absReleaseBias", 0.35] call _getProfileSetting;
+private _massKg = getMass _vehicle;
+if (!finite _massKg || {_massKg <= 0}) then {
+    _massKg = getNumber (configOf _vehicle >> "mass");
+};
+if (!finite _massKg || {_massKg <= 0}) then {
+    _massKg = 1500;
+};
+private _massBrakeMultiplier = 1 - ((((_massKg - 1800) / 5200) max 0) min 1) * 0.55;
+_massBrakeMultiplier = _massBrakeMultiplier max 0.45 min 1;
+private _terrainTireRecommendation = _vehicle getVariable ["FIXICS_terrainTireRecommendation", createHashMap];
+if !(_terrainTireRecommendation isEqualType createHashMap) then {
+    _terrainTireRecommendation = createHashMap;
+};
+private _brakingTractionMultiplier = (
+    _terrainTireRecommendation getOrDefault ["brakingTractionMultiplier", 1]
+) max 0.05 min 1.05;
+private _weatherGripMultiplier = (
+    _terrainTireRecommendation getOrDefault ["weatherGripMultiplier", 1]
+) max 0.05 min 1.10;
+private _hydroplaningRisk = (
+    _terrainTireRecommendation getOrDefault ["hydroplaningRisk", 0]
+) max 0 min 1;
+private _terrainAbsMultiplier = (
+    _brakingTractionMultiplier
+    * (1 - (_hydroplaningRisk * 0.35))
+) max 0.05 min 1.05;
+private _terrainReleaseMultiplier = (
+    1 - ((1 - (_weatherGripMultiplier min _brakingTractionMultiplier)) * 0.35)
+    - (_hydroplaningRisk * 0.25)
+) max 0.35 min 1;
 private _applySqfAbsFallback = {
     private _timeScale = ((_deltaTime max 0.001) min 0.25) / 0.25;
     private _effectiveBrake = _brakeStrength
         * (1 - _releaseBias)
         * (1 + (_downhillBrakeLoad * _slopeCompensation))
+        * _massBrakeMultiplier
+        * _terrainAbsMultiplier
+        * _terrainReleaseMultiplier
         * _timeScale;
     private _delta = _effectiveBrake min (abs _longitudinalSpeed);
     private _targetLongitudinalSpeed = if (_isForwardBraking) then {
@@ -146,14 +187,19 @@ private _applySqfAbsFallback = {
 
     if (missionNamespace getVariable ["FIXICS_absDebugLogging", false]) then {
         diag_log format [
-            "FIXICS ABS: type=%1 requestedDirection=%2 speedKmh=%3 longitudinalMps=%4 delta=%5 slope=%6 downhillLoad=%7",
+            "FIXICS ABS: type=%1 requestedDirection=%2 speedKmh=%3 longitudinalMps=%4 delta=%5 slope=%6 downhillLoad=%7 massKg=%8 massBrakeMultiplier=%9 terrainAbsMultiplier=%10 weatherGripMultiplier=%11 hydroplaningRisk=%12",
             typeOf _vehicle,
             _requestedDirection,
             _speedKmh,
             _longitudinalSpeed,
             _delta,
             _slope,
-            _downhillBrakeLoad
+            _downhillBrakeLoad,
+            _massKg,
+            _massBrakeMultiplier,
+            _terrainAbsMultiplier,
+            _weatherGripMultiplier,
+            _hydroplaningRisk
         ];
     };
 
@@ -168,11 +214,9 @@ private _nativeAlignment = if (_isForwardBraking) then {
     -_downhillAlignment
 };
 
-private _directionThreshold = (
-    missionNamespace getVariable ["FIXICS_directionChangeThresholdKmh", 2]
-) / 3.6;
-private _directionLaunchVelocity = missionNamespace getVariable ["FIXICS_directionLaunchVelocity", 0.35];
-private _neutralPulseSeconds = missionNamespace getVariable ["FIXICS_directionNeutralPulseSeconds", 0.08];
+private _directionThreshold = (["FIXICS_directionChangeThresholdKmh", 2] call _getProfileSetting) / 3.6;
+private _directionLaunchVelocity = ["FIXICS_directionLaunchVelocity", 0.35] call _getProfileSetting;
+private _neutralPulseSeconds = ["FIXICS_directionNeutralPulseSeconds", 0.08] call _getProfileSetting;
 private _nativeAdvice = [
     "ABS",
     0,
@@ -219,6 +263,16 @@ if (!_applied) exitWith {
     call _clearAbsDecision;
     false
 };
+if (_source == "native" && {(_massBrakeMultiplier * _terrainAbsMultiplier * _terrainReleaseMultiplier) < 1}) then {
+    private _scaledDelta = _delta * _massBrakeMultiplier * _terrainAbsMultiplier * _terrainReleaseMultiplier;
+    _newLongitudinalSpeed = if (_isForwardBraking) then {
+        (_longitudinalSpeed - _scaledDelta) max 0
+    } else {
+        (_longitudinalSpeed + _scaledDelta) min 0
+    };
+    _delta = _scaledDelta;
+    _detail = format ["%1;mass-terrain-scaled", _detail];
+};
 
 private _absDecision = createHashMapFromArray [
     ["applied", _applied],
@@ -228,7 +282,14 @@ private _absDecision = createHashMapFromArray [
     ["source", _source],
     ["detail", _detail],
     ["slope", _slope],
-    ["downhillBrakeLoad", _downhillBrakeLoad]
+    ["downhillBrakeLoad", _downhillBrakeLoad],
+    ["massKg", _massKg],
+    ["massBrakeMultiplier", _massBrakeMultiplier],
+    ["brakingTractionMultiplier", _brakingTractionMultiplier],
+    ["weatherGripMultiplier", _weatherGripMultiplier],
+    ["hydroplaningRisk", _hydroplaningRisk],
+    ["terrainAbsMultiplier", _terrainAbsMultiplier],
+    ["terrainReleaseMultiplier", _terrainReleaseMultiplier]
 ];
 _vehicle setVariable ["FIXICS_absLastDecision", _absDecision, false];
 
@@ -237,7 +298,7 @@ _vehicle setVelocityModelSpace _modelVelocity;
 
 if (missionNamespace getVariable ["FIXICS_driverAssistDebugLogging", false]) then {
     diag_log format [
-        "FIXICS driver assist ABS: type=%1 requestedDirection=%2 speedKmh=%3 targetMps=%4 delta=%5 slope=%6 source=%7 detail=%8",
+        "FIXICS driver assist ABS: type=%1 requestedDirection=%2 speedKmh=%3 targetMps=%4 delta=%5 slope=%6 source=%7 detail=%8 massKg=%9 massBrakeMultiplier=%10 terrainAbsMultiplier=%11 weatherGripMultiplier=%12 hydroplaningRisk=%13",
         typeOf _vehicle,
         _requestedDirection,
         _speedKmh,
@@ -245,7 +306,12 @@ if (missionNamespace getVariable ["FIXICS_driverAssistDebugLogging", false]) the
         _delta,
         _slope,
         _source,
-        _detail
+        _detail,
+        _massKg,
+        _massBrakeMultiplier,
+        _terrainAbsMultiplier,
+        _weatherGripMultiplier,
+        _hydroplaningRisk
     ];
 };
 

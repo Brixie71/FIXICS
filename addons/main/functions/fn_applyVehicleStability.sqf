@@ -96,6 +96,24 @@ private _clearTerrainTireRecommendation = {
         ["tireSteeringPenalty", 0],
         ["massModifier", 1],
         ["perWheelMode", "aggregate"],
+        ["wheelSupportState", "UNKNOWN"],
+        ["rolloverSuppressed", false],
+        ["driverlessDecay", 0],
+        ["destroyedTireCount", 0],
+        ["destroyedTireRatio", 0],
+        ["destroyedTirePenalty", 0],
+        ["mobilityLimiter", 1],
+        ["weatherTerrainEnabled", false],
+        ["rainLevel", 0],
+        ["overcastLevel", 0],
+        ["surfaceWetness", 0],
+        ["terrainSaturation", _sampleVehicle getVariable ["FIXICS_weatherTerrainSaturation", 0]],
+        ["weatherGripMultiplier", 1],
+        ["hydroplaningRisk", 0],
+        ["windStrength", 0],
+        ["windCrossComponent", 0],
+        ["windHandlingMultiplier", 0],
+        ["weatherReason", "stale-safe"],
         ["tireAirState", _sampleVehicle getVariable ["FIXICS_tireAirState", 1]]
     ];
 
@@ -128,6 +146,14 @@ if (_vehicle getVariable ["FIXICS_handbrakeEnabled", false]) exitWith {
     false
 };
 
+private _vehicleProfile = [_vehicle] call FIXICS_fnc_getVehicleProfile;
+private _profileSettings = _vehicleProfile getOrDefault ["settings", createHashMap];
+private _getProfileSetting = {
+    params ["_key", "_default"];
+
+    _profileSettings getOrDefault [_key, missionNamespace getVariable [_key, _default]]
+};
+
 private _profile = [_vehicle] call FIXICS_fnc_getVehicleStabilityProfile;
 if ((count _profile) < 7 || {!(_profile # 0)}) exitWith {
     [_vehicle] call _clearYawSample;
@@ -141,11 +167,13 @@ private _rollAirborneGraceSeconds = missionNamespace getVariable [
     "FIXICS_rollAirborneGraceSeconds",
     0.35
 ];
+_rollAirborneGraceSeconds = ["FIXICS_rollAirborneGraceSeconds", _rollAirborneGraceSeconds] call _getProfileSetting;
 
 private _rollPresetIndex = missionNamespace getVariable [
     "FIXICS_rollStabilityPreset",
     0
 ];
+_rollPresetIndex = ["FIXICS_rollStabilityPreset", _rollPresetIndex] call _getProfileSetting;
 private _rollPreset = [
     "REALISTIC_STABLE",
     "OFFROAD_ASSIST",
@@ -164,11 +192,11 @@ private _rollPresetSettings = switch (_rollPreset) do {
     };
     case "CUSTOM": {
         [
-            missionNamespace getVariable ["FIXICS_rollActivationBankDeg", 18],
-            missionNamespace getVariable ["FIXICS_rollActivationRateDeg", 45],
-            missionNamespace getVariable ["FIXICS_rollStrength", 0.08],
-            missionNamespace getVariable ["FIXICS_rollMaximumCorrection", 0.08],
-            missionNamespace getVariable ["FIXICS_rollAirborneGraceSeconds", 0.35]
+            ["FIXICS_rollActivationBankDeg", 18] call _getProfileSetting,
+            ["FIXICS_rollActivationRateDeg", 45] call _getProfileSetting,
+            ["FIXICS_rollStrength", 0.08] call _getProfileSetting,
+            ["FIXICS_rollMaximumCorrection", 0.08] call _getProfileSetting,
+            ["FIXICS_rollAirborneGraceSeconds", 0.35] call _getProfileSetting
         ]
     };
     default {
@@ -200,19 +228,22 @@ private _swayBarEnabled = missionNamespace getVariable [
     "FIXICS_swayBarEnabled",
     true
 ];
+_swayBarEnabled = ["FIXICS_swayBarEnabled", _swayBarEnabled] call _getProfileSetting;
 private _frontSwayBarEnabled = missionNamespace getVariable [
     "FIXICS_frontSwayBarEnabled",
     true
 ];
+_frontSwayBarEnabled = ["FIXICS_frontSwayBarEnabled", _frontSwayBarEnabled] call _getProfileSetting;
 private _frontSwayBarStrength = (
-    missionNamespace getVariable ["FIXICS_frontSwayBarStrength", 0.5]
+    ["FIXICS_frontSwayBarStrength", 0.5] call _getProfileSetting
 ) max 0 min 1;
 private _rearSwayBarEnabled = missionNamespace getVariable [
     "FIXICS_rearSwayBarEnabled",
     true
 ];
+_rearSwayBarEnabled = ["FIXICS_rearSwayBarEnabled", _rearSwayBarEnabled] call _getProfileSetting;
 private _rearSwayBarStrength = (
-    missionNamespace getVariable ["FIXICS_rearSwayBarStrength", 0.5]
+    ["FIXICS_rearSwayBarStrength", 0.5] call _getProfileSetting
 ) max 0 min 1;
 private _frontSwayBarContribution = [0, _frontSwayBarStrength] select _frontSwayBarEnabled;
 private _rearSwayBarContribution = [0, _rearSwayBarStrength] select _rearSwayBarEnabled;
@@ -254,6 +285,7 @@ private _modeIndex = missionNamespace getVariable [
     "FIXICS_stabilityAssistMode",
     0
 ];
+_modeIndex = ["FIXICS_stabilityAssistMode", _modeIndex] call _getProfileSetting;
 private _mode = ["OFF", "YAW", "YAW_LATERAL", "COUNTERSTEER"] param [
     _modeIndex,
     "OFF"
@@ -298,6 +330,24 @@ private _stabilityDecision = createHashMapFromArray [
     ["tireSteeringPenalty", 0],
     ["massModifier", 1],
     ["perWheelMode", "aggregate"],
+    ["wheelSupportState", "UNKNOWN"],
+    ["rolloverSuppressed", false],
+    ["driverlessDecay", 0],
+    ["destroyedTireCount", 0],
+    ["destroyedTireRatio", 0],
+    ["destroyedTirePenalty", 0],
+    ["mobilityLimiter", 1],
+    ["weatherTerrainEnabled", false],
+    ["rainLevel", 0],
+    ["overcastLevel", 0],
+    ["surfaceWetness", 0],
+    ["terrainSaturation", 0],
+    ["weatherGripMultiplier", 1],
+    ["hydroplaningRisk", 0],
+    ["windStrength", 0],
+    ["windCrossComponent", 0],
+    ["windHandlingMultiplier", 0],
+    ["weatherReason", "not-evaluated"],
     ["yawRate", 0],
     ["bank", 0],
     ["bankRate", 0]
@@ -315,6 +365,26 @@ private _terrainClass = switch (true) do {
 private _terrainNormal = surfaceNormal (getPosWorld _vehicle);
 private _slopeSeverity = 1 - (((_terrainNormal # 2) max 0) min 1);
 private _terrainDeltaTime = [0.016, _deltaTime] select (finite _deltaTime && {_deltaTime > 0});
+private _terrainPitchBank = _vehicle call BIS_fnc_getPitchBank;
+private _weatherLastUpdate = _vehicle getVariable ["FIXICS_weatherTerrainLastUpdate", _now];
+private _weatherDeltaTime = (_now - _weatherLastUpdate) max 0 min 10;
+private _currentRainLevel = rain;
+private _currentOvercastLevel = overcast;
+private _currentWind = wind;
+private _currentWindStr = windStr;
+private _weatherSaturation = _vehicle getVariable ["FIXICS_weatherTerrainSaturation", 0];
+private _terrainWheelHitpointDamage = [];
+private _terrainHitPointDamage = getAllHitPointsDamage _vehicle;
+if ((count _terrainHitPointDamage) >= 3) then {
+    private _terrainHitPointNames = _terrainHitPointDamage # 0;
+    private _terrainHitPointValues = _terrainHitPointDamage # 2;
+    for "_index" from 0 to ((count _terrainHitPointNames) - 1) do {
+        private _hitPointName = _terrainHitPointNames # _index;
+        if (((toLower _hitPointName) find "wheel") >= 0) then {
+            _terrainWheelHitpointDamage pushBack (_terrainHitPointValues # _index);
+        };
+    };
+};
 private _massKg = getMass _vehicle;
 if (!finite _massKg || {_massKg <= 0}) then {
     _massKg = getNumber (configOf _vehicle >> "mass");
@@ -323,6 +393,7 @@ if (!finite _massKg || {_massKg <= 0}) then {
     _massKg = 1500;
 };
 private _terrainTireState = createHashMapFromArray [
+    ["vehicle", _vehicle],
     ["surfaceType", _surface],
     ["speedKmh", _speedKmh],
     [
@@ -339,21 +410,53 @@ private _terrainTireState = createHashMapFromArray [
     ["deltaTime", _terrainDeltaTime],
     ["massKg", _massKg],
     ["tireDamage", damage _vehicle],
-    ["tireAirState", _vehicle getVariable ["FIXICS_tireAirState", 1]]
+    ["tireAirState", _vehicle getVariable ["FIXICS_tireAirState", 1]],
+    ["isTouchingGround", _isGrounded],
+    ["lastGroundedAge", _now - _lastGroundedAt],
+    ["driverPresent", !(isNull driver _vehicle)],
+    ["vectorUp", vectorUp _vehicle],
+    ["pitch", _terrainPitchBank # 0],
+    ["bank", _terrainPitchBank # 1],
+    ["wheelDamageValues", _terrainWheelHitpointDamage],
+    ["rainLevel", _currentRainLevel],
+    ["overcastLevel", _currentOvercastLevel],
+    ["windVector", _currentWind],
+    ["windStrength", _currentWindStr],
+    ["vehicleRightVector", vectorDir _vehicle vectorCrossProduct vectorUp _vehicle],
+    ["weatherSaturation", _weatherSaturation],
+    ["weatherDeltaTime", _weatherDeltaTime]
 ];
 private _terrainTireSettings = createHashMapFromArray [
-    ["enabled", missionNamespace getVariable ["FIXICS_terrainTireEnabled", true]],
-    ["tirePressureEnabled", missionNamespace getVariable ["FIXICS_tirePressureEnabled", true]],
-    ["deflationRate", missionNamespace getVariable ["FIXICS_tireDeflationRate", 0.025]],
-    ["minimumMobility", missionNamespace getVariable ["FIXICS_tireMinimumMobility", 0.35]],
-    ["dragStrength", missionNamespace getVariable ["FIXICS_tireDragStrength", 0.35]],
-    ["steeringPenalty", missionNamespace getVariable ["FIXICS_tireSteeringPenalty", 0.30]]
+    ["enabled", ["FIXICS_terrainTireEnabled", true] call _getProfileSetting],
+    ["tirePressureEnabled", ["FIXICS_tirePressureEnabled", true] call _getProfileSetting],
+    ["deflationRate", ["FIXICS_tireDeflationRate", 0.025] call _getProfileSetting],
+    ["minimumMobility", ["FIXICS_tireMinimumMobility", 0.35] call _getProfileSetting],
+    ["dragStrength", ["FIXICS_tireDragStrength", 0.35] call _getProfileSetting],
+    ["steeringPenalty", ["FIXICS_tireSteeringPenalty", 0.30] call _getProfileSetting],
+    ["rolloverSafetyEnabled", ["FIXICS_rolloverSafetyEnabled", true] call _getProfileSetting],
+    ["airborneGraceWindow", ["FIXICS_airborneGraceWindow", 0.50] call _getProfileSetting],
+    ["driverlessDecayEnabled", ["FIXICS_driverlessDecayEnabled", true] call _getProfileSetting],
+    ["driverlessDecayCap", ["FIXICS_driverlessDecayCap", 0.15] call _getProfileSetting],
+    ["destroyedTireThreshold", ["FIXICS_destroyedTireThreshold", 0.85] call _getProfileSetting],
+    ["weatherTerrainEnabled", ["FIXICS_weatherTerrainEnabled", true] call _getProfileSetting],
+    ["weatherSaturationTime", ["FIXICS_weatherSaturationTime", 30] call _getProfileSetting],
+    ["weatherDryingTime", ["FIXICS_weatherDryingTime", 180] call _getProfileSetting],
+    ["hydroplaningEnabled", ["FIXICS_hydroplaningEnabled", true] call _getProfileSetting],
+    ["hydroplaningSpeedKmh", ["FIXICS_hydroplaningSpeedKmh", 70] call _getProfileSetting],
+    ["windHandlingEnabled", ["FIXICS_windHandlingEnabled", true] call _getProfileSetting],
+    ["windHandlingStrength", ["FIXICS_windHandlingStrength", 0.05] call _getProfileSetting]
 ];
 private _terrainTireRecommendation = [
     _terrainTireState,
     _terrainTireSettings
 ] call FIXICS_fnc_getTerrainTireRecommendation;
 _vehicle setVariable ["FIXICS_tireAirState", _terrainTireRecommendation getOrDefault ["tireAirState", 1], false];
+_vehicle setVariable ["FIXICS_weatherTerrainLastUpdate", _now, false];
+_vehicle setVariable [
+    "FIXICS_weatherTerrainSaturation",
+    _terrainTireRecommendation getOrDefault ["terrainSaturation", _weatherSaturation],
+    false
+];
 _vehicle setVariable ["FIXICS_terrainTireRecommendation", _terrainTireRecommendation, false];
 private _turningTractionMultiplier = (
     _terrainTireRecommendation getOrDefault ["turningTractionMultiplier", 1]
@@ -370,7 +473,25 @@ private _terrainTireFields = [
     ["tireDragPenalty", 0],
     ["tireSteeringPenalty", 0],
     ["massModifier", 1],
-    ["perWheelMode", "aggregate"]
+    ["perWheelMode", "aggregate"],
+    ["wheelSupportState", "UNKNOWN"],
+    ["rolloverSuppressed", false],
+    ["driverlessDecay", 0],
+    ["destroyedTireCount", 0],
+    ["destroyedTireRatio", 0],
+    ["destroyedTirePenalty", 0],
+    ["mobilityLimiter", 1],
+    ["weatherTerrainEnabled", false],
+    ["rainLevel", 0],
+    ["overcastLevel", 0],
+    ["surfaceWetness", 0],
+    ["terrainSaturation", 0],
+    ["weatherGripMultiplier", 1],
+    ["hydroplaningRisk", 0],
+    ["windStrength", 0],
+    ["windCrossComponent", 0],
+    ["windHandlingMultiplier", 0],
+    ["weatherReason", "not-evaluated"]
 ];
 _stabilityDecision set ["terrainTireRecommendation", _terrainTireRecommendation];
 {
@@ -396,6 +517,35 @@ if (missionNamespace getVariable ["FIXICS_tireDebugLogging", false]) then {
         _terrainTireRecommendation getOrDefault ["perWheelMode", "aggregate"]
     ];
 };
+if (missionNamespace getVariable ["FIXICS_destroyedTireDebugLogging", false]) then {
+    diag_log format [
+        "[FIXICS][DestroyedTire] class=%1 wheelSupportState=%2 rolloverSuppressed=%3 destroyedTireCount=%4 destroyedTireRatio=%5 destroyedTirePenalty=%6 mobilityLimiter=%7 driverlessDecay=%8",
+        typeOf _vehicle,
+        _terrainTireRecommendation getOrDefault ["wheelSupportState", "UNKNOWN"],
+        _terrainTireRecommendation getOrDefault ["rolloverSuppressed", false],
+        _terrainTireRecommendation getOrDefault ["destroyedTireCount", 0],
+        _terrainTireRecommendation getOrDefault ["destroyedTireRatio", 0],
+        _terrainTireRecommendation getOrDefault ["destroyedTirePenalty", 0],
+        _terrainTireRecommendation getOrDefault ["mobilityLimiter", 1],
+        _terrainTireRecommendation getOrDefault ["driverlessDecay", 0]
+    ];
+};
+if (missionNamespace getVariable ["FIXICS_weatherDebugLogging", false]) then {
+    diag_log format [
+        "[FIXICS][WeatherTerrain] class=%1 rainLevel=%2 overcastLevel=%3 surfaceWetness=%4 terrainSaturation=%5 weatherGripMultiplier=%6 hydroplaningRisk=%7 windStrength=%8 windCrossComponent=%9 windHandlingMultiplier=%10 weatherReason=%11",
+        typeOf _vehicle,
+        _terrainTireRecommendation getOrDefault ["rainLevel", 0],
+        _terrainTireRecommendation getOrDefault ["overcastLevel", 0],
+        _terrainTireRecommendation getOrDefault ["surfaceWetness", 0],
+        _terrainTireRecommendation getOrDefault ["terrainSaturation", 0],
+        _terrainTireRecommendation getOrDefault ["weatherGripMultiplier", 1],
+        _terrainTireRecommendation getOrDefault ["hydroplaningRisk", 0],
+        _terrainTireRecommendation getOrDefault ["windStrength", 0],
+        _terrainTireRecommendation getOrDefault ["windCrossComponent", 0],
+        _terrainTireRecommendation getOrDefault ["windHandlingMultiplier", 0],
+        _terrainTireRecommendation getOrDefault ["weatherReason", "not-evaluated"]
+    ];
+};
 
 private _recommended = false;
 private _recommendedLongitudinal = _longitudinal;
@@ -405,6 +555,14 @@ private _recommendedMode = _mode;
 private _lateralApplied = false;
 private _controlledSlipApplied = false;
 private _controlledSlipCorrection = 0;
+private _windHandlingMultiplier = _terrainTireRecommendation getOrDefault ["windHandlingMultiplier", 0];
+private _windCrossComponent = _terrainTireRecommendation getOrDefault ["windCrossComponent", 0];
+if (_isGrounded && {_windHandlingMultiplier > 0} && {!(_terrainTireRecommendation getOrDefault ["rolloverSuppressed", false])}) then {
+    private _windDelta = (_windCrossComponent * _windHandlingMultiplier * _terrainDeltaTime) max -0.05 min 0.05;
+    _velocity set [0, (_velocity # 0) + _windDelta];
+    _lateralApplied = true;
+    _stabilityDecision set ["lateralDelta", (_stabilityDecision getOrDefault ["lateralDelta", 0]) + _windDelta];
+};
 
 if (_isGrounded) then {
     private _heading = getDir _vehicle;
@@ -465,6 +623,7 @@ private _rollEnabled = missionNamespace getVariable [
     "FIXICS_rollStabilityEnabled",
     true
 ];
+_rollEnabled = ["FIXICS_rollStabilityEnabled", _rollEnabled] call _getProfileSetting;
 private _rollEligible = _withinRollGrace
     && {_rollEnabled}
     && {_swayBarEnabled}
@@ -553,23 +712,23 @@ if (!_rollEligible) then {
 };
 
 private _controlledSlipSettings = createHashMapFromArray [
-    ["enabled", missionNamespace getVariable ["FIXICS_controlledSlipEnabled", true]],
+    ["enabled", ["FIXICS_controlledSlipEnabled", true] call _getProfileSetting],
     [
         "activationSpeedKmh",
-        missionNamespace getVariable ["FIXICS_controlledSlipActivationSpeedKmh", 55]
+        ["FIXICS_controlledSlipActivationSpeedKmh", 55] call _getProfileSetting
     ],
     [
         "steeringThreshold",
-        missionNamespace getVariable ["FIXICS_controlledSlipSteeringThreshold", 0.65]
+        ["FIXICS_controlledSlipSteeringThreshold", 0.65] call _getProfileSetting
     ],
-    ["strength", missionNamespace getVariable ["FIXICS_controlledSlipStrength", 0.16]],
+    ["strength", ["FIXICS_controlledSlipStrength", 0.16] call _getProfileSetting],
     [
         "maximumRelease",
-        missionNamespace getVariable ["FIXICS_controlledSlipMaximumRelease", 0.22]
+        ["FIXICS_controlledSlipMaximumRelease", 0.22] call _getProfileSetting
     ],
     [
         "terrainInfluence",
-        missionNamespace getVariable ["FIXICS_controlledSlipTerrainInfluence", true]
+        ["FIXICS_controlledSlipTerrainInfluence", true] call _getProfileSetting
     ]
 ];
 private _controlledSlipState = createHashMapFromArray [
@@ -592,18 +751,24 @@ _controlledSlipCorrection = _controlledSlipDecision getOrDefault [
 _controlledSlipApplied = (
     _controlledSlipDecision getOrDefault ["controlledSlipApplied", false]
 ) && {_controlledSlipCorrection != 0};
-if (_controlledSlipApplied) then {
+private _rolloverSuppressed = _terrainTireRecommendation getOrDefault ["rolloverSuppressed", false];
+if (_controlledSlipApplied && {!_rolloverSuppressed}) then {
     private _terrainLimitedControlledSlipCorrection = (
         _controlledSlipCorrection * _turningTractionMultiplier
     );
     _velocity set [0, (_velocity # 0) - _terrainLimitedControlledSlipCorrection];
     _stabilityDecision set ["controlledSlipDelta", -_terrainLimitedControlledSlipCorrection];
     _controlledSlipCorrection = _terrainLimitedControlledSlipCorrection;
+} else {
+    if (_rolloverSuppressed) then {
+        _controlledSlipApplied = false;
+        _controlledSlipCorrection = 0;
+    };
 };
 
 _stabilityDecision set [
     "controlledSlipEnabled",
-    missionNamespace getVariable ["FIXICS_controlledSlipEnabled", true]
+    ["FIXICS_controlledSlipEnabled", true] call _getProfileSetting
 ];
 _stabilityDecision set [
     "controlledSlipEligible",

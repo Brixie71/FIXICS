@@ -44,6 +44,10 @@ class CfgFunctions
             class startSteeringDiagnostics {};
             class getNativeSlopeControl {};
             class getNativeDriverAssist {};
+            class getNativeTerrainTire {};
+            class getVehicleProfile {};
+            class dumpVehicleProfile {};
+            class dumpVehicleClasses {};
             class getVehicleStabilityProfile {};
             class getVehicleStabilityRecommendation {};
             class getRollStabilityRecommendation {};

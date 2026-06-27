@@ -62,6 +62,24 @@ private _decision = createHashMapFromArray [
     ["tireDragPenalty", 0],
     ["tireSteeringPenalty", 0],
     ["massModifier", 1],
+    ["wheelSupportState", "UNKNOWN"],
+    ["rolloverSuppressed", false],
+    ["driverlessDecay", 0],
+    ["destroyedTireCount", 0],
+    ["destroyedTireRatio", 0],
+    ["destroyedTirePenalty", 0],
+    ["mobilityLimiter", 1],
+    ["weatherTerrainEnabled", false],
+    ["rainLevel", 0],
+    ["overcastLevel", 0],
+    ["surfaceWetness", 0],
+    ["terrainSaturation", 0],
+    ["weatherGripMultiplier", 1],
+    ["hydroplaningRisk", 0],
+    ["windStrength", 0],
+    ["windCrossComponent", 0],
+    ["windHandlingMultiplier", 0],
+    ["weatherReason", "not-evaluated"],
     ["nativeAdvisory", "ignored"]
 ];
 
@@ -91,6 +109,13 @@ if (!finite _massKg || {_massKg <= 0}) then {
 
 private _velocityModel = velocityModelSpace _vehicle;
 private _speedKmh = (abs (_velocityModel # 1)) * 3.6;
+private _vehicleProfile = [_vehicle] call FIXICS_fnc_getVehicleProfile;
+private _profileSettings = _vehicleProfile getOrDefault ["settings", createHashMap];
+private _getProfileSetting = {
+    params ["_key", "_default"];
+
+    _profileSettings getOrDefault [_key, missionNamespace getVariable [_key, _default]]
+};
 private _absDecision = _vehicle getVariable ["FIXICS_absLastDecision", createHashMap];
 private _slopeDecision = _vehicle getVariable ["FIXICS_slopeLastDecision", createHashMap];
 private _stabilityDecision = _vehicle getVariable ["FIXICS_stabilityLastDecision", createHashMap];
@@ -107,6 +132,8 @@ private _state = createHashMapFromArray [
     ["terrainFriction", _terrainFriction],
     ["massKg", _massKg],
     ["serviceBraking", _driverState == "SERVICE_BRAKE"],
+    ["handbrakeActive", _vehicle getVariable ["FIXICS_handbrakeEnabled", false]],
+    ["absDelta", _absDecision getOrDefault ["delta", 0]],
     ["slopeDelta", _slopeDecision getOrDefault ["delta", 0]],
     ["stabilityDelta", _stabilityDecision getOrDefault ["lateralDelta", 0]],
     ["rollDelta", _stabilityDecision getOrDefault ["rollDelta", 0]],
@@ -114,11 +141,11 @@ private _state = createHashMapFromArray [
 ];
 
 private _settings = createHashMapFromArray [
-    ["terrainInfluenceEnabled", missionNamespace getVariable ["FIXICS_runtimeAssistTerrainInfluenceEnabled", true]],
-    ["terrainInfluenceStrength", missionNamespace getVariable ["FIXICS_runtimeAssistTerrainInfluenceStrength", 0.25]],
-    ["brakingSlopeRetention", missionNamespace getVariable ["FIXICS_runtimeAssistBrakingSlopeRetention", 0.35]],
-    ["massDampingStrength", missionNamespace getVariable ["FIXICS_runtimeAssistMassDampingStrength", 0.15]],
-    ["maximumComposedCorrection", missionNamespace getVariable ["FIXICS_runtimeAssistMaximumComposedCorrection", 0.25]]
+    ["terrainInfluenceEnabled", ["FIXICS_runtimeAssistTerrainInfluenceEnabled", true] call _getProfileSetting],
+    ["terrainInfluenceStrength", ["FIXICS_runtimeAssistTerrainInfluenceStrength", 0.25] call _getProfileSetting],
+    ["brakingSlopeRetention", ["FIXICS_runtimeAssistBrakingSlopeRetention", 0.35] call _getProfileSetting],
+    ["massDampingStrength", ["FIXICS_runtimeAssistMassDampingStrength", 0.15] call _getProfileSetting],
+    ["maximumComposedCorrection", ["FIXICS_runtimeAssistMaximumComposedCorrection", 0.25] call _getProfileSetting]
 ];
 
 private _recommendation = [_state, _settings] call FIXICS_fnc_getRuntimeAssistRecommendation;
@@ -193,7 +220,25 @@ _decision set [
     ["wheelspinEstimate", 0],
     ["tireDragPenalty", 0],
     ["tireSteeringPenalty", 0],
-    ["massModifier", 1]
+    ["massModifier", 1],
+    ["wheelSupportState", "UNKNOWN"],
+    ["rolloverSuppressed", false],
+    ["driverlessDecay", 0],
+    ["destroyedTireCount", 0],
+    ["destroyedTireRatio", 0],
+    ["destroyedTirePenalty", 0],
+    ["mobilityLimiter", 1],
+    ["weatherTerrainEnabled", false],
+    ["rainLevel", 0],
+    ["overcastLevel", 0],
+    ["surfaceWetness", 0],
+    ["terrainSaturation", 0],
+    ["weatherGripMultiplier", 1],
+    ["hydroplaningRisk", 0],
+    ["windStrength", 0],
+    ["windCrossComponent", 0],
+    ["windHandlingMultiplier", 0],
+    ["weatherReason", "not-evaluated"]
 ];
 if (
     (_decision get "controlledSlipApplied")
@@ -203,12 +248,18 @@ if (
 };
 _decision set ["nativeAdvisory", "advisory-only"];
 _decision set ["absApplied", _absDecision getOrDefault ["applied", false]];
+_decision set ["vehicleProfileId", _vehicleProfile getOrDefault ["vehicleProfileId", "DEFAULT"]];
+_decision set ["vehicleProfileSource", _vehicleProfile getOrDefault ["vehicleProfileSource", "global"]];
+_decision set [
+    "vehicleProfileOverridesApplied",
+    _vehicleProfile getOrDefault ["vehicleProfileOverridesApplied", []]
+];
 
 _vehicle setVariable ["FIXICS_runtimeAssistLastDecision", _decision, false];
 
 if (missionNamespace getVariable ["FIXICS_runtimeAssistDebugLogging", false]) then {
     diag_log format [
-        "[FIXICS][RuntimeAssist] class=%1 state=%2 speedKmh=%3 priority=%4 terrain=%5 mass=%6 slopeRetention=%7 suppressed=%8 finalCorrection=%9 swayBarStrengthMultiplier=%10 frontSwayBarEnabled=%11 frontSwayBarStrength=%12 rearSwayBarEnabled=%13 rearSwayBarStrength=%14 controlledSlipEligible=%15 controlledSlipApplied=%16 controlledSlipReason=%17 controlledSlipGripReleaseFactor=%18 controlledSlipCorrection=%19 terrainGripClass=%20 tractionMultiplier=%21 accelerationTractionMultiplier=%22 brakingTractionMultiplier=%23 turningTractionMultiplier=%24 slopeTractionMultiplier=%25 wheelspinEstimate=%26 tireDragPenalty=%27 tireSteeringPenalty=%28 massModifier=%29",
+        "[FIXICS][RuntimeAssist] class=%1 state=%2 speedKmh=%3 priority=%4 terrain=%5 mass=%6 slopeRetention=%7 suppressed=%8 finalCorrection=%9 swayBarStrengthMultiplier=%10 frontSwayBarEnabled=%11 frontSwayBarStrength=%12 rearSwayBarEnabled=%13 rearSwayBarStrength=%14 controlledSlipEligible=%15 controlledSlipApplied=%16 controlledSlipReason=%17 controlledSlipGripReleaseFactor=%18 controlledSlipCorrection=%19 terrainGripClass=%20 tractionMultiplier=%21 accelerationTractionMultiplier=%22 brakingTractionMultiplier=%23 turningTractionMultiplier=%24 slopeTractionMultiplier=%25 wheelspinEstimate=%26 tireDragPenalty=%27 tireSteeringPenalty=%28 massModifier=%29 wheelSupportState=%30 rolloverSuppressed=%31 driverlessDecay=%32 destroyedTireCount=%33 destroyedTireRatio=%34 destroyedTirePenalty=%35 mobilityLimiter=%36 weatherTerrainEnabled=%37 rainLevel=%38 overcastLevel=%39 surfaceWetness=%40 terrainSaturation=%41 weatherGripMultiplier=%42 hydroplaningRisk=%43 windStrength=%44 windCrossComponent=%45 windHandlingMultiplier=%46 weatherReason=%47 vehicleProfileId=%48 vehicleProfileSource=%49 vehicleProfileOverridesApplied=%50",
         typeOf _vehicle,
         _driverState,
         _speedKmh,
@@ -237,7 +288,28 @@ if (missionNamespace getVariable ["FIXICS_runtimeAssistDebugLogging", false]) th
         _decision get "wheelspinEstimate",
         _decision get "tireDragPenalty",
         _decision get "tireSteeringPenalty",
-        _decision get "massModifier"
+        _decision get "massModifier",
+        _decision get "wheelSupportState",
+        _decision get "rolloverSuppressed",
+        _decision get "driverlessDecay",
+        _decision get "destroyedTireCount",
+        _decision get "destroyedTireRatio",
+        _decision get "destroyedTirePenalty",
+        _decision get "mobilityLimiter",
+        _decision get "weatherTerrainEnabled",
+        _decision get "rainLevel",
+        _decision get "overcastLevel",
+        _decision get "surfaceWetness",
+        _decision get "terrainSaturation",
+        _decision get "weatherGripMultiplier",
+        _decision get "hydroplaningRisk",
+        _decision get "windStrength",
+        _decision get "windCrossComponent",
+        _decision get "windHandlingMultiplier",
+        _decision get "weatherReason",
+        _decision get "vehicleProfileId",
+        _decision get "vehicleProfileSource",
+        _decision get "vehicleProfileOverridesApplied"
     ];
 };
 

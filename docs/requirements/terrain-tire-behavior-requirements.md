@@ -2,14 +2,18 @@
 
 ## Objective
 
-Design and implement a new Terrain Tire Behavior layer for FIXICS Phase 1 ground
-vehicles.
+Design and implement Terrain Tire Behavior improvements for FIXICS Phase 1
+ground vehicles.
 
 The layer should model how terrain, tire condition, tire pressure, acceleration,
 braking, steering, slope rolling, and vehicle mass affect available traction. It
 must feed existing FIXICS systems through Runtime Assist instead of replacing
 Controlled Slip, ABS, Slope Assist, Vehicle Stability, Roll Stability, or Sway
 Bar Assist.
+
+Phase 2 extends the approved Terrain Tire layer with surface-transition
+behavior, stronger terrain-specific tire interaction, rollover/wheel-contact
+safety, driverless wheelspin decay, and destroyed-tire mobility loss.
 
 ## Current System State
 
@@ -25,9 +29,14 @@ Bar Assist.
   - Sway Bar Assist.
   - Runtime Assist Coordinator.
   - Controlled Slip Assist.
+  - Terrain Tire Behavior.
+  - Per-Vehicle Settings.
+  - Live Vehicle Telemetry terminal dashboard.
   - Vehicle handling telemetry and Evidence Registry.
 - Relevant open issues:
   - ISSUE-001 - High-speed sharp-turn steering lock and rollover tendency.
+  - SQA minor backlog: RHS HMMWV heavy ABS snap remains noticeable, but all
+    other tested vehicles feel acceptable.
 - Known constraints:
   - Local-player only for first implementation.
   - SQF-first.
@@ -57,6 +66,8 @@ Load only exact paths.
 | Runtime coordinator | `addons/main/functions/fn_coordinateVehicleAssists.sqf` |
 | Runtime math | `addons/main/functions/fn_getRuntimeAssistRecommendation.sqf` |
 | Handling telemetry | `addons/main/functions/fn_logVehicleHandlingConfig.sqf` |
+| Driver controller | `addons/main/functions/fn_updateDriverController.sqf` |
+| ABS braking | `addons/main/functions/fn_applyABSBraking.sqf` |
 | Settings | `addons/main/functions/fn_registerSettings.sqf` |
 | Stringtable | `addons/main/stringtable.xml` |
 | Static tests | `tests/integration/fixics-vehicle-physics-static.ps1` |
@@ -86,6 +97,16 @@ Load only exact paths.
 | Tire pressure settings? | Add `FIXICS_tirePressureEnabled`, `FIXICS_tireDeflationRate`, `FIXICS_tireMinimumMobility`, `FIXICS_tireDragStrength`, `FIXICS_tireSteeringPenalty`, `FIXICS_tireDebugLogging`. | Add CBA global settings during implementation. |
 | Telemetry fields? | Surface type, terrain grip class, traction multiplier, wheelspin estimate, tire-air state, deflation state, drag penalty, mass modifier. | Expand telemetry and SQA evidence fields. |
 | Implementation approach? | SQF-first; config tire/friction patches later only after SQA telemetry proves need. | Do not patch config tire friction in this design. |
+| Should Terrain Tire Phase 2 include stronger terrain transition behavior? | Yes. | Add runtime evidence and bounded behavior for asphalt, dirt, grass, sand, rock, and unknown transitions. |
+| Should tire behavior interact with mass and current vehicle assists? | Yes. | Preserve the Runtime Assist communication pattern and feed terrain/tire results into existing bounded assist math. |
+| What should happen when a vehicle is flipped or rolled over? | If the tires are not meaningfully underneath/contacting ground, the vehicle should no longer receive drive mobility from FIXICS. | Add a rollover/contact safety state that suppresses drive assist when the vehicle is flipped, upside down, airborne, or not wheel-supported. |
+| What should happen if the vehicle is on its side? | Only allow movement if ground contact and orientation make it plausible; flipped/upside-down vehicles should not keep moving through tire force. | Use pitch/bank/up-vector and ground contact as a conservative wheel-support proxy. |
+| What should happen when the driver exits after a rollover while the wheels are spinning? | Slowly stop the tires from spinning; no driver should mean no continued drive force. | Add driverless wheelspin/longitudinal decay through the local controller release path or a safe state handoff. |
+| Should popped tires affect mobility? | Yes. | Tire damage must reduce traction, steering, top-end mobility, and increase drag. |
+| What if the wheel is destroyed or only a burnt rim remains? | Vehicle mobility should be strongly affected and wheel traction should be reduced or lost. | Add destroyed-tire state separate from slow deflation/run-flat behavior. |
+| Should destroyed tires still allow some movement? | Yes, but heavily degraded if Arma still permits movement. | Keep a minimum emergency mobility cap lower than run-flat tire mobility. |
+| Should this change ACE handbrake behavior? | No. | Keep ACE/FIXICS handbrake as the only persistent handbrake. |
+| Should this change accepted ABS and Drive/Reverse behavior? | No, except terrain/tire recommendations may reduce traction or mobility safely. | Avoid reworking ABS direction transition logic in this packet. |
 
 ## Research Notes
 
@@ -132,6 +153,47 @@ Terrain should change available traction instead of acting as decoration:
 - rock/rough: unstable traction with sharper drops during transitions;
 - unknown/default: conservative fallback close to dirt/paved midpoint.
 
+### Phase 2 Rollover And Wheel-Contact Target
+
+SQA reported that when a vehicle is flipped or rolled over, it can continue to
+move and wheels can continue spinning. If the player exits while the vehicle was
+still in drive, wheel rotation can appear to continue even with no driver.
+
+The target behavior is:
+
+- a vehicle should only receive FIXICS drive/terrain/tire mobility when it is
+  wheel-supported;
+- airborne, upside-down, or fully flipped vehicles should not keep receiving
+  drive mobility from FIXICS;
+- side-resting vehicles should be conservative: if wheel support is not clear,
+  suppress drive mobility instead of pushing the vehicle;
+- when no player is in the driver seat, FIXICS should release drive behavior and
+  slowly damp residual wheel/longitudinal motion instead of preserving a stuck
+  drive state;
+- this safety layer must not forcibly upright the vehicle or teleport it.
+
+Arma does not expose a robust universal per-wheel contact API in the current
+project references, so first implementation should use a bounded proxy from
+`isTouchingGround`, vehicle orientation (`vectorUp`, pitch/bank), model-space
+velocity, and wheel hitpoint damage data already captured by telemetry.
+
+### Phase 2 Destroyed-Tire Target
+
+Slow deflation/run-flat behavior covers punctured but still present tires.
+Destroyed tire behavior covers wheels with very high hitpoint damage, missing
+visible tire geometry, or burnt rim-like behavior exposed through Arma damage.
+
+The target behavior is:
+
+- punctured tire: progressive leak, run-flat mobility, added drag, reduced clean
+  grip;
+- destroyed tire: severe drag, severe steering penalty, reduced acceleration
+  traction, reduced turning traction, and reduced practical mobility;
+- per-wheel data should be used when available; otherwise use aggregate vehicle
+  tire damage as a fallback;
+- destroyed tire behavior should be telemetry-first and conservative, because
+  Arma may still apply its own damage and mobility rules.
+
 ## Constraints
 
 - Do not change unrelated behavior.
@@ -143,11 +205,16 @@ Terrain should change available traction instead of acting as decoration:
 - Preserve accepted Drive/Reverse transition behavior.
 - Preserve existing Roll Stability, Sway Bar, Vehicle Stability, and Controlled
   Slip settings.
+- Preserve accepted Per-Vehicle Settings behavior; class profiles may influence
+  Terrain Tire values but should not bypass safety rules.
 - Keep first implementation local-player only.
 - Keep native assist advisory only.
 - Do not patch broad `CfgVehicles` tire/friction classes in this phase.
 - Do not force vehicle orientation upright.
 - Do not implement wet/mud behavior in the first version.
+- Do not add new native binaries or external dependencies.
+- Do not claim wheel-contact accuracy beyond the available SQF proxy until SQA
+  validates it in-game.
 
 ## Approval Gates
 
@@ -165,15 +232,20 @@ Stop before implementation if the work touches:
 ## Recommended Approach
 
 1. Documentation/research:
-   - Write a design spec for Terrain Tire Behavior.
-   - Keep Arma limits and run-flat behavior explicit.
-   - Define terrain classes, tire-pressure state, and telemetry.
+   - Update the Terrain Tire design for Phase 2.
+   - Keep Arma limits, run-flat behavior, destroyed tires, and wheel-contact
+     proxy limits explicit.
+   - Define terrain transition, contact safety, destroyed tire states, and
+     telemetry.
 2. Implementation plan:
    - Add tests first for settings, function registration, bounds, and telemetry.
-   - Add a pure Terrain Tire Behavior recommendation function.
+   - Extend the pure Terrain Tire Behavior recommendation function.
+   - Add a small wheel-support/contact recommendation helper only if needed to
+     keep boundaries clear.
    - Integrate through Runtime Assist and existing local stability/controller
      paths without broad rewrites.
-   - Add conservative CBA settings.
+   - Add conservative settings only if existing settings cannot safely express
+     the new behavior.
 3. Validation:
    - Run required static checks and `tools/check.ps1`.
    - Run `git diff --check`.
@@ -197,6 +269,8 @@ Stop before implementation if the work touches:
   - `addons/main/functions/fn_coordinateVehicleAssists.sqf`
   - `addons/main/functions/fn_getRuntimeAssistRecommendation.sqf`
   - `addons/main/functions/fn_applyVehicleStability.sqf`
+  - `addons/main/functions/fn_updateDriverController.sqf`
+  - `addons/main/functions/fn_applyABSBraking.sqf`
   - `addons/main/functions/fn_logVehicleHandlingConfig.sqf`
   - `addons/main/stringtable.xml`
   - `tests/integration/fixics-vehicle-physics-static.ps1`
@@ -212,10 +286,12 @@ Stop before implementation if the work touches:
 - Manual SQA focus:
   - registered vehicles;
   - terrain transitions;
+  - flipped, side-resting, and airborne vehicle behavior;
+  - driver exit while wheels are spinning;
   - acceleration from stop and rolling acceleration;
   - braking while turning;
   - slope rolling on different terrain;
-  - damaged tire deflation and run-flat mobility;
+  - damaged tire deflation, destroyed tire behavior, and run-flat mobility;
   - preserved ABS, handbrake, Drive/Reverse, Stability, Roll, Sway, and
     Controlled Slip behavior.
 

@@ -106,6 +106,10 @@ Assert-Contains $Config 'class logVehicleHandlingConfig\s*\{\s*\};' 'logVehicleH
 Assert-Contains $Config 'class startSteeringDiagnostics\s*\{\s*\};' 'startSteeringDiagnostics must be registered in CfgFunctions.'
 Assert-Contains $Config 'class getNativeSlopeControl\s*\{\s*\};' 'getNativeSlopeControl must be registered in CfgFunctions.'
 Assert-Contains $Config 'class getNativeDriverAssist\s*\{\s*\};' 'getNativeDriverAssist must be registered in CfgFunctions.'
+Assert-Contains $Config 'class getNativeTerrainTire\s*\{\s*\};' 'getNativeTerrainTire must be registered in CfgFunctions.'
+Assert-Contains $Config 'class getVehicleProfile\s*\{\s*\};' 'Vehicle profile resolver must be registered.'
+Assert-Contains $Config 'class dumpVehicleProfile\s*\{\s*\};' 'Vehicle profile dump function must be registered.'
+Assert-Contains $Config 'class dumpVehicleClasses\s*\{\s*\};' 'Vehicle class dump function must be registered.'
 Assert-Contains $Config 'class getVehicleStabilityProfile\s*\{\s*\};' 'Stability profile resolver must be registered.'
 Assert-Contains $Config 'class getVehicleStabilityRecommendation\s*\{\s*\};' 'Stability recommendation math must be registered.'
 Assert-Contains $Config 'class applyVehicleStability\s*\{\s*\};' 'Local stability mutation boundary must be registered.'
@@ -336,6 +340,13 @@ if (Test-Path -LiteralPath $RuntimeRecommendationFile) {
     $RuntimeRecommendation = Get-Content -Raw -LiteralPath $RuntimeRecommendationFile
     Assert-Contains $RuntimeRecommendation '\bparams\b' 'Runtime recommendation must declare parameters.'
     Assert-Contains $RuntimeRecommendation 'priorityWinner' 'Runtime recommendation must expose a priority winner.'
+    Assert-Contains $RuntimeRecommendation 'FIXICS_RUNTIME_PRIORITY_STACK' 'Runtime recommendation must use an explicit priority stack contract.'
+    Assert-Contains $RuntimeRecommendation '"handbrake"' 'Runtime priority stack must reserve handbrake as the highest priority.'
+    Assert-Contains $RuntimeRecommendation '"rollover-suppression"' 'Runtime priority stack must prioritize rollover suppression before active controls.'
+    Assert-Contains $RuntimeRecommendation '"abs-braking"' 'Runtime priority stack must prioritize ABS/service braking before passive slope correction.'
+    Assert-Contains $RuntimeRecommendation '"slope-correction"' 'Runtime priority stack must include passive slope correction below ABS.'
+    Assert-Contains $RuntimeRecommendation '"terrain-tire-modifier"' 'Runtime priority stack must treat Terrain Tire as a modifier, not a raw velocity writer.'
+    Assert-Contains $RuntimeRecommendation '"wind-lateral"' 'Runtime priority stack must include wind lateral as the lowest priority assist.'
     Assert-Contains $RuntimeRecommendation 'terrainMultiplier' 'Runtime recommendation must expose terrain multiplier.'
     Assert-Contains $RuntimeRecommendation 'massMultiplier' 'Runtime recommendation must expose mass multiplier.'
     Assert-Contains $RuntimeRecommendation 'slopeRetention' 'Runtime recommendation must expose braking slope retention.'
@@ -387,6 +398,43 @@ if (Test-Path -LiteralPath $RuntimeRecommendationFile) {
     }
 }
 
+$TerrainTireRecommendationFile = Join-Path $RepoRoot 'addons\main\functions\fn_getTerrainTireRecommendation.sqf'
+Assert-FileExists 'addons\main\functions\fn_getTerrainTireRecommendation.sqf'
+if (Test-Path -LiteralPath $TerrainTireRecommendationFile) {
+    $TerrainTireRecommendation = Get-Content -Raw -LiteralPath $TerrainTireRecommendationFile
+    @(
+        'wheelSupportState',
+        'rolloverSuppressed',
+        'driverlessDecay',
+        'destroyedTireCount',
+        'destroyedTireRatio',
+        'destroyedTirePenalty',
+        'mobilityLimiter',
+        'getHitPointDamage',
+        '-1',
+        'AIRBORNE_GRACE',
+        'SIDE_UNSUPPORTED',
+        'FLIPPED',
+        'weatherTerrainEnabled',
+        'rainLevel',
+        'overcastLevel',
+        'surfaceWetness',
+        'terrainSaturation',
+        'weatherGripMultiplier',
+        'hydroplaningRisk',
+        'windStrength',
+        'windCrossComponent',
+        'windHandlingMultiplier',
+        'weatherReason'
+    ) | ForEach-Object {
+        Assert-Contains $TerrainTireRecommendation $_ "Terrain Tire Phase 2 recommendation must include token $_."
+    }
+    Assert-Contains $TerrainTireRecommendation 'terrainTireTelemetryVersion",\s*2' 'Terrain Tire Phase 2 must report telemetry version 2.'
+    if ($TerrainTireRecommendation -match '\b(setVelocity|setVelocityModelSpace|setDir|setVectorDirAndUp|disableBrakes)\b') {
+        Add-Failure 'Terrain Tire recommendation must remain pure and must not mutate vehicle state.'
+    }
+}
+
 $RuntimeCoordinatorFile = Join-Path $RepoRoot 'addons\main\functions\fn_coordinateVehicleAssists.sqf'
 Assert-FileExists 'addons\main\functions\fn_coordinateVehicleAssists.sqf'
 if (Test-Path -LiteralPath $RuntimeCoordinatorFile) {
@@ -409,7 +457,25 @@ if (Test-Path -LiteralPath $RuntimeCoordinatorFile) {
         'wheelspinEstimate',
         'tireDragPenalty',
         'tireSteeringPenalty',
-        'massModifier'
+        'massModifier',
+        'wheelSupportState',
+        'rolloverSuppressed',
+        'driverlessDecay',
+        'destroyedTireCount',
+        'destroyedTireRatio',
+        'destroyedTirePenalty',
+        'mobilityLimiter',
+        'weatherTerrainEnabled',
+        'rainLevel',
+        'overcastLevel',
+        'surfaceWetness',
+        'terrainSaturation',
+        'weatherGripMultiplier',
+        'hydroplaningRisk',
+        'windStrength',
+        'windCrossComponent',
+        'windHandlingMultiplier',
+        'weatherReason'
     ) | ForEach-Object {
         Assert-Contains $RuntimeCoordinator $_ "Runtime coordinator must expose Terrain Tire field $_."
     }
@@ -800,6 +866,34 @@ if (Test-Path -LiteralPath $StabilityControllerFile) {
             @{
                 Pattern = 'perWheelMode'
                 Message = 'Stability controller must expose Terrain Tire per-wheel mode.'
+            },
+            @{
+                Pattern = 'wheelSupportState'
+                Message = 'Stability controller must expose Terrain Tire wheel support state.'
+            },
+            @{
+                Pattern = 'rolloverSuppressed'
+                Message = 'Stability controller must expose Terrain Tire rollover suppression state.'
+            },
+            @{
+                Pattern = 'driverlessDecay'
+                Message = 'Stability controller must expose Terrain Tire driverless decay.'
+            },
+            @{
+                Pattern = 'destroyedTireCount'
+                Message = 'Stability controller must expose Terrain Tire destroyed tire count.'
+            },
+            @{
+                Pattern = 'destroyedTireRatio'
+                Message = 'Stability controller must expose Terrain Tire destroyed tire ratio.'
+            },
+            @{
+                Pattern = 'destroyedTirePenalty'
+                Message = 'Stability controller must expose Terrain Tire destroyed tire penalty.'
+            },
+            @{
+                Pattern = 'mobilityLimiter'
+                Message = 'Stability controller must expose Terrain Tire mobility limiter.'
             },
             @{
                 Pattern = 'below-speed-threshold'
@@ -1404,6 +1498,14 @@ if (Test-Path -LiteralPath $SettingsFile) {
             Category = '["FIXICS", "Terrain Tire"]'
         },
         @{
+            Variable = 'FIXICS_nativeTerrainTireEnabled'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'false'
+            Payload = 'false'
+            DefaultIndex = 0
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
             Variable = 'FIXICS_tireDeflationRate'
             ControlType = 'SLIDER'
             NamespaceDefault = '0.025'
@@ -1442,6 +1544,118 @@ if (Test-Path -LiteralPath $SettingsFile) {
             Payload = 'false'
             DefaultIndex = 0
             Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_rolloverSafetyEnabled'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'true'
+            Payload = 'true'
+            DefaultIndex = 0
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_airborneGraceWindow'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.50'
+            Payload = '[0, 1, 0.50, 2]'
+            DefaultIndex = 2
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_driverlessDecayEnabled'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'true'
+            Payload = 'true'
+            DefaultIndex = 0
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_driverlessDecayCap'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.15'
+            Payload = '[0, 1, 0.15, 2]'
+            DefaultIndex = 2
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_destroyedTireThreshold'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.85'
+            Payload = '[0.5, 1, 0.85, 2]'
+            DefaultIndex = 2
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_destroyedTireDebugLogging'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'false'
+            Payload = 'false'
+            DefaultIndex = 0
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_weatherTerrainEnabled'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'true'
+            Payload = 'true'
+            DefaultIndex = 0
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_weatherSaturationTime'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '30'
+            Payload = '[5, 120, 30, 0]'
+            DefaultIndex = 2
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_weatherDryingTime'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '180'
+            Payload = '[30, 600, 180, 0]'
+            DefaultIndex = 2
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_hydroplaningEnabled'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'true'
+            Payload = 'true'
+            DefaultIndex = 0
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_hydroplaningSpeedKmh'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '70'
+            Payload = '[40, 140, 70, 0]'
+            DefaultIndex = 2
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_windHandlingEnabled'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'true'
+            Payload = 'true'
+            DefaultIndex = 0
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_windHandlingStrength'
+            ControlType = 'SLIDER'
+            NamespaceDefault = '0.05'
+            Payload = '[0, 0.25, 0.05, 2]'
+            DefaultIndex = 2
+            Category = '["FIXICS", "Terrain Tire"]'
+        },
+        @{
+            Variable = 'FIXICS_weatherDebugLogging'
+            ControlType = 'CHECKBOX'
+            NamespaceDefault = 'false'
+            Payload = 'false'
+            DefaultIndex = 0
+            Category = '["FIXICS", "Terrain Tire"]'
         }
     )
     foreach ($Spec in $TerrainTireSettings) {
@@ -1457,6 +1671,8 @@ if (Test-Path -LiteralPath $SettingsFile) {
         'STR_FIXICS_SETTING_TERRAIN_TIRE_ENABLED_TOOLTIP',
         'STR_FIXICS_SETTING_TIRE_PRESSURE_ENABLED',
         'STR_FIXICS_SETTING_TIRE_PRESSURE_ENABLED_TOOLTIP',
+        'STR_FIXICS_SETTING_NATIVE_TERRAIN_TIRE',
+        'STR_FIXICS_SETTING_NATIVE_TERRAIN_TIRE_TOOLTIP',
         'STR_FIXICS_SETTING_TIRE_DEFLATION_RATE',
         'STR_FIXICS_SETTING_TIRE_DEFLATION_RATE_TOOLTIP',
         'STR_FIXICS_SETTING_TIRE_MINIMUM_MOBILITY',
@@ -1466,7 +1682,35 @@ if (Test-Path -LiteralPath $SettingsFile) {
         'STR_FIXICS_SETTING_TIRE_STEERING_PENALTY',
         'STR_FIXICS_SETTING_TIRE_STEERING_PENALTY_TOOLTIP',
         'STR_FIXICS_SETTING_TIRE_DEBUG_LOGGING',
-        'STR_FIXICS_SETTING_TIRE_DEBUG_LOGGING_TOOLTIP'
+        'STR_FIXICS_SETTING_TIRE_DEBUG_LOGGING_TOOLTIP',
+        'STR_FIXICS_SETTING_ROLLOVER_SAFETY_ENABLED',
+        'STR_FIXICS_SETTING_ROLLOVER_SAFETY_ENABLED_TOOLTIP',
+        'STR_FIXICS_SETTING_AIRBORNE_GRACE_WINDOW',
+        'STR_FIXICS_SETTING_AIRBORNE_GRACE_WINDOW_TOOLTIP',
+        'STR_FIXICS_SETTING_DRIVERLESS_DECAY_ENABLED',
+        'STR_FIXICS_SETTING_DRIVERLESS_DECAY_ENABLED_TOOLTIP',
+        'STR_FIXICS_SETTING_DRIVERLESS_DECAY_CAP',
+        'STR_FIXICS_SETTING_DRIVERLESS_DECAY_CAP_TOOLTIP',
+        'STR_FIXICS_SETTING_DESTROYED_TIRE_THRESHOLD',
+        'STR_FIXICS_SETTING_DESTROYED_TIRE_THRESHOLD_TOOLTIP',
+        'STR_FIXICS_SETTING_DESTROYED_TIRE_DEBUG_LOGGING',
+        'STR_FIXICS_SETTING_DESTROYED_TIRE_DEBUG_LOGGING_TOOLTIP',
+        'STR_FIXICS_SETTING_WEATHER_TERRAIN_ENABLED',
+        'STR_FIXICS_SETTING_WEATHER_TERRAIN_ENABLED_TOOLTIP',
+        'STR_FIXICS_SETTING_WEATHER_SATURATION_TIME',
+        'STR_FIXICS_SETTING_WEATHER_SATURATION_TIME_TOOLTIP',
+        'STR_FIXICS_SETTING_WEATHER_DRYING_TIME',
+        'STR_FIXICS_SETTING_WEATHER_DRYING_TIME_TOOLTIP',
+        'STR_FIXICS_SETTING_HYDROPLANING_ENABLED',
+        'STR_FIXICS_SETTING_HYDROPLANING_ENABLED_TOOLTIP',
+        'STR_FIXICS_SETTING_HYDROPLANING_SPEED',
+        'STR_FIXICS_SETTING_HYDROPLANING_SPEED_TOOLTIP',
+        'STR_FIXICS_SETTING_WIND_HANDLING_ENABLED',
+        'STR_FIXICS_SETTING_WIND_HANDLING_ENABLED_TOOLTIP',
+        'STR_FIXICS_SETTING_WIND_HANDLING_STRENGTH',
+        'STR_FIXICS_SETTING_WIND_HANDLING_STRENGTH_TOOLTIP',
+        'STR_FIXICS_SETTING_WEATHER_DEBUG_LOGGING',
+        'STR_FIXICS_SETTING_WEATHER_DEBUG_LOGGING_TOOLTIP'
     ) | ForEach-Object {
         Assert-Contains $Stringtable ('ID="' + $_ + '"') "Stringtable must define $_."
     }
@@ -1801,7 +2045,25 @@ if (Test-Path -LiteralPath $HandlingConfigLogFile) {
         'tireSteeringPenalty',
         'massModifier',
         'terrainTireTelemetryVersion',
-        'perWheelMode'
+        'perWheelMode',
+        'wheelSupportState',
+        'rolloverSuppressed',
+        'driverlessDecay',
+        'destroyedTireCount',
+        'destroyedTireRatio',
+        'destroyedTirePenalty',
+        'mobilityLimiter',
+        'weatherTerrainEnabled',
+        'rainLevel',
+        'overcastLevel',
+        'surfaceWetness',
+        'terrainSaturation',
+        'weatherGripMultiplier',
+        'hydroplaningRisk',
+        'windStrength',
+        'windCrossComponent',
+        'windHandlingMultiplier',
+        'weatherReason'
     ) | ForEach-Object {
         Assert-Contains $HandlingConfigLog $_ "Handling telemetry must include Terrain Tire token $_."
     }
@@ -1850,7 +2112,8 @@ if (Test-Path -LiteralPath $HandlingConfigLogFile) {
 $TelemetryExporterFile = Join-Path $RepoRoot 'tools\export-vehicle-telemetry.ps1'
 if (Test-Path -LiteralPath $TelemetryExporterFile) {
     $TelemetryExporter = Get-Content -Raw -LiteralPath $TelemetryExporterFile
-    Assert-Contains $TelemetryExporter 'RuntimeAssistSample' 'Telemetry exporter must include compact Runtime Assist sample lines.'
+Assert-Contains $TelemetryExporter 'RuntimeAssistSample' 'Telemetry exporter must include compact Runtime Assist sample lines.'
+Assert-Contains $TelemetryExporter 'TerrainTireSample' 'Telemetry exporter must include compact Terrain Tire sample lines.'
     Assert-Contains $TelemetryExporter '\$isRuntimeAssist' 'Telemetry exporter must route compact Runtime Assist sample lines through an explicit predicate.'
 }
 
@@ -1893,6 +2156,32 @@ if (Test-Path -LiteralPath $NativeDriverAssistFile) {
     Assert-Contains $NativeDriverAssist 'finite' 'Native driver assist bridge must reject non-finite numeric recommendations.'
 }
 
+$NativeTerrainTireFile = Join-Path $RepoRoot 'addons\main\functions\fn_getNativeTerrainTire.sqf'
+Assert-FileExists 'addons\main\functions\fn_getNativeTerrainTire.sqf'
+if (Test-Path -LiteralPath $NativeTerrainTireFile) {
+    $NativeTerrainTire = Get-Content -Raw -LiteralPath $NativeTerrainTireFile
+    Assert-Contains $NativeTerrainTire '"FIXICS_nativeTerrainTireEnabled", false' 'Native Terrain Tire bridge must default disabled.'
+    Assert-Contains $NativeTerrainTire '"FIXICSPhysics"\s+callExtension\s+\[[\s\S]*?"terrainTireV2"' 'Native Terrain Tire bridge must call the FIXICSPhysics terrainTireV2 function.'
+    Assert-Contains $NativeTerrainTire 'FIXICS_nativeTerrainTireCache' 'Native Terrain Tire bridge must cache advisory results per vehicle/state bucket.'
+    Assert-Contains $NativeTerrainTire 'FIXICS_nativeTerrainTireCacheTtl' 'Native Terrain Tire bridge must use a bounded cache TTL.'
+    Assert-Contains $NativeTerrainTire 'surfaceBucket' 'Native Terrain Tire cache must invalidate on terrain surface changes.'
+    Assert-Contains $NativeTerrainTire 'speedBucket' 'Native Terrain Tire cache must invalidate on significant speed changes.'
+    Assert-Contains $NativeTerrainTire 'parseSimpleArray' 'Native Terrain Tire bridge must parse the extension response.'
+    Assert-Contains $NativeTerrainTire 'errorCode' 'Native Terrain Tire bridge must check callExtension errorCode.'
+    Assert-Contains $NativeTerrainTire 'isEqualType' 'Native Terrain Tire bridge must validate response element types.'
+    Assert-Contains $NativeTerrainTire 'finite' 'Native Terrain Tire bridge must reject non-finite numeric recommendations.'
+}
+
+$AbsFile = Join-Path $RepoRoot 'addons\main\functions\fn_applyABSBraking.sqf'
+if (Test-Path -LiteralPath $AbsFile) {
+    $Abs = Get-Content -Raw -LiteralPath $AbsFile
+    Assert-Contains $Abs 'FIXICS_terrainTireRecommendation' 'ABS must read the current Terrain Tire recommendation.'
+    Assert-Contains $Abs 'brakingTractionMultiplier' 'ABS must use Terrain Tire braking grip when calculating brake force.'
+    Assert-Contains $Abs 'weatherGripMultiplier' 'ABS must expose weather wetness feedback from Terrain Tire.'
+    Assert-Contains $Abs 'hydroplaningRisk' 'ABS must reduce/soften braking under hydroplaning risk.'
+    Assert-Contains $Abs 'terrainAbsMultiplier' 'ABS decision telemetry must record Terrain Tire ABS feedback.'
+}
+
 $NativeSourceFile = Join-Path $RepoRoot 'native\fixics_physics\src\FIXICSPhysics.cpp'
 if (Test-Path -LiteralPath $NativeSourceFile) {
     $NativeSource = Get-Content -Raw -LiteralPath $NativeSourceFile
@@ -1910,6 +2199,11 @@ if (Test-Path -LiteralPath $NativeSourceFile) {
     Assert-Contains $NativeSource 'DriverAssistResult' 'Native source must use a named result structure for driver assist.'
     Assert-Contains $NativeSource 'targetLongitudinalSpeed' 'Native source must return a bounded target longitudinal speed.'
     Assert-Contains $NativeSource 'brakeDelta' 'Native source must return a bounded brake delta.'
+    Assert-Contains $NativeSource 'terrainTireV2' 'Native source must implement terrainTireV2 dispatch.'
+    Assert-Contains $NativeSource 'TerrainTireInput' 'Native source must use a named input structure for terrainTireV2.'
+    Assert-Contains $NativeSource 'TerrainTireResult' 'Native source must use a named result structure for terrainTireV2.'
+    Assert-Contains $NativeSource 'wheelSupportState' 'Native source must return wheel support state.'
+    Assert-Contains $NativeSource 'mobilityLimiter' 'Native source must return a mobility limiter.'
     if ($NativeSource -match 'strncpy') {
         Add-Failure 'Native source must avoid strncpy to keep MSVC warning output clean.'
     }
@@ -1931,6 +2225,11 @@ if (Test-Path -LiteralPath $NativeTestsFile) {
     Assert-Contains $NativeTests '\[false,\\"NONE\\",0\.5,0,0,\\"below-cutoff\\"\]' 'Native tests must verify low-speed cutoff output exactly.'
     Assert-Contains $NativeTests '\[true,\\"LAUNCH\\",0\.35,0,1,\\"launch\\"\]' 'Native tests must verify neutral launch output exactly.'
     Assert-Contains $NativeTests '\[false,\\"NONE\\",0,0,0,\\"invalid\\"\]' 'Native tests must verify non-finite input rejection output exactly.'
+    Assert-Contains $NativeTests 'callTerrainTireV2' 'Native tests must invoke terrainTireV2 through a shared helper.'
+    Assert-Contains $NativeTests 'terrainTireV2 paved supported' 'Native tests must cover supported paved terrainTireV2 behavior.'
+    Assert-Contains $NativeTests 'terrainTireV2 flipped suppresses mobility' 'Native tests must cover flipped terrainTireV2 suppression.'
+    Assert-Contains $NativeTests 'terrainTireV2 destroyed tire' 'Native tests must cover destroyed tire terrainTireV2 behavior.'
+    Assert-Contains $NativeTests 'terrainTireV2 non-finite input' 'Native tests must cover non-finite terrainTireV2 input rejection.'
 }
 
 $NativeReadmeFile = Join-Path $RepoRoot 'native\fixics_physics\README.md'
@@ -1939,6 +2238,7 @@ if (Test-Path -LiteralPath $NativeReadmeFile) {
     Assert-Contains $NativeReadme 'native-assisted gameplay control' 'Native README must describe the native-assisted gameplay-control boundary.'
     Assert-Contains $NativeReadme 'FIXICSPhysics_x64\.dll' 'Native README must document the approved Windows x64 binary.'
     Assert-Contains $NativeReadme 'driverAssist' 'Native README must document driverAssist.'
+    Assert-Contains $NativeReadme 'terrainTireV2' 'Native README must document terrainTireV2.'
     Assert-Contains $NativeReadme 'native advisor' 'Native README must preserve the SQF-owned mutation boundary.'
 }
 

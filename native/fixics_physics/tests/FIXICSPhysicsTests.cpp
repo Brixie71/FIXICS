@@ -75,6 +75,24 @@ std::string callSlopeControl(const std::vector<std::string>& values, int& status
     return output;
 }
 
+std::string callTerrainTireV2(const std::vector<std::string>& values, int& status)
+{
+    std::vector<const char*> args;
+    args.reserve(values.size());
+    for (const auto& value : values) {
+        args.push_back(value.c_str());
+    }
+
+    char output[2048] = {};
+    status = RVExtensionArgs(
+        output,
+        static_cast<unsigned int>(sizeof(output)),
+        "terrainTireV2",
+        args.data(),
+        static_cast<unsigned int>(args.size()));
+    return output;
+}
+
 void expectEqual(const std::string& label, const std::string& actual, const std::string& expected)
 {
     if (actual == expected) {
@@ -132,6 +150,42 @@ int main()
         "[true,0.5,0,0]");
     if (status != 0) {
         std::cerr << "slopeControl ABI status\nExpected: 0\nActual:   " << status << '\n';
+        return EXIT_FAILURE;
+    }
+
+    expectEqual(
+        "terrainTireV2 paved supported",
+        callTerrainTireV2({"0", "80", "0.4", "0", "0.2", "0.05", "1600", "0.05", "1", "0", "1", "0", "1", "0.50", "1", "0.15", "0.85", "0"}, status),
+        "[true,0.996111111111,1.00607222222,0.996111111111,0.977671987654,0.996111111111,0.0955555555556,1,0,0,1.01,\"SUPPORTED\",false,0.15,0,0,0,1,\"native-terrain-tire\"]");
+    if (status != 0) {
+        std::cerr << "terrainTireV2 paved ABI status\nExpected: 0\nActual:   " << status << '\n';
+        return EXIT_FAILURE;
+    }
+
+    expectEqual(
+        "terrainTireV2 flipped suppresses mobility",
+        callTerrainTireV2({"0", "20", "0.6", "0", "0.5", "0.1", "1600", "0.05", "1", "0", "1", "0", "-0.5", "0.50", "1", "0.15", "0.85", "0"}, status),
+        "[true,0.999444444444,0,0.999444444444,0.992837006173,0,0,1,0,0,1.01,\"FLIPPED\",true,0.15,0,0,0,0,\"native-terrain-tire\"]");
+    if (status != 0) {
+        std::cerr << "terrainTireV2 flipped ABI status\nExpected: 0\nActual:   " << status << '\n';
+        return EXIT_FAILURE;
+    }
+
+    expectEqual(
+        "terrainTireV2 destroyed tire",
+        callTerrainTireV2({"3", "40", "0.7", "0", "0.4", "0.1", "1800", "0.05", "0.8", "0.9", "1", "0", "1", "0.50", "1", "0.15", "0.85", "1"}, status),
+        "[true,0.44,0.2741063094,0.39582125,0.314869571229,0.3100097,0.976,0.8,0.19909375,0.24646875,0.99,\"SUPPORTED\",false,0.15,1,0.25,0.286875,0.713125,\"native-terrain-tire\"]");
+    if (status != 0) {
+        std::cerr << "terrainTireV2 destroyed ABI status\nExpected: 0\nActual:   " << status << '\n';
+        return EXIT_FAILURE;
+    }
+
+    expectEqual(
+        "terrainTireV2 non-finite input",
+        callTerrainTireV2({"0", "nan", "0", "0", "0", "0", "1500", "0.05", "1", "0", "1", "0", "1", "0.50", "1", "0.15", "0.85", "0"}, status),
+        "[false,1,1,1,1,1,0,1,0,0,1,\"UNKNOWN\",false,0,0,0,0,1,\"invalid\"]");
+    if (status != 0) {
+        std::cerr << "terrainTireV2 invalid ABI status\nExpected: 0\nActual:   " << status << '\n';
         return EXIT_FAILURE;
     }
 

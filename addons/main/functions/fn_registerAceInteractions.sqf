@@ -57,6 +57,21 @@ private _canReleaseDriverHandbrake = {
     && {_vehicle getVariable ["FIXICS_handbrakeEnabled", false]}
 };
 
+private _canViewVehicleProfile = {
+    params ["_target", "_player", "_actionParams"];
+
+    (_target isKindOf "LandVehicle")
+    && {[_player, _target, []] call ace_common_fnc_canInteractWith}
+};
+
+private _canViewDriverProfile = {
+    params ["_target", "_player", "_actionParams"];
+
+    private _vehicle = vehicle _player;
+    (_vehicle isKindOf "LandVehicle")
+    && {_player == driver _vehicle}
+};
+
 private _setHandbrake = {
     params ["_target", "_player", "_actionParams"];
 
@@ -79,6 +94,18 @@ private _releaseDriverHandbrake = {
     params ["_target", "_player", "_actionParams"];
 
     [vehicle _player, false] call FIXICS_fnc_setVehicleHandbrake;
+};
+
+private _viewVehicleProfile = {
+    params ["_target", "_player", "_actionParams"];
+
+    [_target, false] call FIXICS_fnc_dumpVehicleProfile;
+};
+
+private _viewDriverProfile = {
+    params ["_target", "_player", "_actionParams"];
+
+    [vehicle _player, false] call FIXICS_fnc_dumpVehicleProfile;
 };
 
 private _setAction = [
@@ -113,9 +140,27 @@ private _releaseDriverAction = [
     _canReleaseDriverHandbrake
 ] call ace_interact_menu_fnc_createAction;
 
+private _viewProfileAction = [
+    "FIXICS_ViewVehicleProfile",
+    localize "STR_FIXICS_VEHICLE_PROFILE_VIEW",
+    "",
+    _viewVehicleProfile,
+    _canViewVehicleProfile
+] call ace_interact_menu_fnc_createAction;
+
+private _viewDriverProfileAction = [
+    "FIXICS_ViewDriverVehicleProfile",
+    localize "STR_FIXICS_VEHICLE_PROFILE_VIEW",
+    "",
+    _viewDriverProfile,
+    _canViewDriverProfile
+] call ace_interact_menu_fnc_createAction;
+
 ["LandVehicle", 0, ["ACE_MainActions"], _setAction, true] call ace_interact_menu_fnc_addActionToClass;
 ["LandVehicle", 0, ["ACE_MainActions"], _releaseAction, true] call ace_interact_menu_fnc_addActionToClass;
+["LandVehicle", 0, ["ACE_MainActions"], _viewProfileAction, true] call ace_interact_menu_fnc_addActionToClass;
 ["LandVehicle", 1, ["ACE_SelfActions"], _setDriverAction, true] call ace_interact_menu_fnc_addActionToClass;
 ["LandVehicle", 1, ["ACE_SelfActions"], _releaseDriverAction, true] call ace_interact_menu_fnc_addActionToClass;
+["LandVehicle", 1, ["ACE_SelfActions"], _viewDriverProfileAction, true] call ace_interact_menu_fnc_addActionToClass;
 
 true

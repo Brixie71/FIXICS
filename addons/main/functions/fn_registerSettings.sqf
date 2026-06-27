@@ -21,6 +21,7 @@ missionNamespace setVariable ["FIXICS_settingsRegistered", true, false];
 missionNamespace setVariable ["FIXICS_disableIdleAutobrake", true, false];
 missionNamespace setVariable ["FIXICS_nativeSlopeControlEnabled", false, false];
 missionNamespace setVariable ["FIXICS_nativeDriverAssistEnabled", false, false];
+missionNamespace setVariable ["FIXICS_nativeTerrainTireEnabled", false, false];
 missionNamespace setVariable ["FIXICS_driverAssistDebugLogging", false, false];
 missionNamespace setVariable ["FIXICS_slopeRollbackMinimumSlope", 0.035, false];
 missionNamespace setVariable ["FIXICS_slopeRollbackMaxSpeed", 2.2, false];
@@ -70,6 +71,20 @@ missionNamespace setVariable ["FIXICS_tireMinimumMobility", 0.35, false];
 missionNamespace setVariable ["FIXICS_tireDragStrength", 0.35, false];
 missionNamespace setVariable ["FIXICS_tireSteeringPenalty", 0.30, false];
 missionNamespace setVariable ["FIXICS_tireDebugLogging", false, false];
+missionNamespace setVariable ["FIXICS_rolloverSafetyEnabled", true, false];
+missionNamespace setVariable ["FIXICS_airborneGraceWindow", 0.50, false];
+missionNamespace setVariable ["FIXICS_driverlessDecayEnabled", true, false];
+missionNamespace setVariable ["FIXICS_driverlessDecayCap", 0.15, false];
+missionNamespace setVariable ["FIXICS_destroyedTireThreshold", 0.85, false];
+missionNamespace setVariable ["FIXICS_destroyedTireDebugLogging", false, false];
+missionNamespace setVariable ["FIXICS_weatherTerrainEnabled", true, false];
+missionNamespace setVariable ["FIXICS_weatherSaturationTime", 30, false];
+missionNamespace setVariable ["FIXICS_weatherDryingTime", 180, false];
+missionNamespace setVariable ["FIXICS_hydroplaningEnabled", true, false];
+missionNamespace setVariable ["FIXICS_hydroplaningSpeedKmh", 70, false];
+missionNamespace setVariable ["FIXICS_windHandlingEnabled", true, false];
+missionNamespace setVariable ["FIXICS_windHandlingStrength", 0.05, false];
+missionNamespace setVariable ["FIXICS_weatherDebugLogging", false, false];
 missionNamespace setVariable ["FIXICS_rollActivationBankDeg", 18, false];
 missionNamespace setVariable ["FIXICS_rollActivationRateDeg", 45, false];
 missionNamespace setVariable ["FIXICS_rollStrength", 0.08, false];
@@ -83,6 +98,45 @@ missionNamespace setVariable ["FIXICS_runtimeAssistBrakingSlopeRetention", 0.35,
 missionNamespace setVariable ["FIXICS_runtimeAssistMassDampingStrength", 0.15, false];
 missionNamespace setVariable ["FIXICS_runtimeAssistMaximumComposedCorrection", 0.25, false];
 missionNamespace setVariable ["FIXICS_runtimeAssistDebugLogging", false, false];
+missionNamespace setVariable ["FIXICS_vehicleProfileExactOverrides", "[]", false];
+missionNamespace setVariable ["FIXICS_vehicleProfileParentOverrides", "[]", false];
+missionNamespace setVariable ["FIXICS_vehicleProfileDebugLogging", false, false];
+
+[
+    "FIXICS_vehicleProfileExactOverrides",
+    "EDITBOX",
+    [
+        localize "STR_FIXICS_SETTING_VEHICLE_PROFILE_EXACT",
+        localize "STR_FIXICS_SETTING_VEHICLE_PROFILE_EXACT_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Profiles"],
+    "[]",
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_vehicleProfileParentOverrides",
+    "EDITBOX",
+    [
+        localize "STR_FIXICS_SETTING_VEHICLE_PROFILE_PARENT",
+        localize "STR_FIXICS_SETTING_VEHICLE_PROFILE_PARENT_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Profiles"],
+    "[]",
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_vehicleProfileDebugLogging",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_VEHICLE_PROFILE_DEBUG",
+        localize "STR_FIXICS_SETTING_VEHICLE_PROFILE_DEBUG_TOOLTIP"
+    ],
+    ["FIXICS", "Vehicle Profiles"],
+    false,
+    1
+] call CBA_fnc_addSetting;
 
 [
     "FIXICS_disableIdleAutobrake",
@@ -686,6 +740,18 @@ missionNamespace setVariable ["FIXICS_runtimeAssistDebugLogging", false, false];
 ] call CBA_fnc_addSetting;
 
 [
+    "FIXICS_nativeTerrainTireEnabled",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_NATIVE_TERRAIN_TIRE",
+        localize "STR_FIXICS_SETTING_NATIVE_TERRAIN_TIRE_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    false,
+    1
+] call CBA_fnc_addSetting;
+
+[
     "FIXICS_tireDeflationRate",
     "SLIDER",
     [
@@ -739,6 +805,174 @@ missionNamespace setVariable ["FIXICS_runtimeAssistDebugLogging", false, false];
     [
         localize "STR_FIXICS_SETTING_TIRE_DEBUG_LOGGING",
         localize "STR_FIXICS_SETTING_TIRE_DEBUG_LOGGING_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    false,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_rolloverSafetyEnabled",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_ROLLOVER_SAFETY_ENABLED",
+        localize "STR_FIXICS_SETTING_ROLLOVER_SAFETY_ENABLED_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    true,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_airborneGraceWindow",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_AIRBORNE_GRACE_WINDOW",
+        localize "STR_FIXICS_SETTING_AIRBORNE_GRACE_WINDOW_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    [0, 1, 0.50, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_driverlessDecayEnabled",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_DRIVERLESS_DECAY_ENABLED",
+        localize "STR_FIXICS_SETTING_DRIVERLESS_DECAY_ENABLED_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    true,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_driverlessDecayCap",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_DRIVERLESS_DECAY_CAP",
+        localize "STR_FIXICS_SETTING_DRIVERLESS_DECAY_CAP_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    [0, 1, 0.15, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_destroyedTireThreshold",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_DESTROYED_TIRE_THRESHOLD",
+        localize "STR_FIXICS_SETTING_DESTROYED_TIRE_THRESHOLD_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    [0.5, 1, 0.85, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_destroyedTireDebugLogging",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_DESTROYED_TIRE_DEBUG_LOGGING",
+        localize "STR_FIXICS_SETTING_DESTROYED_TIRE_DEBUG_LOGGING_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    false,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_weatherTerrainEnabled",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_WEATHER_TERRAIN_ENABLED",
+        localize "STR_FIXICS_SETTING_WEATHER_TERRAIN_ENABLED_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    true,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_weatherSaturationTime",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_WEATHER_SATURATION_TIME",
+        localize "STR_FIXICS_SETTING_WEATHER_SATURATION_TIME_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    [5, 120, 30, 0],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_weatherDryingTime",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_WEATHER_DRYING_TIME",
+        localize "STR_FIXICS_SETTING_WEATHER_DRYING_TIME_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    [30, 600, 180, 0],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_hydroplaningEnabled",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_HYDROPLANING_ENABLED",
+        localize "STR_FIXICS_SETTING_HYDROPLANING_ENABLED_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    true,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_hydroplaningSpeedKmh",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_HYDROPLANING_SPEED",
+        localize "STR_FIXICS_SETTING_HYDROPLANING_SPEED_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    [40, 140, 70, 0],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_windHandlingEnabled",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_WIND_HANDLING_ENABLED",
+        localize "STR_FIXICS_SETTING_WIND_HANDLING_ENABLED_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    true,
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_windHandlingStrength",
+    "SLIDER",
+    [
+        localize "STR_FIXICS_SETTING_WIND_HANDLING_STRENGTH",
+        localize "STR_FIXICS_SETTING_WIND_HANDLING_STRENGTH_TOOLTIP"
+    ],
+    ["FIXICS", "Terrain Tire"],
+    [0, 0.25, 0.05, 2],
+    1
+] call CBA_fnc_addSetting;
+
+[
+    "FIXICS_weatherDebugLogging",
+    "CHECKBOX",
+    [
+        localize "STR_FIXICS_SETTING_WEATHER_DEBUG_LOGGING",
+        localize "STR_FIXICS_SETTING_WEATHER_DEBUG_LOGGING_TOOLTIP"
     ],
     ["FIXICS", "Terrain Tire"],
     false,

@@ -30,6 +30,17 @@ private _safeNumber = {
     _value
 };
 
+private _priorityStack = createHashMapFromArray [
+    ["FIXICS_RUNTIME_PRIORITY_STACK", [
+        "handbrake",
+        "rollover-suppression",
+        "abs-braking",
+        "slope-correction",
+        "terrain-tire-modifier",
+        "wind-lateral"
+    ]]
+];
+
 private _invalid = createHashMapFromArray [
     ["applied", false],
     ["priorityWinner", "invalid"],
@@ -48,13 +59,21 @@ private _invalid = createHashMapFromArray [
     ["wheelspinEstimate", 0],
     ["tireDragPenalty", 0],
     ["tireSteeringPenalty", 0],
-    ["massModifier", 1]
+    ["massModifier", 1],
+    ["wheelSupportState", "UNKNOWN"],
+    ["rolloverSuppressed", false],
+    ["driverlessDecay", 0],
+    ["destroyedTireCount", 0],
+    ["destroyedTireRatio", 0],
+    ["destroyedTirePenalty", 0],
+    ["mobilityLimiter", 1]
 ];
 
 private _speedKmh = [_state, "speedKmh", 0] call _safeNumber;
 private _terrainFriction = [_state, "terrainFriction", 1] call _safeNumber;
 private _massKg = [_state, "massKg", 1200] call _safeNumber;
 private _slopeDelta = [_state, "slopeDelta", 0] call _safeNumber;
+private _absDelta = [_state, "absDelta", 0] call _safeNumber;
 private _stabilityDelta = [_state, "stabilityDelta", 0] call _safeNumber;
 private _rollDelta = [_state, "rollDelta", 0] call _safeNumber;
 
@@ -63,6 +82,7 @@ if (
     || {!finite _terrainFriction}
     || {!finite _massKg}
     || {!finite _slopeDelta}
+    || {!finite _absDelta}
     || {!finite _stabilityDelta}
     || {!finite _rollDelta}
 ) exitWith {
@@ -109,6 +129,30 @@ private _tireSteeringPenalty = (
 private _massModifier = (
     [_terrainTireRecommendation, "massModifier", 1] call _safeNumber
 ) max 0.72 min 1.08;
+private _wheelSupportState = _terrainTireRecommendation getOrDefault ["wheelSupportState", "UNKNOWN"];
+if !(_wheelSupportState isEqualType "") then {
+    _wheelSupportState = "UNKNOWN";
+};
+private _rolloverSuppressedValue = _terrainTireRecommendation getOrDefault ["rolloverSuppressed", false];
+private _rolloverSuppressed = [false, _rolloverSuppressedValue] select (_rolloverSuppressedValue isEqualType true);
+private _driverlessDecay = (
+    [_terrainTireRecommendation, "driverlessDecay", 0] call _safeNumber
+) max 0 min 1;
+private _destroyedTireCount = (
+    [_terrainTireRecommendation, "destroyedTireCount", 0] call _safeNumber
+) max 0 min 16;
+private _destroyedTireRatio = (
+    [_terrainTireRecommendation, "destroyedTireRatio", 0] call _safeNumber
+) max 0 min 1;
+private _destroyedTirePenalty = (
+    [_terrainTireRecommendation, "destroyedTirePenalty", 0] call _safeNumber
+) max 0 min 0.95;
+private _mobilityLimiter = (
+    [_terrainTireRecommendation, "mobilityLimiter", 1] call _safeNumber
+) max 0 min 1;
+private _windHandlingMultiplier = (
+    [_terrainTireRecommendation, "windHandlingMultiplier", 0] call _safeNumber
+) max 0 min 0.25;
 
 private _terrainMultiplier = 1;
 if (_terrainInfluenceEnabled) then {
@@ -121,6 +165,8 @@ private _massMultiplier = 1 - (((((_massKg - 1200) / 2800) max 0) min 1) * _mass
 _massMultiplier = _massMultiplier max 0.45 min 1;
 
 private _serviceBraking = _state getOrDefault ["serviceBraking", false];
+private _handbrakeActiveValue = _state getOrDefault ["handbrakeActive", false];
+private _handbrakeActive = [false, _handbrakeActiveValue] select (_handbrakeActiveValue isEqualType true);
 private _suppressedAssists = [];
 private _slopeRetention = 1;
 if (_serviceBraking) then {
@@ -131,30 +177,55 @@ if (_serviceBraking) then {
 
 private _priorityWinner = "none";
 private _finalCorrection = 0;
-if ((abs _rollDelta) > 0) then {
-    _priorityWinner = "roll";
-    _finalCorrection = _rollDelta;
+if (_handbrakeActive) then {
+    _priorityWinner = "handbrake";
+    _suppressedAssists append ["rollover-suppression", "abs-braking", "slope-correction", "wind-lateral"];
 } else {
-    if ((abs _stabilityDelta) > 0) then {
-        _priorityWinner = "stability";
-        _finalCorrection = _stabilityDelta;
+if (_rolloverSuppressed) then {
+    _priorityWinner = "rollover-suppression";
+    _suppressedAssists pushBack "rollover-suppressed";
+} else {
+if (_serviceBraking && {(abs _absDelta) > 0}) then {
+    _priorityWinner = "abs-braking";
+    _finalCorrection = _absDelta;
+    if ((abs _slopeDelta) > 0) then {
+        _suppressedAssists pushBack "slope-deferred-by-abs-braking";
+    };
+} else {
+    if ((abs _rollDelta) > 0) then {
+        _priorityWinner = "roll";
+        _finalCorrection = _rollDelta;
     } else {
-        if ((abs _slopeDelta) > 0) then {
-            _priorityWinner = "slope";
-            _finalCorrection = _slopeDelta;
+        if ((abs _stabilityDelta) > 0) then {
+            _priorityWinner = "stability";
+            _finalCorrection = _stabilityDelta;
+        } else {
+            if ((abs _slopeDelta) > 0) then {
+                _priorityWinner = "slope-correction";
+                _finalCorrection = _slopeDelta;
+            } else {
+                if (_windHandlingMultiplier > 0) then {
+                    _priorityWinner = "wind-lateral";
+                };
+            };
         };
     };
+};
+};
 };
 
 _finalCorrection = _finalCorrection * _terrainMultiplier * _massMultiplier;
 _finalCorrection = _finalCorrection * (switch (_priorityWinner) do {
     case "stability": {_turningTractionMultiplier};
-    case "slope": {_slopeTractionMultiplier};
+    case "slope-correction": {_slopeTractionMultiplier};
+    case "terrain-tire-modifier": {_tractionMultiplier};
     default {1};
 });
 _finalCorrection = (_finalCorrection max -_maximumComposedCorrection) min _maximumComposedCorrection;
 
 createHashMapFromArray [
+    ["priorityStack", _priorityStack get "FIXICS_RUNTIME_PRIORITY_STACK"],
+    ["FIXICS_RUNTIME_PRIORITY_STACK", _priorityStack get "FIXICS_RUNTIME_PRIORITY_STACK"],
     ["applied", (abs _finalCorrection) > 0],
     ["priorityWinner", _priorityWinner],
     ["terrainMultiplier", _terrainMultiplier],
@@ -172,5 +243,12 @@ createHashMapFromArray [
     ["wheelspinEstimate", _wheelspinEstimate],
     ["tireDragPenalty", _tireDragPenalty],
     ["tireSteeringPenalty", _tireSteeringPenalty],
-    ["massModifier", _massModifier]
+    ["massModifier", _massModifier],
+    ["wheelSupportState", _wheelSupportState],
+    ["rolloverSuppressed", _rolloverSuppressed],
+    ["driverlessDecay", _driverlessDecay],
+    ["destroyedTireCount", _destroyedTireCount],
+    ["destroyedTireRatio", _destroyedTireRatio],
+    ["destroyedTirePenalty", _destroyedTirePenalty],
+    ["mobilityLimiter", _mobilityLimiter]
 ]

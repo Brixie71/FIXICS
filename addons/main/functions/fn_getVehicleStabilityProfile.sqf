@@ -16,13 +16,23 @@ private _supportedClasses = [
     "EMP_Polaris_DAGOR",
     "B_LSV_01_unarmed_F",
     "LOP_IA_Offroad",
-    "B_G_Offroad_01_F"
+    "B_G_Offroad_01_F",
+    "rhsusf_m1151_usarmy_d"
 ];
 if !((typeOf _vehicle) in _supportedClasses) exitWith {
     _unsupportedProfile
 };
 
 private _presetIndex = missionNamespace getVariable ["FIXICS_stabilityPreset", 0];
+private _vehicleProfile = [_vehicle] call FIXICS_fnc_getVehicleProfile;
+private _profileSettings = _vehicleProfile getOrDefault ["settings", createHashMap];
+private _getProfileSetting = {
+    params ["_key", "_default"];
+
+    _profileSettings getOrDefault [_key, missionNamespace getVariable [_key, _default]]
+};
+
+_presetIndex = ["FIXICS_stabilityPreset", _presetIndex] call _getProfileSetting;
 private _presetName = ["REALISTIC_STABLE", "RALLY", "CUSTOM"] param [
     _presetIndex,
     "REALISTIC_STABLE"
@@ -33,30 +43,12 @@ switch (_presetName) do {
         [true, 50, 0.2, 0.12, 0.05, 0.04, 0.08]
     };
     case "CUSTOM": {
-        private _customActivationSpeed = missionNamespace getVariable [
-            "FIXICS_stabilityActivationSpeedKmh",
-            35
-        ];
-        private _customSlipThreshold = missionNamespace getVariable [
-            "FIXICS_stabilitySlipThreshold",
-            0.12
-        ];
-        private _customYawStrength = missionNamespace getVariable [
-            "FIXICS_stabilityYawStrength",
-            0.22
-        ];
-        private _customLateralStrength = missionNamespace getVariable [
-            "FIXICS_stabilityLateralStrength",
-            0.12
-        ];
-        private _customCountersteerStrength = missionNamespace getVariable [
-            "FIXICS_stabilityCountersteerStrength",
-            0.08
-        ];
-        private _customMaximumCorrection = missionNamespace getVariable [
-            "FIXICS_stabilityMaximumCorrection",
-            0.12
-        ];
+        private _customActivationSpeed = ["FIXICS_stabilityActivationSpeedKmh", 35] call _getProfileSetting;
+        private _customSlipThreshold = ["FIXICS_stabilitySlipThreshold", 0.12] call _getProfileSetting;
+        private _customYawStrength = ["FIXICS_stabilityYawStrength", 0.22] call _getProfileSetting;
+        private _customLateralStrength = ["FIXICS_stabilityLateralStrength", 0.12] call _getProfileSetting;
+        private _customCountersteerStrength = ["FIXICS_stabilityCountersteerStrength", 0.08] call _getProfileSetting;
+        private _customMaximumCorrection = ["FIXICS_stabilityMaximumCorrection", 0.12] call _getProfileSetting;
 
         private _activationSpeed = (_customActivationSpeed max 10) min 160;
         private _slipThreshold = (_customSlipThreshold max 0.05) min 0.8;

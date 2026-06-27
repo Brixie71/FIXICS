@@ -54,7 +54,8 @@ try {
         $isStability = $line -match '\[FIXICS\]\[Stability\]'
         $isRollStability = $line -match '\[FIXICS\]\[RollStability\]'
         $isRuntimeAssist = $line -match '\[FIXICS\]\[RuntimeAssistSample\]'
-        if ($isSample -or $isEvidence -or $isStability -or $isRollStability -or $isRuntimeAssist) {
+        $isTerrainTire = $line -match '\[FIXICS\]\[TerrainTireSample\]'
+        if ($isSample -or $isEvidence -or $isStability -or $isRollStability -or $isRuntimeAssist -or $isTerrainTire) {
             $telemetry.Add("[$lineNumber] $line")
         }
     }

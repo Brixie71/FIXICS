@@ -55,6 +55,12 @@
         <Key ID="STR_FIXICS_SETTING_ABS_SLOPE_COMPENSATION_TOOLTIP">
             <Original>Additional braking authority used when braking downhill.</Original>
         </Key>
+        <Key ID="STR_FIXICS_SETTING_AIRBORNE_GRACE_WINDOW">
+            <Original>Airborne grace window</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_AIRBORNE_GRACE_WINDOW_TOOLTIP">
+            <Original>Seconds a wheeled vehicle may be briefly airborne before Terrain Tire safety suppresses drive-style assistance. Default is 0.50 seconds.</Original>
+        </Key>
         <Key ID="STR_FIXICS_SETTING_CONTROLLED_SLIP_ACTIVATION_SPEED">
             <Original>Controlled slip activation speed</Original>
         </Key>
@@ -97,6 +103,18 @@
         <Key ID="STR_FIXICS_SETTING_CONTROLLED_SLIP_TERRAIN_INFLUENCE_TOOLTIP">
             <Original>Allows paved, dirt, grass, and unknown terrain classes to modify controlled slip strength.</Original>
         </Key>
+        <Key ID="STR_FIXICS_SETTING_DESTROYED_TIRE_DEBUG_LOGGING">
+            <Original>Destroyed tire debug logging</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DESTROYED_TIRE_DEBUG_LOGGING_TOOLTIP">
+            <Original>Writes destroyed tire count, mobility limiter, and wheel support state to the RPT for SQA diagnostics.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DESTROYED_TIRE_THRESHOLD">
+            <Original>Destroyed tire threshold</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DESTROYED_TIRE_THRESHOLD_TOOLTIP">
+            <Original>Wheel hitpoint damage value where Terrain Tire treats a tire as destroyed. Missing wheel hitpoints fall back safely.</Original>
+        </Key>
         <Key ID="STR_FIXICS_SETTING_DIRECTION_CHANGE_THRESHOLD">
             <Original>Direction change threshold</Original>
         </Key>
@@ -120,6 +138,18 @@
         </Key>
         <Key ID="STR_FIXICS_SETTING_DISABLE_IDLE_AUTOBRAKE_TOOLTIP">
             <Original>Keeps Arma's idle vehicle autobrake disabled while stationary unless the FIXICS ACE handbrake is set.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DRIVERLESS_DECAY_CAP">
+            <Original>Driverless decay cap</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DRIVERLESS_DECAY_CAP_TOOLTIP">
+            <Original>Maximum driverless deceleration in meters per second squared. Default 0.15 keeps WA-001 slope rolling verification conservative.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DRIVERLESS_DECAY_ENABLED">
+            <Original>Enable driverless decay</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_DRIVERLESS_DECAY_ENABLED_TOOLTIP">
+            <Original>Gently reduces residual local vehicle longitudinal motion after the player leaves the driver seat, without fighting the ACE/FIXICS handbrake.</Original>
         </Key>
         <Key ID="STR_FIXICS_SETTING_DRIVER_ASSIST_DEBUG_LOGGING">
             <Original>Driver assist debug logging</Original>
@@ -163,6 +193,18 @@
         <Key ID="STR_FIXICS_SETTING_HANDBRAKE_INPUT_TOGGLE">
             <Original>Toggle</Original>
         </Key>
+        <Key ID="STR_FIXICS_SETTING_HYDROPLANING_ENABLED">
+            <Original>Enable hydroplaning risk</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_HYDROPLANING_ENABLED_TOOLTIP">
+            <Original>Allows wet paved terrain to reduce traction at speed through Terrain Tire recommendations.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_HYDROPLANING_SPEED">
+            <Original>Hydroplaning speed</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_HYDROPLANING_SPEED_TOOLTIP">
+            <Original>Speed in km/h where wet paved hydroplaning risk begins. Default 70 keeps SQA testing relevant to normal road driving.</Original>
+        </Key>
         <Key ID="STR_FIXICS_SETTING_NATIVE_DRIVER_ASSIST">
             <Original>Enable native driver assist advisor</Original>
         </Key>
@@ -175,6 +217,12 @@
         <Key ID="STR_FIXICS_SETTING_NATIVE_SLOPE_CONTROL_TOOLTIP">
             <Original>Uses the optional FIXICSPhysics native extension for slope rollback recommendations. Leave disabled unless the extension binary is installed.</Original>
         </Key>
+        <Key ID="STR_FIXICS_SETTING_NATIVE_TERRAIN_TIRE">
+            <Original>Enable native terrain tire advisor</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_NATIVE_TERRAIN_TIRE_TOOLTIP">
+            <Original>Uses the optional FIXICSPhysics terrainTireV2 advisor for Terrain Tire Phase 2 math. SQF validates output and falls back automatically.</Original>
+        </Key>
         <Key ID="STR_FIXICS_SETTING_REAR_SWAY_BAR_ENABLED">
             <Original>Enable rear sway bar</Original>
         </Key>
@@ -186,6 +234,12 @@
         </Key>
         <Key ID="STR_FIXICS_SETTING_REAR_SWAY_BAR_STRENGTH_TOOLTIP">
             <Original>Rear sway bar contribution from zero to one. Zero behaves like the rear sway bar is disabled.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLLOVER_SAFETY_ENABLED">
+            <Original>Enable rollover safety</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_ROLLOVER_SAFETY_ENABLED_TOOLTIP">
+            <Original>Suppresses FIXICS drive and traction assistance when a wheeled vehicle is flipped, unsupported, or airborne beyond the grace window.</Original>
         </Key>
         <Key ID="STR_FIXICS_SETTING_ROLL_ACTIVATION_BANK">
             <Original>Roll activation bank</Original>
@@ -447,6 +501,63 @@
         </Key>
         <Key ID="STR_FIXICS_SETTING_TIRE_STEERING_PENALTY_TOOLTIP">
             <Original>How strongly reduced tire mobility may limit steering recommendations.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_VEHICLE_PROFILE_DEBUG">
+            <Original>Vehicle profile debug logging</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_VEHICLE_PROFILE_DEBUG_TOOLTIP">
+            <Original>Writes active per-vehicle profile resolution to the RPT and shows profile dumps on screen.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_VEHICLE_PROFILE_EXACT">
+            <Original>Exact vehicle class profiles</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_VEHICLE_PROFILE_EXACT_TOOLTIP">
+            <Original>SQF array of exact classname profiles. Example: [[""B_LSV_01_unarmed_F"",""LIGHT_OFFROAD"",[[""FIXICS_absBrakeStrength"",0.55]]]]. Exact class entries override parent entries.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_VEHICLE_PROFILE_PARENT">
+            <Original>Parent vehicle class profiles</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_VEHICLE_PROFILE_PARENT_TOOLTIP">
+            <Original>SQF array of parent classname profiles. Example: [[""Car_F"",""DEFAULT"",[]]]. Exact class entries override parent entries.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_WEATHER_DEBUG_LOGGING">
+            <Original>Weather terrain debug logging</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_WEATHER_DEBUG_LOGGING_TOOLTIP">
+            <Original>Writes weather, wetness, hydroplaning, and wind handling Terrain Tire values to the RPT for SQA diagnostics.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_WEATHER_DRYING_TIME">
+            <Original>Weather drying time</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_WEATHER_DRYING_TIME_TOOLTIP">
+            <Original>Seconds for wet terrain state to dry after rain stops. Drying is paused while active rain is present.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_WEATHER_SATURATION_TIME">
+            <Original>Weather saturation time</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_WEATHER_SATURATION_TIME_TOOLTIP">
+            <Original>Seconds for active rain to saturate Terrain Tire wetness. Default 30 makes wet handling relevant without instant changes.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_WEATHER_TERRAIN_ENABLED">
+            <Original>Enable weather terrain effects</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_WEATHER_TERRAIN_ENABLED_TOOLTIP">
+            <Original>Enables rain, wet terrain, hydroplaning, storm, and minimal wind influence for Terrain Tire recommendations.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_WIND_HANDLING_ENABLED">
+            <Original>Enable wind handling</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_WIND_HANDLING_ENABLED_TOOLTIP">
+            <Original>Enables first-pass crosswind lateral influence through existing stability paths. No yaw moment, steering input modification, or gust timing is applied.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_WIND_HANDLING_STRENGTH">
+            <Original>Wind handling strength</Original>
+        </Key>
+        <Key ID="STR_FIXICS_SETTING_WIND_HANDLING_STRENGTH_TOOLTIP">
+            <Original>Maximum strength for first-pass crosswind lateral influence through existing stability paths.</Original>
+        </Key>
+        <Key ID="STR_FIXICS_VEHICLE_PROFILE_VIEW">
+            <Original>View FIXICS Vehicle Profile</Original>
         </Key>
         <Key ID="STR_FIXICS_VR_CHAT">
             <Original>[FIXICS] Hello world from VR.</Original>

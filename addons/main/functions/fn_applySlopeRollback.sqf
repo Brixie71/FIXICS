@@ -39,6 +39,14 @@ if (_vehicle getVariable ["FIXICS_handbrakeEnabled", false]) exitWith {
     false
 };
 
+private _vehicleProfile = [_vehicle] call FIXICS_fnc_getVehicleProfile;
+private _profileSettings = _vehicleProfile getOrDefault ["settings", createHashMap];
+private _getProfileSetting = {
+    params ["_key", "_default"];
+
+    _profileSettings getOrDefault [_key, missionNamespace getVariable [_key, _default]]
+};
+
 private _clearSlopeDecision = {
     _vehicle setVariable [
         "FIXICS_slopeLastDecision",
@@ -79,7 +87,7 @@ if (_forwardLength <= 0) exitWith {
 
 _forward = _forward vectorMultiply (1 / _forwardLength);
 
-private _stationarySpeedKmh = missionNamespace getVariable ["FIXICS_stationaryBrakeBypassSpeedKmh", 1];
+private _stationarySpeedKmh = ["FIXICS_stationaryBrakeBypassSpeedKmh", 1] call _getProfileSetting;
 private _stationarySpeedMps = _stationarySpeedKmh / 3.6;
 private _longitudinalSpeed = ((_velocity # 0) * (_forward # 0)) + ((_velocity # 1) * (_forward # 1));
 private _isForwardBraking = _hasBackInput && {_longitudinalSpeed > _stationarySpeedMps};
@@ -89,6 +97,7 @@ private _brakingSlopeRetention = missionNamespace getVariable [
     "FIXICS_runtimeAssistBrakingSlopeRetention",
     0.35
 ];
+_brakingSlopeRetention = ["FIXICS_runtimeAssistBrakingSlopeRetention", _brakingSlopeRetention] call _getProfileSetting;
 _brakingSlopeRetention = (_brakingSlopeRetention max 0) min 1;
 private _serviceBrakeSlopeScale = [1, _brakingSlopeRetention] select _isBraking;
 
@@ -100,7 +109,7 @@ private _slopeAngleDegrees = acos _normalZ;
 private _slope = sin _slopeAngleDegrees;
 private _downhill = [_normal # 0, _normal # 1, 0];
 private _downhillLength = sqrt (((_downhill # 0) * (_downhill # 0)) + ((_downhill # 1) * (_downhill # 1)));
-private _minimumSlope = missionNamespace getVariable ["FIXICS_slopeRollbackMinimumSlope", 0.035];
+private _minimumSlope = ["FIXICS_slopeRollbackMinimumSlope", 0.035] call _getProfileSetting;
 if ((_slope < _minimumSlope) || {_downhillLength <= 0}) exitWith {
     call _clearSlopeDecision;
     false
@@ -131,13 +140,13 @@ if (_hasDriveInput) exitWith {
     };
 
     private _driveAxisSpeed = ((_velocity # 0) * (_driveAxis # 0)) + ((_velocity # 1) * (_driveAxis # 1));
-    private _maxDriveSpeed = (missionNamespace getVariable ["FIXICS_slopeDriveMaxSpeedKmh", 120]) / 3.6;
+    private _maxDriveSpeed = (["FIXICS_slopeDriveMaxSpeedKmh", 120] call _getProfileSetting) / 3.6;
     if (_driveAxisSpeed >= _maxDriveSpeed) exitWith {
         call _clearSlopeDecision;
         false
     };
 
-    private _driveAcceleration = missionNamespace getVariable ["FIXICS_slopeDriveAcceleration", 0.22];
+    private _driveAcceleration = ["FIXICS_slopeDriveAcceleration", 0.22] call _getProfileSetting;
     private _driveDelta = _driveAcceleration * _effectiveDriveSlope * _timeScale * _serviceBrakeSlopeScale;
     _driveDelta = _driveDelta min (_maxDriveSpeed - _driveAxisSpeed);
 
@@ -168,14 +177,14 @@ if (_hasDriveInput) exitWith {
     true
 };
 
-private _maxRollbackSpeed = missionNamespace getVariable ["FIXICS_slopeRollbackMaxSpeed", 2.2];
+private _maxRollbackSpeed = ["FIXICS_slopeRollbackMaxSpeed", 2.2] call _getProfileSetting;
 if (_downhillSpeed >= _maxRollbackSpeed) exitWith {
     call _clearSlopeDecision;
     false
 };
 
-private _rollbackAcceleration = missionNamespace getVariable ["FIXICS_slopeRollbackAcceleration", 0.55];
-private _coastBreakawayVelocity = missionNamespace getVariable ["FIXICS_slopeCoastBreakawayVelocity", 0.18];
+private _rollbackAcceleration = ["FIXICS_slopeRollbackAcceleration", 0.55] call _getProfileSetting;
+private _coastBreakawayVelocity = ["FIXICS_slopeCoastBreakawayVelocity", 0.18] call _getProfileSetting;
 private _minimumDelta = 0;
 if ((abs _downhillSpeed) <= _stationarySpeedMps) then {
     _minimumDelta = _coastBreakawayVelocity * _timeScale;

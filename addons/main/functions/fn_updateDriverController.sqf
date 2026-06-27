@@ -67,6 +67,28 @@ private _releaseVehicle = {
             && {isTouchingGround _targetVehicle}
         ) then {
             [_targetVehicle] call FIXICS_fnc_applyHandbrakeLock;
+        } else {
+            if (
+                isNull driver _targetVehicle
+                && {missionNamespace getVariable ["FIXICS_driverlessDecayEnabled", true]}
+            ) then {
+                private _decayCap = (
+                    missionNamespace getVariable ["FIXICS_driverlessDecayCap", 0.15]
+                ) max 0 min 1;
+                private _decayDelta = _decayCap * 0.03;
+                private _modelVelocity = velocityModelSpace _targetVehicle;
+                private _longitudinalSpeed = _modelVelocity # 1;
+                if (abs _longitudinalSpeed > 0) then {
+                    if (_longitudinalSpeed > 0) then {
+                        _longitudinalSpeed = (_longitudinalSpeed - _decayDelta) max 0;
+                    } else {
+                        _longitudinalSpeed = (_longitudinalSpeed + _decayDelta) min 0;
+                    };
+                    _modelVelocity set [1, _longitudinalSpeed];
+                    _targetVehicle setVelocityModelSpace _modelVelocity;
+                    _targetVehicle setVariable ["FIXICS_driverlessDecayLastApplied", _decayDelta, false];
+                };
+            };
         };
     };
 };
@@ -109,8 +131,17 @@ if (
 if (_previousVehicle != _vehicle) then {
     [_previousVehicle] call _releaseVehicle;
     missionNamespace setVariable ["FIXICS_handbrakeInputWasDown", false, false];
+    [_vehicle, true] call FIXICS_fnc_getVehicleProfile;
 };
 missionNamespace setVariable ["FIXICS_driverControllerVehicle", _vehicle, false];
+
+private _vehicleProfile = [_vehicle] call FIXICS_fnc_getVehicleProfile;
+private _profileSettings = _vehicleProfile getOrDefault ["settings", createHashMap];
+private _getProfileSetting = {
+    params ["_key", "_default"];
+
+    _profileSettings getOrDefault [_key, missionNamespace getVariable [_key, _default]]
+};
 
 if (!isTouchingGround _vehicle) exitWith {
     [_vehicle] call _releaseVehicle;
@@ -185,9 +216,9 @@ if (_persistentHandbrake || {_temporaryHandbrake}) exitWith {
 
 private _modelVelocity = velocityModelSpace _vehicle;
 private _longitudinalSpeed = _modelVelocity # 1;
-private _directionThreshold = (missionNamespace getVariable ["FIXICS_directionChangeThresholdKmh", 2]) / 3.6;
-private _launchVelocity = missionNamespace getVariable ["FIXICS_directionLaunchVelocity", 0.35];
-private _neutralPulseSeconds = missionNamespace getVariable ["FIXICS_directionNeutralPulseSeconds", 0.08];
+private _directionThreshold = (["FIXICS_directionChangeThresholdKmh", 2] call _getProfileSetting) / 3.6;
+private _launchVelocity = ["FIXICS_directionLaunchVelocity", 0.35] call _getProfileSetting;
+private _neutralPulseSeconds = ["FIXICS_directionNeutralPulseSeconds", 0.08] call _getProfileSetting;
 private _getDriverAssist = {
     params ["_state", "_direction", "_speed", "_ignoreLowSpeedCutoff"];
 
@@ -214,13 +245,13 @@ private _getDriverAssist = {
         _slope,
         _downhillAlignment,
         _deltaTime,
-        missionNamespace getVariable ["FIXICS_absBrakeStrength", 0.45],
-        missionNamespace getVariable ["FIXICS_absReleaseBias", 0.35],
-        missionNamespace getVariable ["FIXICS_absSlopeCompensation", 0.25],
+        ["FIXICS_absBrakeStrength", 0.45] call _getProfileSetting,
+        ["FIXICS_absReleaseBias", 0.35] call _getProfileSetting,
+        ["FIXICS_absSlopeCompensation", 0.25] call _getProfileSetting,
         _directionThreshold,
         _launchVelocity,
         _neutralPulseSeconds,
-        (missionNamespace getVariable ["FIXICS_absLowSpeedCutoffKmh", 3]) / 3.6,
+        (["FIXICS_absLowSpeedCutoffKmh", 3] call _getProfileSetting) / 3.6,
         _ignoreLowSpeedCutoff
     ] call FIXICS_fnc_getNativeDriverAssist;
 
@@ -334,8 +365,8 @@ if (_transitionTarget != 0) exitWith {
         _longitudinalSpeed = _modelVelocity # 1;
 
         if (!_absApplied) then {
-            private _fallbackBrake = (missionNamespace getVariable ["FIXICS_absBrakeStrength", 0.45])
-                * (1 - (missionNamespace getVariable ["FIXICS_absReleaseBias", 0.35]))
+            private _fallbackBrake = (["FIXICS_absBrakeStrength", 0.45] call _getProfileSetting)
+                * (1 - (["FIXICS_absReleaseBias", 0.35] call _getProfileSetting))
                 * (_deltaTime / 0.25);
             if (_longitudinalSpeed > 0) then {
                 _longitudinalSpeed = (_longitudinalSpeed - _fallbackBrake) max 0;
@@ -369,8 +400,8 @@ if (_isCombinedBrake) exitWith {
     _longitudinalSpeed = _modelVelocity # 1;
 
     if (!_absApplied) then {
-        private _fallbackBrake = (missionNamespace getVariable ["FIXICS_absBrakeStrength", 0.45])
-            * (1 - (missionNamespace getVariable ["FIXICS_absReleaseBias", 0.35]))
+        private _fallbackBrake = (["FIXICS_absBrakeStrength", 0.45] call _getProfileSetting)
+            * (1 - (["FIXICS_absReleaseBias", 0.35] call _getProfileSetting))
             * (_deltaTime / 0.25);
         if (_longitudinalSpeed > 0) then {
             _longitudinalSpeed = (_longitudinalSpeed - _fallbackBrake) max 0;

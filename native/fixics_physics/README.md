@@ -32,6 +32,7 @@ Supported calls:
 "FIXICSPhysics" callExtension ["schema", []];
 "FIXICSPhysics" callExtension ["slopeControl", [_downhillX, _downhillY, _velocityX, _velocityY, _slope, _maxRollbackSpeed, _rollbackAcceleration, _minimumDelta]];
 "FIXICSPhysics" callExtension ["driverAssist", [_state, _requestedDirection, _longitudinalSpeed, _slope, _downhillAlignment, _deltaTime, _absBrakeStrength, _absReleaseBias, _absSlopeCompensation, _directionThreshold, _directionLaunchVelocity, _neutralPulseSeconds, _lowSpeedCutoff, _ignoreLowSpeedCutoff]];
+"FIXICSPhysics" callExtension ["terrainTireV2", [_terrainClass, _speedKmh, _throttleDemand, _brakeDemand, _steeringDemand, _slopeSeverity, _massKg, _deltaTime, _tireAirState, _tireDamage, _grounded, _lastGroundedAge, _vectorUpZ, _airborneGraceWindow, _driverlessDecayEnabled, _driverlessDecayCap, _destroyedTireThreshold, _destroyedTireCount]];
 ```
 
 `slopeControl` returns:
@@ -51,6 +52,38 @@ The SQF bridge is `FIXICS_fnc_getNativeSlopeControl`. It is gated by the CBA set
 ```
 
 The recommendation contains controller math only. SQF validates the result and remains responsible for every vehicle mutation.
+
+`terrainTireV2` is a native advisor for Terrain Tire Phase 2 traction,
+wheel-support, rollover suppression, driverless decay, and destroyed-tire
+mobility math. It returns:
+
+```sqf
+[
+    applied,
+    tractionMultiplier,
+    accelerationTractionMultiplier,
+    brakingTractionMultiplier,
+    turningTractionMultiplier,
+    slopeTractionMultiplier,
+    wheelspinEstimate,
+    tireAirState,
+    tireDragPenalty,
+    tireSteeringPenalty,
+    massModifier,
+    wheelSupportState,
+    rolloverSuppressed,
+    driverlessDecay,
+    destroyedTireCount,
+    destroyedTireRatio,
+    destroyedTirePenalty,
+    mobilityLimiter,
+    telemetry
+]
+```
+
+The SQF bridge is `FIXICS_fnc_getNativeTerrainTire`. It is gated by
+`FIXICS_nativeTerrainTireEnabled`, which defaults to `false`. Invalid native
+responses are ignored and SQF Terrain Tire math remains the fallback.
 
 ## Build Notes
 
@@ -73,4 +106,4 @@ A later release build plan must decide:
 - BattlEye behavior;
 - whether clients, servers, or both need the binary.
 
-Do not call this extension in a per-frame loop. `callExtension` blocks Arma until the extension returns.
+Do not call this extension in a per-frame loop without profiling. `callExtension` blocks Arma until the extension returns.

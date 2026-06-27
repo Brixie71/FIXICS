@@ -74,6 +74,7 @@ private _terrainNormal = surfaceNormal _surfacePosition;
 private _terrainNormalZ = ((_terrainNormal # 2) max -1) min 1;
 private _runtimeAssistDecision = _vehicle getVariable ["FIXICS_runtimeAssistLastDecision", createHashMap];
 private _terrainTireRecommendation = _vehicle getVariable ["FIXICS_terrainTireRecommendation", createHashMap];
+private _vehicleProfile = [_vehicle] call FIXICS_fnc_getVehicleProfile;
 private _hitPointDamage = getAllHitPointsDamage _vehicle;
 private _wheelHitpointDamage = [];
 if ((count _hitPointDamage) >= 3) then {
@@ -121,6 +122,9 @@ private _values = [
     ["FIXICS_absEnabled", missionNamespace getVariable ["FIXICS_absEnabled", true]],
     ["FIXICS_stabilityAssistMode", missionNamespace getVariable ["FIXICS_stabilityAssistMode", 0]],
     ["FIXICS_runtimeAssistLastDecision", _runtimeAssistDecision],
+    ["vehicleProfileId", _vehicleProfile getOrDefault ["vehicleProfileId", "DEFAULT"]],
+    ["vehicleProfileSource", _vehicleProfile getOrDefault ["vehicleProfileSource", "global"]],
+    ["vehicleProfileOverridesApplied", _vehicleProfile getOrDefault ["vehicleProfileOverridesApplied", []]],
     ["runtimeAssistPriorityWinner", _runtimeAssistDecision getOrDefault ["priorityWinner", "none"]],
     ["runtimeAssistTerrainMultiplier", _runtimeAssistDecision getOrDefault ["terrainMultiplier", 1]],
     ["runtimeAssistMassMultiplier", _runtimeAssistDecision getOrDefault ["massMultiplier", 1]],
@@ -154,6 +158,24 @@ private _values = [
     ["massModifier", _terrainTireRecommendation getOrDefault ["massModifier", 1]],
     ["terrainTireTelemetryVersion", _terrainTireRecommendation getOrDefault ["terrainTireTelemetryVersion", 0]],
     ["perWheelMode", _terrainTireRecommendation getOrDefault ["perWheelMode", "aggregate"]],
+    ["wheelSupportState", _terrainTireRecommendation getOrDefault ["wheelSupportState", "UNKNOWN"]],
+    ["rolloverSuppressed", _terrainTireRecommendation getOrDefault ["rolloverSuppressed", false]],
+    ["driverlessDecay", _terrainTireRecommendation getOrDefault ["driverlessDecay", 0]],
+    ["destroyedTireCount", _terrainTireRecommendation getOrDefault ["destroyedTireCount", 0]],
+    ["destroyedTireRatio", _terrainTireRecommendation getOrDefault ["destroyedTireRatio", 0]],
+    ["destroyedTirePenalty", _terrainTireRecommendation getOrDefault ["destroyedTirePenalty", 0]],
+    ["mobilityLimiter", _terrainTireRecommendation getOrDefault ["mobilityLimiter", 1]],
+    ["weatherTerrainEnabled", _terrainTireRecommendation getOrDefault ["weatherTerrainEnabled", false]],
+    ["rainLevel", _terrainTireRecommendation getOrDefault ["rainLevel", 0]],
+    ["overcastLevel", _terrainTireRecommendation getOrDefault ["overcastLevel", 0]],
+    ["surfaceWetness", _terrainTireRecommendation getOrDefault ["surfaceWetness", 0]],
+    ["terrainSaturation", _terrainTireRecommendation getOrDefault ["terrainSaturation", 0]],
+    ["weatherGripMultiplier", _terrainTireRecommendation getOrDefault ["weatherGripMultiplier", 1]],
+    ["hydroplaningRisk", _terrainTireRecommendation getOrDefault ["hydroplaningRisk", 0]],
+    ["windStrength", _terrainTireRecommendation getOrDefault ["windStrength", 0]],
+    ["windCrossComponent", _terrainTireRecommendation getOrDefault ["windCrossComponent", 0]],
+    ["windHandlingMultiplier", _terrainTireRecommendation getOrDefault ["windHandlingMultiplier", 0]],
+    ["weatherReason", _terrainTireRecommendation getOrDefault ["weatherReason", "not-evaluated"]],
     ["surface", surfaceType (getPosWorld _vehicle)]
 ];
 
@@ -215,6 +237,7 @@ if (_duration > 0) then {
             private _terrainNormal = surfaceNormal _surfacePosition;
             private _terrainNormalZ = ((_terrainNormal # 2) max -1) min 1;
             private _runtimeAssistDecision = _vehicle getVariable ["FIXICS_runtimeAssistLastDecision", createHashMap];
+            private _vehicleProfile = [_vehicle] call FIXICS_fnc_getVehicleProfile;
             private _runtimeAssistPriorityWinner = _runtimeAssistDecision getOrDefault ["priorityWinner", "none"];
             private _runtimeAssistTerrainMultiplier = _runtimeAssistDecision getOrDefault ["terrainMultiplier", 1];
             private _runtimeAssistMassMultiplier = _runtimeAssistDecision getOrDefault ["massMultiplier", 1];
@@ -249,6 +272,24 @@ if (_duration > 0) then {
             private _massModifier = _terrainTireRecommendation getOrDefault ["massModifier", 1];
             private _terrainTireTelemetryVersion = _terrainTireRecommendation getOrDefault ["terrainTireTelemetryVersion", 0];
             private _perWheelMode = _terrainTireRecommendation getOrDefault ["perWheelMode", "aggregate"];
+            private _wheelSupportState = _terrainTireRecommendation getOrDefault ["wheelSupportState", "UNKNOWN"];
+            private _rolloverSuppressed = _terrainTireRecommendation getOrDefault ["rolloverSuppressed", false];
+            private _driverlessDecay = _terrainTireRecommendation getOrDefault ["driverlessDecay", 0];
+            private _destroyedTireCount = _terrainTireRecommendation getOrDefault ["destroyedTireCount", 0];
+            private _destroyedTireRatio = _terrainTireRecommendation getOrDefault ["destroyedTireRatio", 0];
+            private _destroyedTirePenalty = _terrainTireRecommendation getOrDefault ["destroyedTirePenalty", 0];
+            private _mobilityLimiter = _terrainTireRecommendation getOrDefault ["mobilityLimiter", 1];
+            private _weatherTerrainEnabled = _terrainTireRecommendation getOrDefault ["weatherTerrainEnabled", false];
+            private _rainLevel = _terrainTireRecommendation getOrDefault ["rainLevel", 0];
+            private _overcastLevel = _terrainTireRecommendation getOrDefault ["overcastLevel", 0];
+            private _surfaceWetness = _terrainTireRecommendation getOrDefault ["surfaceWetness", 0];
+            private _terrainSaturation = _terrainTireRecommendation getOrDefault ["terrainSaturation", 0];
+            private _weatherGripMultiplier = _terrainTireRecommendation getOrDefault ["weatherGripMultiplier", 1];
+            private _hydroplaningRisk = _terrainTireRecommendation getOrDefault ["hydroplaningRisk", 0];
+            private _windStrength = _terrainTireRecommendation getOrDefault ["windStrength", 0];
+            private _windCrossComponent = _terrainTireRecommendation getOrDefault ["windCrossComponent", 0];
+            private _windHandlingMultiplier = _terrainTireRecommendation getOrDefault ["windHandlingMultiplier", 0];
+            private _weatherReason = _terrainTireRecommendation getOrDefault ["weatherReason", "not-evaluated"];
             private _hitPointDamage = getAllHitPointsDamage _vehicle;
             private _wheelHitpointDamage = [];
             if ((count _hitPointDamage) >= 3) then {
@@ -263,7 +304,7 @@ if (_duration > 0) then {
             };
 
             diag_log format [
-                "[FIXICS] Vehicle handling sample: t=%1 vehicle=%2 input=[drive=%3,fast=%4,slow=%5,reverse=%6,engineHandbrake=%7,left=%8,right=%9,steerNet=%10] speedKmh=%11 velocityWorld=%12 velocityModelSpace=%13 positionWorld=%14 positionASL=%15 heading=%16 headingDelta=%17 yawRate=%18 pitch=%19 pitchRate=%20 bank=%21 bankRate=%22 vectorDir=%23 vectorUp=%24 terrainNormal=%25 slopeFactor=%26 isTouchingGround=%27 wheelHitpointDamageProxy=%28 FIXICS_driverState=%29 FIXICS_handbrakeEnabled=%30 FIXICS_absEnabled=%31 FIXICS_stabilityAssistMode=%32 surface=%33 runtimeAssistPriorityWinner=%34 runtimeAssistTerrainMultiplier=%35 runtimeAssistMassMultiplier=%36 runtimeAssistSuppressedAssists=%37 runtimeAssistFinalCorrection=%38 runtimeAssistSwayBarStrengthMultiplier=%39 frontSwayBarEnabled=%40 frontSwayBarStrength=%41 rearSwayBarEnabled=%42 rearSwayBarStrength=%43 controlledSlipEligible=%44 controlledSlipApplied=%45 controlledSlipReason=%46 controlledSlipGripReleaseFactor=%47 controlledSlipCorrection=%48",
+                "[FIXICS] Vehicle handling sample: t=%1 vehicle=%2 input=[drive=%3,fast=%4,slow=%5,reverse=%6,engineHandbrake=%7,left=%8,right=%9,steerNet=%10] speedKmh=%11 velocityWorld=%12 velocityModelSpace=%13 positionWorld=%14 positionASL=%15 heading=%16 headingDelta=%17 yawRate=%18 pitch=%19 pitchRate=%20 bank=%21 bankRate=%22 vectorDir=%23 vectorUp=%24 terrainNormal=%25 slopeFactor=%26 isTouchingGround=%27 wheelHitpointDamageProxy=%28 FIXICS_driverState=%29 FIXICS_handbrakeEnabled=%30 FIXICS_absEnabled=%31 FIXICS_stabilityAssistMode=%32 surface=%33 runtimeAssistPriorityWinner=%34 runtimeAssistTerrainMultiplier=%35 runtimeAssistMassMultiplier=%36 runtimeAssistSuppressedAssists=%37 runtimeAssistFinalCorrection=%38 runtimeAssistSwayBarStrengthMultiplier=%39 frontSwayBarEnabled=%40 frontSwayBarStrength=%41 rearSwayBarEnabled=%42 rearSwayBarStrength=%43 controlledSlipEligible=%44 controlledSlipApplied=%45 controlledSlipReason=%46 controlledSlipGripReleaseFactor=%47 controlledSlipCorrection=%48 vehicleProfileId=%49 vehicleProfileSource=%50 vehicleProfileOverridesApplied=%51",
                 _now - _startedAt,
                 typeOf _vehicle,
                 _forwardInput,
@@ -311,11 +352,14 @@ if (_duration > 0) then {
                 _controlledSlipApplied,
                 _controlledSlipReason,
                 _controlledSlipGripReleaseFactor,
-                _controlledSlipCorrection
+                _controlledSlipCorrection,
+                _vehicleProfile getOrDefault ["vehicleProfileId", "DEFAULT"],
+                _vehicleProfile getOrDefault ["vehicleProfileSource", "global"],
+                _vehicleProfile getOrDefault ["vehicleProfileOverridesApplied", []]
             ];
 
             diag_log format [
-                "[FIXICS][RuntimeAssistSample] t=%1 vehicle=%2 state=%3 speedKmh=%4 surface=%5 priority=%6 terrain=%7 mass=%8 suppressed=%9 finalCorrection=%10 bank=%11 bankRate=%12 yawRate=%13 grounded=%14 swayBarStrengthMultiplier=%15 frontSwayBarEnabled=%16 frontSwayBarStrength=%17 rearSwayBarEnabled=%18 rearSwayBarStrength=%19 controlledSlipEligible=%20 controlledSlipApplied=%21 controlledSlipReason=%22 controlledSlipGripReleaseFactor=%23 controlledSlipCorrection=%24",
+                "[FIXICS][RuntimeAssistSample] t=%1 vehicle=%2 state=%3 speedKmh=%4 surface=%5 priority=%6 terrain=%7 mass=%8 suppressed=%9 finalCorrection=%10 bank=%11 bankRate=%12 yawRate=%13 grounded=%14 swayBarStrengthMultiplier=%15 frontSwayBarEnabled=%16 frontSwayBarStrength=%17 rearSwayBarEnabled=%18 rearSwayBarStrength=%19 controlledSlipEligible=%20 controlledSlipApplied=%21 controlledSlipReason=%22 controlledSlipGripReleaseFactor=%23 controlledSlipCorrection=%24 vehicleProfileId=%25 vehicleProfileSource=%26 vehicleProfileOverridesApplied=%27",
                 _now - _startedAt,
                 typeOf _vehicle,
                 _vehicle getVariable ["FIXICS_driverState", "idle"],
@@ -339,11 +383,14 @@ if (_duration > 0) then {
                 _controlledSlipApplied,
                 _controlledSlipReason,
                 _controlledSlipGripReleaseFactor,
-                _controlledSlipCorrection
+                _controlledSlipCorrection,
+                _vehicleProfile getOrDefault ["vehicleProfileId", "DEFAULT"],
+                _vehicleProfile getOrDefault ["vehicleProfileSource", "global"],
+                _vehicleProfile getOrDefault ["vehicleProfileOverridesApplied", []]
             ];
 
             diag_log format [
-                "[FIXICS][TerrainTireSample] t=%1 vehicle=%2 terrainTireEnabled=%3 terrainTireEligible=%4 terrainTireReason=%5 surfaceType=%6 terrainGripClass=%7 tractionMultiplier=%8 accelerationTractionMultiplier=%9 brakingTractionMultiplier=%10 turningTractionMultiplier=%11 slopeTractionMultiplier=%12 wheelspinEstimate=%13 tireAirState=%14 tireDeflationState=%15 tireDragPenalty=%16 tireSteeringPenalty=%17 massModifier=%18 terrainTireTelemetryVersion=%19 perWheelMode=%20",
+                "[FIXICS][TerrainTireSample] t=%1 vehicle=%2 terrainTireEnabled=%3 terrainTireEligible=%4 terrainTireReason=%5 surfaceType=%6 terrainGripClass=%7 tractionMultiplier=%8 accelerationTractionMultiplier=%9 brakingTractionMultiplier=%10 turningTractionMultiplier=%11 slopeTractionMultiplier=%12 wheelspinEstimate=%13 tireAirState=%14 tireDeflationState=%15 tireDragPenalty=%16 tireSteeringPenalty=%17 massModifier=%18 terrainTireTelemetryVersion=%19 perWheelMode=%20 wheelSupportState=%21 rolloverSuppressed=%22 driverlessDecay=%23 destroyedTireCount=%24 destroyedTireRatio=%25 destroyedTirePenalty=%26 mobilityLimiter=%27 weatherTerrainEnabled=%28 rainLevel=%29 overcastLevel=%30 surfaceWetness=%31 terrainSaturation=%32 weatherGripMultiplier=%33 hydroplaningRisk=%34 windStrength=%35 windCrossComponent=%36 windHandlingMultiplier=%37 weatherReason=%38",
                 _now - _startedAt,
                 typeOf _vehicle,
                 _terrainTireEnabled,
@@ -363,7 +410,25 @@ if (_duration > 0) then {
                 _tireSteeringPenalty,
                 _massModifier,
                 _terrainTireTelemetryVersion,
-                _perWheelMode
+                _perWheelMode,
+                _wheelSupportState,
+                _rolloverSuppressed,
+                _driverlessDecay,
+                _destroyedTireCount,
+                _destroyedTireRatio,
+                _destroyedTirePenalty,
+                _mobilityLimiter,
+                _weatherTerrainEnabled,
+                _rainLevel,
+                _overcastLevel,
+                _surfaceWetness,
+                _terrainSaturation,
+                _weatherGripMultiplier,
+                _hydroplaningRisk,
+                _windStrength,
+                _windCrossComponent,
+                _windHandlingMultiplier,
+                _weatherReason
             ];
 
             _previousTime = _now;

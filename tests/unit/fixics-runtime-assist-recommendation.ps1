@@ -168,7 +168,8 @@ if (-not (Test-Path -LiteralPath $FunctionPath)) {
     Assert-Contains $Source '_priorityWinner' 'Runtime recommendation must select a priority winner.'
     Assert-Contains $Source '_suppressedAssists' 'Runtime recommendation must list suppressed or reduced assists.'
     Assert-Contains $Source '_finalCorrection' 'Runtime recommendation must calculate final correction.'
-    Assert-Contains $Source '"roll"[\s\S]*?"stability"[\s\S]*?"slope"' 'Priority order must be roll, stability, then slope.'
+    Assert-Contains $Source 'FIXICS_RUNTIME_PRIORITY_STACK' 'Runtime recommendation must define an explicit priority stack.'
+    Assert-Contains $Source '"handbrake"[\s\S]*?"rollover-suppression"[\s\S]*?"abs-braking"[\s\S]*?"slope-correction"[\s\S]*?"terrain-tire-modifier"[\s\S]*?"wind-lateral"' 'Priority order must be handbrake, rollover, ABS, slope, Terrain Tire modifier, then wind.'
     Assert-Contains $Source 'slope-reduced-by-service-brake' 'Service braking must reduce slope assist visibly.'
     Assert-Contains $Source '\bfinite\b' 'Runtime recommendation must reject non-finite inputs.'
     if ($Source -match '\b(setVelocity|setVelocityModelSpace|setDir|setVectorDirAndUp|disableBrakes|setVariable|publicVariable|remoteExec|remoteExecCall|callExtension)\b') {
